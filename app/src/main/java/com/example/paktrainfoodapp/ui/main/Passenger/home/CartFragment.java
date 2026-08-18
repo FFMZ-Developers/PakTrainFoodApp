@@ -1,7 +1,15 @@
 package com.example.paktrainfoodapp.ui.main.Passenger.home;
 
 import android.os.Bundle;
+import android.widget.Button;
+import android.widget.TextView;
 
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.example.paktrainfoodapp.CartManager;
+
+import java.util.ArrayList;
 import androidx.fragment.app.Fragment;
 
 import android.view.LayoutInflater;
@@ -21,7 +29,11 @@ public class CartFragment extends Fragment {
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
+    private RecyclerView rvCart;
+    private TextView tvCartTotal;
+    private Button btnContinueOrder;
 
+    private ArrayList<CartItem> cartItems;
     public CartFragment() {
         // Required empty public constructor
     }
@@ -47,9 +59,46 @@ public class CartFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(LayoutInflater inflater,
+                             ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_passanger_cart, container, false);
+
+        View view =
+                inflater.inflate(
+                        R.layout.fragment_passanger_cart,
+                        container,
+                        false
+                );
+
+        rvCart = view.findViewById(R.id.rvCart);
+
+        tvCartTotal =
+                view.findViewById(R.id.tvCartTotal);
+
+        btnContinueOrder =
+                view.findViewById(R.id.btnContinueOrder);
+
+        rvCart.setLayoutManager(
+                new LinearLayoutManager(getContext())
+        );
+
+        loadCart();
+
+        return view;
+    }
+    private void loadCart() {
+
+        cartItems =
+                new ArrayList<>(CartManager.getCartItems());
+
+        rvCart.setAdapter(
+                new OrderSummaryAdapter(cartItems)
+        );
+
+        tvCartTotal.setText(
+                "Total : Rs "
+                        + (int) CartManager.getTotalPrice()
+        );
+
     }
 }//

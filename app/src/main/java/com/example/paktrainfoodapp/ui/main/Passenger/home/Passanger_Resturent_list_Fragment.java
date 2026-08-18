@@ -116,7 +116,7 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
 
                     loader.openRestaurantMenu(fragment);
 
-                    loader.showTempFragment(fragment);
+//                    loader.showTempFragment(fragment);
                 }
             }
         });

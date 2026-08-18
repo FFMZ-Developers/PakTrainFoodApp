@@ -1,17 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white"
-    android:clickable="true"
-    android:focusable="true"
-    tools:context=".ui.main.Passenger.home.CartFragment">
+    android:orientation="vertical"
+    android:padding="15dp">
 
-    <!-- TODO: Update blank fragment layout -->
     <TextView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:text="card" />
+        android:layout_height="wrap_content"
+        android:text="My Cart"
+        android:textStyle="bold"
+        android:textSize="22sp"/>
 
-</FrameLayout>
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvCart"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="10dp"/>
+
+    <TextView
+        android:id="@+id/tvCartTotal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Total : Rs 0"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:layout_marginTop="10dp"/>
+
+    <Button
+        android:id="@+id/btnContinueOrder"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Continue Order"
+        android:layout_marginTop="15dp"/>
+
+</LinearLayout>

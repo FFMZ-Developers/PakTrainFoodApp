@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -14,6 +15,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.net.Uri;
+import android.provider.Settings;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -186,8 +189,19 @@ public class OrderNowFragment extends DialogFragment {
 
                 return;
             }
-            if (!hasLocationPermission() || !isLocationEnabled()) {
-                Toast.makeText(getContext(), "Permission/Location Error", Toast.LENGTH_SHORT).show();
+//            if (!hasLocationPermission() || !isLocationEnabled()) {
+//                Toast.makeText(getContext(), "Permission/Location Error", Toast.LENGTH_SHORT).show();
+//                return;
+//            }
+//
+//            startPaymentFlow();
+            if (!hasLocationPermission()) {
+                showLocationPermissionDialog();
+                return;
+            }
+
+            if (!isLocationEnabled()) {
+                showLocationDisabledDialog();
                 return;
             }
 
@@ -243,7 +257,7 @@ public class OrderNowFragment extends DialogFragment {
         if (result instanceof PaymentSheetResult.Completed) {
 
             saveOrderToFirestore();
-            showSuccessDialog();
+//            showSuccessDialog();
 
         } else if (result instanceof PaymentSheetResult.Failed) {
 
@@ -384,48 +398,37 @@ public class OrderNowFragment extends DialogFragment {
                 .set(orderData)
                 .addOnSuccessListener(unused -> {
 
+                    if (!isAdded() || getActivity() == null)
+                        return;
+
+                    Context context = getActivity().getApplicationContext();
+
                     Intent serviceIntent =
-                            new Intent(requireContext(),
-                                    LocationService.class);
+                            new Intent(context, LocationService.class);
 
-                    serviceIntent.putExtra(
-                            "orderId",
-                            currentOrderId
-                    );
+                    serviceIntent.putExtra("orderId", currentOrderId);
+                    serviceIntent.putExtra("passengerUid", passengerUid);
+                    serviceIntent.putExtra("station", currentStation);
 
-                    serviceIntent.putExtra(
-                            "passengerUid",
-                            passengerUid
-                    );
+                    if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 
-                    serviceIntent.putExtra(
-                            "station",
-                            currentStation
-                    );
-
-                    if (android.os.Build.VERSION.SDK_INT
-                            >= android.os.Build.VERSION_CODES.O) {
-
-                        requireContext()
-                                .startForegroundService(serviceIntent);
+                        context.startForegroundService(serviceIntent);
 
                     } else {
 
-                        requireContext()
-                                .startService(serviceIntent);
-                    }
+                        context.startService(serviceIntent);
 
+                    }
 
                     CartManager.clear();
 
-
                     Toast.makeText(
-                            getContext(),
+                            getActivity(),
                             "Order Placed Successfully",
                             Toast.LENGTH_SHORT
                     ).show();
 
-                    dismiss();
+                    showSuccessDialog();
                 })
                 .addOnFailureListener(e -> {
 
@@ -438,12 +441,69 @@ public class OrderNowFragment extends DialogFragment {
     }
 
     private void showSuccessDialog() {
-        new AlertDialog.Builder(requireContext())
+
+        if (!isAdded())
+            return;
+
+        new AlertDialog.Builder(requireActivity())
                 .setTitle("Success")
                 .setMessage("Order placed successfully")
-                .setPositiveButton("OK", (d, w) -> dismiss())
+                .setCancelable(false)
+                .setPositiveButton("OK", (d, w) -> dismissAllowingStateLoss())
                 .show();
     }
+
+    private void showLocationDisabledDialog() {
+
+        if (getContext() == null) return;
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Turn On Location")
+                .setMessage(
+                        "Your device location is currently turned off. Please turn on Location to continue placing your order and sharing your live location."
+                )
+                .setCancelable(false)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Turn On Location", (dialog, which) -> {
+
+                    Intent intent = new Intent(
+                            Settings.ACTION_LOCATION_SOURCE_SETTINGS
+                    );
+
+                    startActivity(intent);
+                })
+                .show();
+    }
+    private void showLocationPermissionDialog() {
+
+        if (getContext() == null) return;
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Location Permission Required")
+                .setMessage(
+                        "Location permission is required to place your order and share your live location with the delivery rider. Please allow location permission from App Settings."
+                )
+                .setCancelable(false)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Open Settings", (dialog, which) -> {
+
+                    Intent intent = new Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                    );
+
+                    Uri uri = Uri.fromParts(
+                            "package",
+                            requireContext().getPackageName(),
+                            null
+                    );
+
+                    intent.setData(uri);
+
+                    startActivity(intent);
+                })
+                .show();
+    }
+
 
     private boolean hasLocationPermission() {
         return ContextCompat.checkSelfPermission(requireContext(),

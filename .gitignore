@@ -13,3 +13,23 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Secrets - NEVER commit these
+service-account.json
+functions/.env
+functions/.env.*
+*.env
+google-services.json
+
+# App build output
+/app/build
+/app/release
+/app/.gradle
+.gradle/
+build/
+
+# Firebase debug logs
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+ui-debug.log

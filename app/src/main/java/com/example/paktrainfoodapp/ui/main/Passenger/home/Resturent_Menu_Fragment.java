@@ -68,6 +68,7 @@ public class Resturent_Menu_Fragment extends Fragment {
         adapter = new Resturent_Menu_Adapter(itemList);
         recyclerView.setAdapter(adapter);
 
+
         db = FirebaseFirestore.getInstance();
 
         // ================= ARGUMENTS =================
@@ -133,6 +134,9 @@ public class Resturent_Menu_Fragment extends Fragment {
                             .commit();
                 }
             }
+
+
+
 
             @Override
             public void onBuyNow(MenuitemModel item) {

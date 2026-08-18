@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "584020651389",
+    "firebase_url": "https://paktrainfoodservice-default-rtdb.firebaseio.com",
     "project_id": "paktrainfoodservice",
     "storage_bucket": "paktrainfoodservice.firebasestorage.app"
   },
@@ -10,6 +11,25 @@
         "mobilesdk_app_id": "1:584020651389:android:e2e41f73a2b767dec1f014",
         "android_client_info": {
           "package_name": "com.example.paktrainfoodapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoB8vKW2f5JMD_DgY_vzfE-62g76-oTPQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:584020651389:android:41df01f15ad8b0c6c1f014",
+        "android_client_info": {
+          "package_name": "com.fahad.paktrainfoodservice"
         }
       },
       "oauth_client": [],

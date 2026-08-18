@@ -103,14 +103,14 @@ public class LocationService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
             startForeground(
-                    1,
+                    2,
                     notification,
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
             );
 
         } else {
 
-            startForeground(1, notification);
+            startForeground(2, notification);
         }
 
         Log.d(TAG, "Foreground Service Started");
@@ -139,8 +139,9 @@ public class LocationService extends Service {
         LocationRequest locationRequest =
                 new LocationRequest.Builder(
                         Priority.PRIORITY_HIGH_ACCURACY,
-                        600000 // 5 sec
+                        10000 // 10 seconds
                 )
+                        .setMinUpdateIntervalMillis(00000)
                         .setMinUpdateDistanceMeters(5)
                         .build();
 
