@@ -186,6 +186,14 @@ public class Resturent_Menu_Fragment extends Fragment {
 
                     for (QueryDocumentSnapshot doc : menuItems) {
 
+                        // Restaurants can switch an item off instead of
+                        // deleting it - those must not appear to passengers.
+                        // Items saved before this flag existed have no
+                        // "available" field, so a missing value means visible.
+                        Boolean available = doc.getBoolean("available");
+
+                        if (available != null && !available) continue;
+
                         MenuitemModel item = doc.toObject(MenuitemModel.class);
 
                         item.setId(doc.getId());

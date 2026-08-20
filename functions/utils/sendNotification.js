@@ -155,21 +155,24 @@ await notificationRef.set({
         // Send Push Notification
         // ==========================
 
+        // IMPORTANT: no top-level "notification" block here on purpose.
+        // If one is present, Android auto-displays the notification itself
+        // whenever the app is backgrounded/killed, WITHOUT ever calling
+        // onMessageReceived() - which means the in-app notification toggle
+        // (and everything else onMessageReceived does) gets silently
+        // bypassed. Sending data-only guarantees onMessageReceived always
+        // runs, in the foreground and the background alike.
         await admin.messaging().send({
 
             token,
 
-            notification: {
-
-                title,
-
-                body
-
-            },
-
             data: {
 
                 ...data,
+
+                title,
+
+                body,
 
                 screen: SCREENS.ORDERS,
 

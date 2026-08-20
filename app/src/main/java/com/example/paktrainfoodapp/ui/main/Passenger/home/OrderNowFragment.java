@@ -66,6 +66,53 @@ public class OrderNowFragment extends DialogFragment {
     private String currentOrderId = "";
     private String currentStation = "";
 
+    private androidx.activity.result.ActivityResultLauncher<String> backgroundLocationLauncher;
+    private androidx.activity.result.ActivityResultLauncher<String> foregroundLocationLauncher;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // Must be registered before the fragment reaches STARTED state.
+        // Ask for the normal location permission inside the app first; only
+        // send the user to system Settings if they permanently denied it.
+        foregroundLocationLauncher = registerForActivityResult(
+                new androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+                granted -> {
+
+                    if (granted) {
+                        continueAfterForegroundPermission();
+                    } else if (!shouldShowRequestPermissionRationale(
+                            Manifest.permission.ACCESS_FINE_LOCATION)) {
+                        // "Don't ask again" - Settings is the only way now
+                        showLocationPermissionDialog();
+                    } else {
+                        Toast.makeText(getContext(),
+                                "Location permission is needed to place an order",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+        backgroundLocationLauncher = registerForActivityResult(
+                new androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+                granted -> {
+
+                    if (granted) {
+
+                        startPaymentFlow();
+
+                    } else {
+
+                        btnOrderNow.setEnabled(true);
+                        btnOrderNow.setText("Order Now");
+
+                        Toast.makeText(getContext(),
+                                "Background location is required to place an order",
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
+
     public static OrderNowFragment newInstance(
             String name,
             double price,
@@ -196,17 +243,89 @@ public class OrderNowFragment extends DialogFragment {
 //
 //            startPaymentFlow();
             if (!hasLocationPermission()) {
-                showLocationPermissionDialog();
+                foregroundLocationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
                 return;
             }
 
-            if (!isLocationEnabled()) {
-                showLocationDisabledDialog();
-                return;
-            }
-
-            startPaymentFlow();
+            continueAfterForegroundPermission();
         });
+    }
+
+    private void continueAfterForegroundPermission() {
+
+        if (!isLocationEnabled()) {
+            showLocationDisabledDialog();
+            return;
+        }
+
+        requestBackgroundLocationThenProceed();
+    }
+
+    /**
+     * On Android 10+ (Q), continuous location updates while the app is in the
+     * background require ACCESS_BACKGROUND_LOCATION separately from
+     * ACCESS_FINE_LOCATION - just declaring it in the manifest is not enough.
+     * This is now REQUIRED before an order can be placed, so the rider is
+     * guaranteed to be able to track the passenger for the whole delivery.
+     */
+    private void requestBackgroundLocationThenProceed() {
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            startPaymentFlow();
+            return;
+        }
+
+        boolean hasBackground = ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED;
+
+        if (hasBackground) {
+            startPaymentFlow();
+            return;
+        }
+
+        // Android 11+ never shows the background-location dialog twice. If the
+        // system won't show it again, app Settings is the only way left to
+        // grant it - this is the ONLY case that leaves the app, because there
+        // is no other route to "Allow all the time" on those versions.
+        boolean canAskAgain = shouldShowRequestPermissionRationale(
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
+                .setTitle("Background Location Required")
+                .setMessage(
+                        "So your rider can find you for the whole delivery, please "
+                                + "choose \"Allow all the time\" on the next screen.\n\n"
+                                + "This is required to place an order.")
+                .setCancelable(false);
+
+        if (canAskAgain || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+
+            builder.setPositiveButton("Allow", (dialog, which) ->
+                    backgroundLocationLauncher.launch(
+                            Manifest.permission.ACCESS_BACKGROUND_LOCATION));
+
+        } else {
+
+            builder.setPositiveButton("Open Settings", (dialog, which) -> {
+
+                android.content.Intent intent = new android.content.Intent(
+                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        android.net.Uri.fromParts("package",
+                                requireContext().getPackageName(), null));
+
+                startActivity(intent);
+            });
+        }
+
+        builder.setNegativeButton("Cancel", (dialog, which) -> {
+
+            btnOrderNow.setEnabled(true);
+            btnOrderNow.setText("Order Now");
+        });
+
+        builder.show();
     }
 
     private void startPaymentFlow() {

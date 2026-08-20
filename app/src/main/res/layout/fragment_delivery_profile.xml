@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F8F9FA">
+    android:background="@color/app_background">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -62,7 +62,7 @@
                         android:layout_alignParentBottom="true"
                         android:layout_alignParentEnd="true"
                         android:layout_margin="2dp"
-                        android:background="@android:color/white"
+                        android:background="@color/surface"
                         android:elevation="4dp"
                         android:padding="5dp"
                         android:src="@drawable/edit" />
@@ -82,7 +82,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="email@example.com"
-                    android:textColor="#757575"
+                    android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
             </LinearLayout>
 
@@ -92,20 +92,27 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="16dp"
-                android:layout_marginBottom="20dp">
+                android:layout_marginBottom="20dp"
+    app:cardBackgroundColor="@color/surface">
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:padding="8dp">
 
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
+                    <LinearLayout android:id="@+id/layout_settings" android:clickable="true" android:focusable="true" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
                         <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_settings"/>
                         <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="Settings" android:textSize="16sp"/>
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:textStyle="bold"/>
                     </LinearLayout>
 
-                    <LinearLayout
+                    <LinearLayout android:id="@+id/layout_my_orders" android:clickable="true" android:focusable="true" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
+                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_order"/>
+                        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="My Deliveries" android:textSize="16sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="&gt;" android:textStyle="bold"/>
+                    </LinearLayout>
+
+                    <LinearLayout android:id="@+id/layout_wallet" android:clickable="true" android:focusable="true"
                         android:orientation="horizontal"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -128,7 +135,7 @@
                             android:layout_height="wrap_content"
                             android:text=">"
                             android:textStyle="bold"
-                            android:textColor="#757575"/>
+                            android:textColor="@color/text_secondary"/>
                     </LinearLayout>
 
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
@@ -137,7 +144,7 @@
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:textStyle="bold"/>
                     </LinearLayout>
 
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
+                    <LinearLayout android:id="@+id/layout_account_info" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical" android:clickable="true" android:focusable="true">
                         <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/shield"/>
                         <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="Delivery Boy Info" android:textSize="16sp"/>
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:textStyle="bold"/>
@@ -150,14 +157,15 @@
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp">
+                app:cardCornerRadius="16dp"
+    app:cardBackgroundColor="@color/surface">
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:padding="8dp">
 
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
+                    <LinearLayout android:id="@+id/layout_help_support" android:clickable="true" android:focusable="true" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
                         <ImageView
                             android:layout_width="22dp"
                             android:layout_height="23dp"
@@ -166,7 +174,7 @@
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:textStyle="bold"/>
                     </LinearLayout>
 
-                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEEEEE" android:layout_marginHorizontal="12dp"/>
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" android:layout_marginHorizontal="12dp"/>
 
                     <LinearLayout android:layout_width="match_parent"
                         android:layout_height="wrap_content"

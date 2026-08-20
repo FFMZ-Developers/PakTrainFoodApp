@@ -10,6 +10,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 import com.example.paktrainfoodapp.R;
 import com.example.paktrainfoodapp.ui.main.Restaurant.dashboard.resturent_DashboardFragment;
 import com.example.paktrainfoodapp.ui.main.Restaurant.menu.resturent_MenuFragment;
@@ -22,6 +24,12 @@ public class restaurant_LoadFragment extends Fragment {
     private LinearLayout btnMenu, btnOrder, btnDashboard, btnDelivery, btnProfile;
     private ImageView iconMenu, iconOrder, iconDashboard, iconDelivery, iconProfile;
     private TextView textMenu, textOrder, textDashboard, textDelivery, textProfile;
+
+    private String currentTag = "dashboard";
+
+    private TextView txtRestaurantBadge;
+    private com.example.paktrainfoodapp.ui.main.notification.NotificationRepository
+            notificationRepository;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -37,6 +45,8 @@ public class restaurant_LoadFragment extends Fragment {
         btnOrder = view.findViewById(R.id.btn_order);
         btnDashboard = view.findViewById(R.id.btn_dashboard);
         btnDelivery = view.findViewById(R.id.btn_delivery);
+        txtRestaurantBadge = view.findViewById(R.id.txtRestaurantBadge);
+        startNotificationBadge();
         btnProfile = view.findViewById(R.id.btn_profile);
 
         iconMenu = view.findViewById(R.id.icon_menu);
@@ -51,43 +61,113 @@ public class restaurant_LoadFragment extends Fragment {
         textDelivery = view.findViewById(R.id.text_delivery);
         textProfile = view.findViewById(R.id.text_profile);
 
-        // Default fragment open (Dashboard)
-        openFragment(new resturent_DashboardFragment());
+        // Default fragment open (Dashboard) - first screen, not added to back stack
+        openFragment(new resturent_DashboardFragment(), "dashboard", false);
         highlightButton(btnDashboard, iconDashboard, textDashboard);
 
         // Click listeners
         btnMenu.setOnClickListener(v -> {
-            openFragment(new resturent_MenuFragment());
+            openFragment(new resturent_MenuFragment(), "menu", true);
             highlightButton(btnMenu, iconMenu, textMenu);
         });
 
         btnOrder.setOnClickListener(v -> {
-            openFragment(new returent_OrdersFragment());
+            openFragment(new returent_OrdersFragment(), "order", true);
             highlightButton(btnOrder, iconOrder, textOrder);
         });
 
         btnDashboard.setOnClickListener(v -> {
-            openFragment(new resturent_DashboardFragment());
+            openFragment(new resturent_DashboardFragment(), "dashboard", true);
             highlightButton(btnDashboard, iconDashboard, textDashboard);
         });
 
+        // This slot now shows the restaurant's notifications; the shared
+        // NotificationFragment is reused with the RESTAURANT role.
         btnDelivery.setOnClickListener(v -> {
-            openFragment(new resturent_DeliveryFragment());
+            openFragment(
+                    com.example.paktrainfoodapp.ui.main.notification.NotificationFragment
+                            .newInstance(com.example.paktrainfoodapp.ui.main.notification
+                                    .NotificationRepository.ROLE_RESTAURANT),
+                    "notifications", true);
             highlightButton(btnDelivery, iconDelivery, textDelivery);
         });
 
         btnProfile.setOnClickListener(v -> {
-            openFragment(new resturent_ProfileFragment());
+            openFragment(new resturent_ProfileFragment(), "profile", true);
             highlightButton(btnProfile, iconProfile, textProfile);
         });
     }
 
-    private void openFragment(Fragment fragment) {
-        getChildFragmentManager()
+    /**
+     * @param tag             identifies which tab this is, used to avoid pushing
+     *                        a duplicate back-stack entry when the same tab is tapped again
+     * @param addToBackStack  false only for the very first screen shown
+     */
+    private void openFragment(Fragment fragment, String tag, boolean addToBackStack) {
+
+        if (tag.equals(currentTag) && addToBackStack) {
+            // Already on this tab - avoid stacking a duplicate entry
+            return;
+        }
+
+        currentTag = tag;
+
+        FragmentTransaction transaction = getChildFragmentManager()
                 .beginTransaction()
                 .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                .replace(R.id.fragment_holder, fragment)
-                .commit();
+                .replace(R.id.fragment_holder, fragment);
+
+        if (addToBackStack) {
+            transaction.addToBackStack(tag);
+        }
+
+        transaction.commit();
+    }
+
+    /**
+     * Called from the host Activity's back-press handler.
+     * Returns true if it consumed the back press (popped an inner screen),
+     * false if there's nothing left to pop and the Activity should handle it.
+     */
+    public boolean handleBackPressed() {
+
+        FragmentManager fm = getChildFragmentManager();
+
+        if (fm.getBackStackEntryCount() > 0) {
+
+            fm.popBackStack();
+            fm.executePendingTransactions();
+
+            // Re-sync currentTag + bottom nav highlight with whatever is now showing
+            java.util.List<Fragment> fragments = fm.getFragments();
+
+            for (Fragment f : fragments) {
+
+                if (f != null && f.isAdded()) {
+
+                    if (f instanceof resturent_DashboardFragment) {
+                        currentTag = "dashboard";
+                        highlightButton(btnDashboard, iconDashboard, textDashboard);
+                    } else if (f instanceof resturent_MenuFragment) {
+                        currentTag = "menu";
+                        highlightButton(btnMenu, iconMenu, textMenu);
+                    } else if (f instanceof returent_OrdersFragment) {
+                        currentTag = "order";
+                        highlightButton(btnOrder, iconOrder, textOrder);
+                    } else if (f instanceof com.example.paktrainfoodapp.ui.main.notification.NotificationFragment) {
+                        currentTag = "notifications";
+                        highlightButton(btnDelivery, iconDelivery, textDelivery);
+                    } else if (f instanceof resturent_ProfileFragment) {
+                        currentTag = "profile";
+                        highlightButton(btnProfile, iconProfile, textProfile);
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     private void highlightButton(LinearLayout selectedLayout, ImageView selectedIcon, TextView selectedText) {
@@ -133,6 +213,52 @@ public class restaurant_LoadFragment extends Fragment {
             case "profile":
                 btnProfile.performClick();
                 break;
+            case "order":
+                btnOrder.performClick();
+                break;
+        }
+    }
+
+    /** Keeps the unread count on the notifications tab up to date. */
+    private void startNotificationBadge() {
+
+        notificationRepository =
+                new com.example.paktrainfoodapp.ui.main.notification.NotificationRepository();
+
+        notificationRepository.listenUnreadCount(
+                com.example.paktrainfoodapp.ui.main.notification
+                        .NotificationRepository.ROLE_RESTAURANT,
+                new com.example.paktrainfoodapp.ui.main.notification
+                        .NotificationRepository.BadgeCallback() {
+
+                    @Override
+                    public void onCountChanged(int count) {
+
+                        if (!isAdded() || txtRestaurantBadge == null) return;
+
+                        requireActivity().runOnUiThread(() -> {
+
+                            if (count > 0) {
+                                txtRestaurantBadge.setVisibility(View.VISIBLE);
+                                txtRestaurantBadge.setText(
+                                        count > 99 ? "99+" : String.valueOf(count));
+                            } else {
+                                txtRestaurantBadge.setVisibility(View.GONE);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) { }
+                });
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+
+        if (notificationRepository != null) {
+            notificationRepository.removeListener();
         }
     }
 }

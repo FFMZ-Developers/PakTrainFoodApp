@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.paktrainfoodapp.R;
 import com.example.paktrainfoodapp.ui.main.Passenger.Passenger_Fragment_Loader;
+import com.example.paktrainfoodapp.utils.FavoritesManager;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -29,6 +30,16 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
     private ArrayList<Restaurant_list_Model> list;
     private Restaurant_list_Adapter adapter;
     private FirebaseFirestore db;
+    private FavoritesManager favoritesManager;
+
+    /** Master list as loaded from Firestore; `list` is the filtered view of it. */
+    private final ArrayList<Restaurant_list_Model> allRestaurants = new ArrayList<>();
+    private boolean showFavoritesOnly = false;
+    private android.widget.ImageView btnFilterFavorites;
+
+    private String searchQuery = "";
+    private android.widget.EditText etSearch;
+    private View layoutSearch;
 
     private TextView tvTopTitle;
     private ProgressBar progressBar;
@@ -60,6 +71,30 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
         rv.setAdapter(adapter);
 
         db = FirebaseFirestore.getInstance();
+        favoritesManager = new FavoritesManager(requireContext());
+
+        setupSearch(view);
+
+        btnFilterFavorites = view.findViewById(R.id.btn_filter_favorites);
+
+        if (btnFilterFavorites != null) {
+
+            btnFilterFavorites.setOnClickListener(v -> {
+
+                showFavoritesOnly = !showFavoritesOnly;
+
+                btnFilterFavorites.setImageResource(
+                        showFavoritesOnly
+                                ? R.drawable.ic_heart_filled
+                                : R.drawable.ic_heart_outline);
+
+                applyFilter();
+
+                Toast.makeText(getContext(),
+                        showFavoritesOnly ? "Showing favorites only" : "Showing all restaurants",
+                        Toast.LENGTH_SHORT).show();
+            });
+        }
 
         // ================= GET ARGUMENTS =================
         if (getArguments() != null) {
@@ -84,7 +119,38 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
         // ================= CLICK HANDLING =================
         adapter.setOnItemClickListener(new Restaurant_list_Adapter.OnItemClickListener() {
             @Override
-            public void onFavoriteClick(int position) {}
+            public void onFavoriteClick(int position) {
+
+                if (position < 0 || position >= list.size()) return;
+
+                Restaurant_list_Model model = list.get(position);
+
+                boolean nowFavorite =
+                        favoritesManager.toggleFavorite(model.getUid());
+
+                model.setFavorite(nowFavorite);
+
+                // Keep the master copy in sync so the filter stays correct
+                for (Restaurant_list_Model m : allRestaurants) {
+                    if (m.getUid() != null && m.getUid().equals(model.getUid())) {
+                        m.setFavorite(nowFavorite);
+                    }
+                }
+
+                if (showFavoritesOnly && !nowFavorite) {
+                    applyFilter();
+                } else {
+                    adapter.notifyItemChanged(position);
+                }
+
+                Toast.makeText(
+                        getContext(),
+                        nowFavorite
+                                ? model.getRestaurantName() + " added to favorites"
+                                : model.getRestaurantName() + " removed from favorites",
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
 
             @Override
             public void onItemClick(int position) {
@@ -155,6 +221,7 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
                     }
 
                     list.clear();
+                    allRestaurants.clear();
                     int totalDocs = task.getResult().size();
                     final int[] loadedCount = {0};
 
@@ -175,16 +242,125 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
                                                 (TextUtils.isEmpty(imageDoc.getString("profileImageUrl")) ?
                                                         imageDoc.getString("imageUrl") : imageDoc.getString("profileImageUrl")) : null;
 
-                                        list.add(new Restaurant_list_Model(uid, restaurantName, cityName, imageUrl));
-                                        if (loadedCount[0] == totalDocs) adapter.notifyDataSetChanged();
+                                        Restaurant_list_Model model =
+                                                new Restaurant_list_Model(uid, restaurantName, cityName, imageUrl);
+
+                                        model.setFavorite(favoritesManager.isFavorite(uid));
+
+                                        allRestaurants.add(model);
+                                        if (loadedCount[0] == totalDocs) applyFilter();
                                     }
                                 })
                                 .addOnFailureListener(e -> {
                                     loadedCount[0]++;
-                                    if (loadedCount[0] == totalDocs) adapter.notifyDataSetChanged();
+                                    if (loadedCount[0] == totalDocs) applyFilter();
                                 });
                     }
                 });
+    }
+
+    /**
+     * Rebuilds the visible list from the master copy, honouring the
+     * favourites-only toggle.
+     */
+    private void applyFilter() {
+
+        list.clear();
+
+        String q = searchQuery.trim().toLowerCase();
+
+        for (Restaurant_list_Model m : allRestaurants) {
+
+            if (showFavoritesOnly && !m.isFavorite()) continue;
+
+            if (!q.isEmpty()) {
+
+                String name = m.getRestaurantName() == null
+                        ? "" : m.getRestaurantName().toLowerCase();
+
+                String city = m.getCity() == null
+                        ? "" : m.getCity().toLowerCase();
+
+                if (!name.contains(q) && !city.contains(q)) continue;
+            }
+
+            list.add(m);
+        }
+
+        adapter.notifyDataSetChanged();
+    }
+
+    /**
+     * The search field starts hidden so a long station title can never push it
+     * off the app bar; the icon reveals it.
+     */
+    private void setupSearch(View view) {
+
+        layoutSearch = view.findViewById(R.id.layout_search);
+        etSearch = view.findViewById(R.id.et_search);
+
+        View btnToggle = view.findViewById(R.id.btn_toggle_search);
+        View btnClear = view.findViewById(R.id.btn_clear_search);
+
+        if (btnToggle == null || layoutSearch == null || etSearch == null) return;
+
+        btnToggle.setOnClickListener(v -> {
+
+            boolean visible = layoutSearch.getVisibility() == View.VISIBLE;
+
+            if (visible) {
+
+                layoutSearch.setVisibility(View.GONE);
+                etSearch.setText("");
+                hideKeyboard();
+
+            } else {
+
+                layoutSearch.setVisibility(View.VISIBLE);
+                etSearch.requestFocus();
+
+                android.view.inputmethod.InputMethodManager imm =
+                        (android.view.inputmethod.InputMethodManager) requireContext()
+                                .getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+
+                if (imm != null) {
+                    imm.showSoftInput(etSearch,
+                            android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+                }
+            }
+        });
+
+        if (btnClear != null) {
+            btnClear.setOnClickListener(v -> etSearch.setText(""));
+        }
+
+        etSearch.addTextChangedListener(new android.text.TextWatcher() {
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+
+            @Override
+            public void onTextChanged(CharSequence s, int a, int b, int c) {
+
+                searchQuery = s.toString();
+
+                applyFilter();
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) { }
+        });
+    }
+
+    private void hideKeyboard() {
+
+        android.view.inputmethod.InputMethodManager imm =
+                (android.view.inputmethod.InputMethodManager) requireContext()
+                        .getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+
+        if (imm != null && etSearch != null) {
+            imm.hideSoftInputFromWindow(etSearch.getWindowToken(), 0);
+        }
     }
 }
 

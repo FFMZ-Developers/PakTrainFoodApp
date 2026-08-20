@@ -9,7 +9,7 @@
     android:gravity="center"
     android:padding="24dp"
     tools:context=".ui.main.Restaurant.RestaurantPendingFragment"
-    android:background="@android:color/white">
+    android:background="@color/surface">
 
     <!-- Pending Icon -->
     <ImageView
@@ -33,7 +33,7 @@
         android:text="Request Under Review"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:textColor="#000000" />
+        android:textColor="@color/text_primary" />
 
     <!-- Message -->
     <TextView
@@ -43,7 +43,7 @@
         android:text="Your restaurant registration request is pending review.\nIt will be completed within 24 hours.\n\nPlease stay tuned — thanks for waiting!"
         android:textAlignment="center"
         android:textSize="16sp"
-        android:textColor="#555555"
+        android:textColor="@color/text_secondary"
         android:paddingTop="12dp" />
 
 </LinearLayout>

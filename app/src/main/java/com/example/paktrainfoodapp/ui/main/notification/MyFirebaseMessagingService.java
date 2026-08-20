@@ -26,17 +26,30 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         Log.d("FCM_TOKEN", token);
     }
 
+    /** Matches the key written by the Settings screen. */
+    private boolean notificationsEnabled() {
+
+        return getSharedPreferences("PakTrainSettings", MODE_PRIVATE)
+                .getBoolean("notifications_enabled", true);
+    }
+
     @Override
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
 
-        String title = "";
-        String body = "";
-
-        if (remoteMessage.getNotification() != null) {
-            title = remoteMessage.getNotification().getTitle();
-            body = remoteMessage.getNotification().getBody();
+        // The in-app toggle has to be honoured here: FCM still delivers the
+        // message, so if we don't check the setting the notification appears
+        // even after the user switched it off.
+        if (!notificationsEnabled()) {
+            Log.d("FCM", "Notification suppressed - disabled in app settings");
+            return;
         }
+
+        String title = remoteMessage.getData().get("title");
+        String body = remoteMessage.getData().get("body");
+
+        if (title == null) title = "";
+        if (body == null) body = "";
         String orderId = remoteMessage.getData().get("orderId");
         String screen = remoteMessage.getData().get("screen");
         String status = remoteMessage.getData().get("status");
@@ -53,7 +66,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this,
-                0,
+                (int) (System.currentTimeMillis() % Integer.MAX_VALUE),
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
@@ -61,12 +74,21 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 getResources(),
                 R.drawable.logo5
         );
+        // "fullMessage" (sent by the payment/order functions) holds the long
+        // version. The collapsed notification shows the short line; expanding
+        // it reveals the detail.
+        String fullMessage = remoteMessage.getData().get("fullMessage");
+
+        if (fullMessage == null || fullMessage.isEmpty()) fullMessage = body;
+
         NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(this, "channel_id")
                         .setSmallIcon(R.drawable.logo5)
                         .setLargeIcon(largeIcon)
                         .setContentTitle(title)
                         .setContentText(body)
+                        .setStyle(new NotificationCompat.BigTextStyle()
+                                .bigText(fullMessage))
                         .setPriority(NotificationCompat.PRIORITY_HIGH)
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent);
@@ -81,7 +103,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
+        int notificationId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
+
         NotificationManagerCompat.from(this)
-                .notify(1, builder.build());
+                .notify(notificationId, builder.build());
     }
     }

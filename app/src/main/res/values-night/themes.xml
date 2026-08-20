@@ -8,7 +8,7 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
 
         <!-- Status bar ke icons (time/battery) ko visible rakhne ke liye -->
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>
 <!---->

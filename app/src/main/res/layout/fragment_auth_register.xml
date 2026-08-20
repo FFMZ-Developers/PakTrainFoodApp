@@ -69,7 +69,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="12dp">
+                app:cardElevation="12dp"
+    app:cardBackgroundColor="@color/surface">
 
 
             <LinearLayout
@@ -182,7 +183,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Already have an account? "
-                        android:textColor="#555555"
+                        android:textColor="@color/text_secondary"
                         android:textSize="16sp" />
 
                     <TextView

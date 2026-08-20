@@ -7,6 +7,9 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
+import androidx.recyclerview.widget.ItemTouchHelper;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentChange;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -25,6 +28,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class NotificationFragment extends Fragment {
+
+    /**
+     * Which role's notifications to show. Defaults to PASSENGER so existing
+     * callers keep working; restaurant and delivery pass their own role via
+     * {@link #newInstance(String)}.
+     */
+    private static final String ARG_ROLE = "notification_role";
+
+    public static NotificationFragment newInstance(String role) {
+
+        NotificationFragment fragment = new NotificationFragment();
+
+        Bundle args = new Bundle();
+        args.putString(ARG_ROLE, role);
+        fragment.setArguments(args);
+
+        return fragment;
+    }
+
+    private String role() {
+
+        return getArguments() != null
+                ? getArguments().getString(ARG_ROLE, NotificationRepository.ROLE_PASSENGER)
+                : NotificationRepository.ROLE_PASSENGER;
+    }
+
 
     private RecyclerView recyclerNotifications;
     private ProgressBar progressBar;
@@ -102,16 +131,120 @@ public class NotificationFragment extends Fragment {
 
             if (item.getItemId() == R.id.action_clear_all) {
 
-                // Future
-                // Firestore se delete hoga
+                confirmClearAll();
 
                 return true;
             }
 
             return false;
         });
+
+        setupSwipeToDelete();
+
         startRealtimeNotifications();
 
+    }
+
+    private void confirmClearAll() {
+
+        if (notificationList.isEmpty()) {
+
+            Toast.makeText(requireContext(), "No notifications to clear", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Clear all notifications?")
+                .setMessage("This will delete all your notifications. This cannot be undone.")
+                .setPositiveButton("Clear All", (dialog, which) -> {
+
+                    repository.deleteAllNotifications(
+                            role(),
+                            new NotificationRepository.SimpleCallback() {
+
+                                @Override
+                                public void onSuccess() {
+
+                                    if (!isAdded()) return;
+
+                                    Toast.makeText(requireContext(),
+                                            "All notifications cleared",
+                                            Toast.LENGTH_SHORT).show();
+                                }
+
+                                @Override
+                                public void onFailure(Exception e) {
+
+                                    if (!isAdded()) return;
+
+                                    Toast.makeText(requireContext(),
+                                            "Failed to clear: " + e.getMessage(),
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    /**
+     * Lets the user swipe a notification left or right to delete it individually.
+     */
+    private void setupSwipeToDelete() {
+
+        ItemTouchHelper.SimpleCallback callback =
+                new ItemTouchHelper.SimpleCallback(
+                        0,
+                        ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+
+                    @Override
+                    public boolean onMove(@NonNull RecyclerView recyclerView,
+                                          @NonNull RecyclerView.ViewHolder viewHolder,
+                                          @NonNull RecyclerView.ViewHolder target) {
+                        return false;
+                    }
+
+                    @Override
+                    public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+
+                        int position = viewHolder.getAdapterPosition();
+
+                        if (position < 0 || position >= notificationList.size()) {
+                            adapter.notifyDataSetChanged();
+                            return;
+                        }
+
+                        NotificationModel removed = notificationList.get(position);
+
+                        notificationList.remove(position);
+                        adapter.notifyItemRemoved(position);
+                        updateUI();
+
+                        repository.deleteNotification(
+                                role(),
+                                removed.getDocumentId(),
+                                new NotificationRepository.SimpleCallback() {
+
+                                    @Override
+                                    public void onSuccess() {
+                                        // Realtime listener will keep list in sync;
+                                        // nothing further needed here.
+                                    }
+
+                                    @Override
+                                    public void onFailure(Exception e) {
+
+                                        if (!isAdded()) return;
+
+                                        Toast.makeText(requireContext(),
+                                                "Failed to delete: " + e.getMessage(),
+                                                Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                    }
+                };
+
+        new ItemTouchHelper(callback).attachToRecyclerView(recyclerNotifications);
     }
 
     private void openOrder(NotificationModel model) {
@@ -155,7 +288,7 @@ public class NotificationFragment extends Fragment {
         progressBar.setVisibility(View.VISIBLE);
 
         repository.listenNotifications(
-                NotificationRepository.ROLE_PASSENGER,
+                role(),
                 new NotificationRepository.NotificationRealtimeCallback() {
 
                     @Override

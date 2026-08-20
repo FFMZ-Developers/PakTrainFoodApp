@@ -10,7 +10,8 @@
     android:stateListAnimator="@animator/card_anim"
     app:cardCornerRadius="16dp"
     app:cardElevation="6dp"
-    app:cardUseCompatPadding="true">
+    app:cardUseCompatPadding="true"
+    app:cardBackgroundColor="@color/surface">
 <!---->
     <LinearLayout
         android:orientation="vertical"
@@ -38,8 +39,8 @@
                 android:layout_height="38dp"
                 android:layout_margin="12dp"
                 android:layout_gravity="top|end"
-                android:padding="6dp"
-                android:src="@drawable/ic_swap"
+                android:padding="8dp"
+                android:src="@drawable/ic_heart_outline"
                 android:background="@drawable/white_circle"
                 android:elevation="4dp" />
         </FrameLayout>
@@ -57,7 +58,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="BBQ Bazaar"
-                android:textColor="#000000"
+                android:textColor="@color/text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -88,7 +89,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Rs.99"
+                    android:text="Rs.150"
                     android:textColor="#A0A0A0"
                     android:textSize="14sp" />
 
@@ -125,7 +126,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text=" 3.3 (93)"
-                        android:textColor="#000000"
+                        android:textColor="@color/text_primary"
                         android:textSize="14sp" />
                 </LinearLayout>
 

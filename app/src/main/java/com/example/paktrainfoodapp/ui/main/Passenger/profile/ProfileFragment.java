@@ -20,6 +20,9 @@ import com.example.paktrainfoodapp.ui.main.Passenger.Passenger_Fragment_Loader;
 
 import com.bumptech.glide.Glide;
 import com.example.paktrainfoodapp.R;
+import com.example.paktrainfoodapp.ui.shared.profile.AddressFragment;
+import com.example.paktrainfoodapp.ui.shared.profile.SettingsFragment;
+import com.example.paktrainfoodapp.utils.ProfileImageUploader;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -33,6 +36,11 @@ public class ProfileFragment extends Fragment {
     private TextView btnLogout;
 
     private LinearLayout layoutHelpSupport;
+    private LinearLayout layoutAccountInfo;
+    private LinearLayout layoutWallet;
+    private LinearLayout layoutMyOrders;
+    private LinearLayout layoutAddress;
+    private LinearLayout layoutSettings;
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
@@ -68,6 +76,11 @@ public class ProfileFragment extends Fragment {
         btnLogout = view.findViewById(R.id.btn_logout);
 
         layoutHelpSupport = view.findViewById(R.id.layoutHelpSupport);
+        layoutAccountInfo = view.findViewById(R.id.layout_account_info);
+        layoutWallet = view.findViewById(R.id.layout_wallet);
+        layoutMyOrders = view.findViewById(R.id.layout_my_orders);
+        layoutAddress = view.findViewById(R.id.layout_address);
+        layoutSettings = view.findViewById(R.id.layout_settings);
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
@@ -78,16 +91,53 @@ public class ProfileFragment extends Fragment {
                 new ActivityResultContracts.GetContent(),
                 uri -> {
 
-                    if (uri != null) {
+                    if (uri != null && mAuth.getCurrentUser() != null) {
 
+                        // Show immediately for instant feedback
                         Glide.with(requireActivity())
                                 .load(uri)
                                 .circleCrop()
                                 .into(profileImage);
 
+                        String uid = mAuth.getCurrentUser().getUid();
+
                         Toast.makeText(requireContext(),
-                                "Profile Image Changed",
+                                "Uploading photo...",
                                 Toast.LENGTH_SHORT).show();
+
+                        ProfileImageUploader.upload(
+                                requireContext(),
+                                "passenger",
+                                uid,
+                                uri,
+                                new ProfileImageUploader.UploadCallback() {
+
+                                    @Override
+                                    public void onSuccess(String downloadUrl) {
+
+                                        if (!isAdded()) return;
+
+                                        db.collection("Users")
+                                                .document("Passenger")
+                                                .collection("Register")
+                                                .document(uid)
+                                                .update("profileImageUrl", downloadUrl);
+
+                                        Toast.makeText(requireContext(),
+                                                "Profile Image Updated",
+                                                Toast.LENGTH_SHORT).show();
+                                    }
+
+                                    @Override
+                                    public void onFailure(Exception e) {
+
+                                        if (!isAdded()) return;
+
+                                        Toast.makeText(requireContext(),
+                                                "Upload failed: " + e.getMessage(),
+                                                Toast.LENGTH_SHORT).show();
+                                    }
+                                });
                     }
 
                 });
@@ -122,6 +172,36 @@ public class ProfileFragment extends Fragment {
         });
 
         // ==========================
+        // Account Info -> Personal Info edit screen
+        // ==========================
+
+        if (layoutAccountInfo != null) {
+
+            layoutAccountInfo.setOnClickListener(v ->
+                    openDetail(com.example.paktrainfoodapp.ui.shared.profile.PersonalInfoFragment.newInstance(com.example.paktrainfoodapp.ui.shared.profile.PersonalInfoFragment.ROLE_PASSENGER)));
+        }
+
+        if (layoutWallet != null) {
+            layoutWallet.setOnClickListener(v ->
+                    openDetail(com.example.paktrainfoodapp.ui.shared.wallet.WalletFragment.newInstance(com.example.paktrainfoodapp.ui.shared.wallet.WalletFragment.ROLE_PASSENGER)));
+        }
+
+        if (layoutMyOrders != null) {
+            layoutMyOrders.setOnClickListener(v ->
+                    openDetail(new com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment()));
+        }
+
+        if (layoutAddress != null) {
+            layoutAddress.setOnClickListener(v ->
+                    openDetail(new AddressFragment()));
+        }
+
+        if (layoutSettings != null) {
+            layoutSettings.setOnClickListener(v ->
+                    openDetail(new SettingsFragment()));
+        }
+
+        // ==========================
         // Logout
         // ==========================
 
@@ -137,6 +217,20 @@ public class ProfileFragment extends Fragment {
 
         });
 
+    }
+
+    /**
+     * All of these screens live inside the passenger shell, so they go through
+     * the loader's detail-screen helper which handles the back stack and
+     * hides/shows the bottom nav correctly.
+     */
+    private void openDetail(Fragment fragment) {
+
+        Fragment parent = getParentFragment();
+
+        if (parent instanceof Passenger_Fragment_Loader) {
+            ((Passenger_Fragment_Loader) parent).openProfileDetail(fragment);
+        }
     }
 
     // ==========================
@@ -196,188 +290,4 @@ public class ProfileFragment extends Fragment {
     }
 
 }
-
-
-
-/*
-package com.example.paktrainfoodapp.ui.main.Passenger;
-
- import android.os.Build;
- import android.os.ProfilingManager;
- import android.widget.LinearLayout;
- import android.content.Intent;
- import android.net.Uri;
- import android.os.Bundle;
- import android.view.LayoutInflater;
- import android.view.View;
- import android.view.ViewGroup;
- import android.widget.ImageView;
- import android.widget.TextView;
- import android.widget.Toast;
-
- import androidx.activity.result.ActivityResultCallback;
- import androidx.activity.result.ActivityResultLauncher;
- import androidx.activity.result.contract.ActivityResultContracts;
- import androidx.annotation.NonNull;
- import androidx.annotation.Nullable;
- import androidx.fragment.app.Fragment;
-
- import com.bumptech.glide.Glide;
- import com.example.paktrainfoodapp.R;
-
- import com.google.firebase.auth.FirebaseAuth;
- import com.google.firebase.firestore.FirebaseFirestore;
-
-
- public class ProfileFragment extends Fragment {
-
-     public final ProfileFragment.PrefManager PrefManager;
-     private ImageView profileImage;
-     private ImageView btnEditProfile; // Pencil button declaration
-     private TextView txtName, txtEmail, btnLogout;
-     private LinearLayout layoutHelpSupport;
-
-     private FirebaseAuth mAuth;
-     private FirebaseFirestore db;
-     private com.example.paktrainfoodapp.ui.main.Passenger.PrefManager prefManager;
-
-     // Gallery se image select karne k liye launcher
-     private ActivityResultLauncher<String> galleryLauncher;
-
-     public ProfileFragment() {
-         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM)
-             PrefManager = new PrefManager();
-     }
-
-     @Nullable
-     @Override
-     public View onCreateView(@NonNull LayoutInflater inflater,
-                              @Nullable ViewGroup container,
-                              @Nullable Bundle savedInstanceState) {
-         return inflater.inflate(R.layout.fragment_passanger_profile, container, false);
-     }
-
-     @Override
-     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-         super.onViewCreated(view, savedInstanceState);
-
-         // UI Components Initialize
-         profileImage = view.findViewById(R.id.img_profile);
-         btnEditProfile = view.findViewById(R.id.btn_edit_profile); // Initialized pencil icon
-         txtName = view.findViewById(R.id.txt_name);
-         txtEmail = view.findViewById(R.id.txt_email);
-         btnLogout = view.findViewById(R.id.btn_logout);
-         layoutHelpSupport = view.findViewById(R.id.layoutHelpSupport);
-         mAuth = FirebaseAuth.getInstance();
-         db = FirebaseFirestore.getInstance();
-
-         // 1. Gallery Result Launcher Setup
-         galleryLauncher = registerForActivityResult(
-                 new ActivityResultContracts.GetContent(),
-                 new ActivityResultCallback<Uri>() {
-                     @Override
-                     public void onActivityResult(Uri uri) {
-                         if (uri != null && isAdded() && getActivity() != null) {
-                             // Selected image ko usi waqt screen pr view karwane k liye
-                             Glide.with(requireActivity())
-                                     .load(uri)
-                                     .circleCrop()
-                                     .into(profileImage);
-
-                             // Yahan click hone k bad agar bad me Firebase Storage
-                             // me push krna ho to code add kiya ja skta ha.
-                             Toast.makeText(getContext(), "Image Changed!", Toast.LENGTH_SHORT).show();
-                         }
-                     }
-                 }
-         );
-
-         // 2. Pencil button click handle kiya
-         if (btnEditProfile != null) {
-             btnEditProfile.setOnClickListener(v -> {
-                 galleryLauncher.launch("image/*"); // Gallery open karega
-             });
-         }
-
-         // Baqi aapka original unchanged logic code
-         if (txtName != null && txtEmail != null && btnLogout != null) {
-
-             if (mAuth.getCurrentUser() != null) {
-                 loadUserData();
-             } else {
-                 txtName.setText("Guest User");
-                 txtEmail.setText("");
-             }
-
-
-             btnLogout.setOnClickListener(v -> {
-                 mAuth.signOut();
-                 if (prefManager != null) {
-                 }
-                 if (getActivity() != null) {
-                     Intent intent = new Intent(getActivity(), Splash.class);
-                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                     startActivity(intent);
-                     getActivity().finish();
-                 }
-             });
-             if (layoutHelpSupport != null) {
-
-                 layoutHelpSupport.setOnClickListener(v -> {
-
-                     Fragment parent = getParentFragment();
-
-                     if (parent instanceof Passenger_Fragment_Loader) {
-                         ((Passenger_Fragment_Loader) parent).openHelpSupport();
-                     }
-
-                 });
-
-             }
-             }
-         }
-
-     private void loadUserData() {
-         if (mAuth.getCurrentUser() == null) {
-             return;
-         }
-         String uid = mAuth.getCurrentUser().getUid();
-
-         db.collection("Users").document("Passenger").collection("Register").document(uid)
-                 .get()
-                 .addOnSuccessListener(snapshot -> {
-                     if (!isAdded() || getActivity() == null) {
-                         return;
-                     }
-                     if (snapshot.exists()) {
-                         String name = snapshot.getString("name");
-                         String email = snapshot.getString("email");
-                         String imageUrl = snapshot.getString("profileImageUrl");
-
-                         if (txtName != null) {
-                             txtName.setText(name != null ? name : "No Name");
-                         }
-                         if (txtEmail != null) {
-                             txtEmail.setText(email != null ? email : "No Email");
-                         }
-
-                         if (imageUrl != null && !imageUrl.isEmpty() && profileImage != null) {
-                             Glide.with(equals())
-                                     .load(imageUrl)
-                                     .placeholder(R.drawable.edit_info)
-                                     .circleCrop()
-                                     .into(profileImage);
-                         }
-                     }
-                 });
-     }
-
-     private View equals() {
-         return null;
-     }
-
-     private class PrefManager {
-     }
- }
-*/
 

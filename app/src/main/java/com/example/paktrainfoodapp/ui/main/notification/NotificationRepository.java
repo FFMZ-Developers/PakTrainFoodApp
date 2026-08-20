@@ -278,4 +278,64 @@ public class NotificationRepository {
                 .update("isRead", true);
 
     }
+
+    public interface SimpleCallback {
+        void onSuccess();
+        void onFailure(Exception e);
+    }
+
+    /**
+     * Deletes a single notification document (used for swipe-to-delete).
+     */
+    public void deleteNotification(
+            String role,
+            String documentId,
+            @NonNull SimpleCallback callback) {
+
+        CollectionReference ref = getNotificationCollection(role);
+
+        if (ref == null || documentId == null) {
+            callback.onFailure(new Exception("Notification path not found"));
+            return;
+        }
+
+        ref.document(documentId)
+                .delete()
+                .addOnSuccessListener(unused -> callback.onSuccess())
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    /**
+     * Deletes every notification document for this role (used by "Clear All").
+     */
+    public void deleteAllNotifications(
+            String role,
+            @NonNull SimpleCallback callback) {
+
+        CollectionReference ref = getNotificationCollection(role);
+
+        if (ref == null) {
+            callback.onFailure(new Exception("Notification path not found"));
+            return;
+        }
+
+        ref.get().addOnSuccessListener(snapshot -> {
+
+            if (snapshot.isEmpty()) {
+                callback.onSuccess();
+                return;
+            }
+
+            com.google.firebase.firestore.WriteBatch batch = db.batch();
+
+            for (QueryDocumentSnapshot doc : snapshot) {
+                batch.delete(doc.getReference());
+            }
+
+            batch.commit()
+                    .addOnSuccessListener(unused -> callback.onSuccess())
+                    .addOnFailureListener(callback::onFailure);
+
+        }).addOnFailureListener(callback::onFailure);
+    }
 }

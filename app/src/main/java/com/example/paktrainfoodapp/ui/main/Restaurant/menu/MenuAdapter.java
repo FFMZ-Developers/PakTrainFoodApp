@@ -23,6 +23,7 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.VH> {
     public interface OnItemActionListener {
         void onEdit(MenuItem item);
         void onDelete(MenuItem item);
+        void onAvailabilityChanged(MenuItem item, boolean available);
     }
 
     public MenuAdapter(Context ctx, List<MenuItem> items, OnItemActionListener listener) {
@@ -71,6 +72,25 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.VH> {
         holder.btnDelete.setOnClickListener(v -> {
             if (listener != null) listener.onDelete(it);
         });
+
+        // Availability toggle. The listener is detached while we set the
+        // initial state, otherwise recycling a row would fire a spurious
+        // "changed" callback and write to Firestore on every scroll.
+        holder.switchAvailable.setOnCheckedChangeListener(null);
+        holder.switchAvailable.setChecked(it.isAvailable());
+        holder.txtAvailableLabel.setText(it.isAvailable() ? "Available" : "Unavailable");
+
+        holder.switchAvailable.setOnCheckedChangeListener((buttonView, isChecked) -> {
+
+            it.setAvailable(isChecked);
+
+            holder.txtAvailableLabel.setText(isChecked ? "Available" : "Unavailable");
+
+            if (listener != null) listener.onAvailabilityChanged(it, isChecked);
+        });
+
+        // Dim the whole row when the item is hidden from passengers
+        holder.itemView.setAlpha(it.isAvailable() ? 1f : 0.55f);
     }
 
     @Override
@@ -82,6 +102,8 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.VH> {
         ImageView iv;
         TextView tvName, tvDesc, tvPrice, tvTime;
         ImageButton btnEdit, btnDelete;
+        androidx.appcompat.widget.SwitchCompat switchAvailable;
+        TextView txtAvailableLabel;
 
         VH(@NonNull View v) {
             super(v);
@@ -92,6 +114,8 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.VH> {
             tvTime = v.findViewById(R.id.item_time);
             btnEdit = v.findViewById(R.id.btn_edit);
             btnDelete = v.findViewById(R.id.btn_delete);
+            switchAvailable = v.findViewById(R.id.switch_available);
+            txtAvailableLabel = v.findViewById(R.id.txt_available_label);
         }
     }
 }

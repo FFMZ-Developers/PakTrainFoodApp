@@ -4,7 +4,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/surface"
     android:padding="16dp"
     android:gravity="center_horizontal">
 
@@ -31,7 +31,7 @@
             android:layout_alignParentBottom="true"
             android:layout_alignParentEnd="true"
             android:layout_margin="4dp"
-            android:background="@android:color/white"
+            android:background="@color/surface"
             android:elevation="5dp"
             android:padding="5dp"
             android:src="@drawable/edit" />
@@ -62,7 +62,7 @@
         android:background="@color/gray"
         android:layout_marginTop="16dp"/>
 
-    <LinearLayout
+    <LinearLayout android:id="@+id/layout_manage_menu" android:clickable="true" android:focusable="true"
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -85,10 +85,10 @@
             android:layout_height="wrap_content"
             android:text=">"
             android:textStyle="bold"
-            android:textColor="#757575"/>
+            android:textColor="@color/text_secondary"/>
     </LinearLayout>
 
-    <LinearLayout
+    <LinearLayout android:id="@+id/layout_my_orders" android:clickable="true" android:focusable="true"
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -110,7 +110,7 @@
             android:layout_height="wrap_content"
             android:text=">"
             android:textStyle="bold"
-            android:textColor="#757575"/>
+            android:textColor="@color/text_secondary"/>
     </LinearLayout>
 
     <LinearLayout
@@ -136,15 +136,18 @@
             android:layout_height="wrap_content"
             android:text=">"
             android:textStyle="bold"
-            android:textColor="#757575"/>
+            android:textColor="@color/text_secondary"/>
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/layout_account_info"
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="12dp"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
         <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"
@@ -161,10 +164,38 @@
             android:layout_height="wrap_content"
             android:text=">"
             android:textStyle="bold"
-            android:textColor="#757575"/>
+            android:textColor="@color/text_secondary"/>
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/layout_settings"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_settings"/>
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Settings"
+            android:textSize="16sp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="&gt;"
+            android:textStyle="bold"
+            android:textColor="@color/text_secondary"/>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/layout_help_support" android:clickable="true" android:focusable="true"
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -186,7 +217,7 @@
             android:layout_height="wrap_content"
             android:text=">"
             android:textStyle="bold"
-            android:textColor="#757575"/>
+            android:textColor="@color/text_secondary"/>
     </LinearLayout>
 
     <LinearLayout

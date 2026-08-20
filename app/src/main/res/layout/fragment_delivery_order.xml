@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FAFAFA">
+    android:background="@color/app_background">
 
     <!-- Toolbar -->
     <androidx.appcompat.widget.Toolbar
@@ -22,7 +22,7 @@
         android:id="@+id/tabs_delivery_Orders"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/white"
+        android:background="@color/surface"
         app:tabMode="fixed"
         app:tabGravity="fill"
         app:tabIndicatorColor="@color/purple_light"

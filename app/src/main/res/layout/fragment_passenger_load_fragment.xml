@@ -3,7 +3,7 @@
     android:id="@+id/dashboard_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="@color/surface">
 
 
 
@@ -23,55 +23,31 @@
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
         android:gravity="center"
-        android:background="@color/white"
+        android:elevation="8dp"
+        android:background="@color/surface"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:padding="4dp">
 
-        <!-- Menu Button -->
+        <!-- Order Food (journey selection) -->
         <LinearLayout
-            android:id="@+id/btnNotification"
+            android:id="@+id/btnJourney"
             android:orientation="vertical"
             android:gravity="center"
             android:layout_weight="1"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:padding="4dp">
-            <FrameLayout
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:clipChildren="false"
-                android:clipToPadding="false">
-
-                <ImageView
-                    android:id="@+id/imgNotification"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:src="@drawable/ic_notification"/>
-
-                <TextView
-                    android:id="@+id/txtNotificationBadge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="18dp"
-                    android:minWidth="18dp"
-                    android:layout_gravity="end|top"
-                    android:translationX="6dp"
-                    android:translationY="-4dp"
-                    android:paddingStart="4dp"
-                    android:paddingEnd="4dp"
-                    android:gravity="center"
-                    android:text="99"
-                    android:textColor="@android:color/white"
-                    android:textSize="8sp"
-                    android:textStyle="bold"
-
-                    android:background="@drawable/bg_notification_badge"/>
-
-            </FrameLayout>
-
+            <ImageView
+                android:id="@+id/icon_journey"
+                android:src="@drawable/ic_browse_menu"
+                android:layout_width="28dp"
+                android:layout_height="28dp"/>
             <TextView
-                android:id="@+id/text_notification"
+                android:id="@+id/text_journey"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Notifications"
+                android:text="Order Food"
                 android:textSize="12sp"
                 android:textColor="@color/gray"/>
         </LinearLayout>
@@ -115,7 +91,7 @@
                 android:layout_height="36dp"/>
             <TextView
                 android:id="@+id/text_dashboard"
-                android:text="Home"
+                android:text="Dashboard"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:layout_height="wrap_content"

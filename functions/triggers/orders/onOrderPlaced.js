@@ -1,6 +1,7 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 
 const admin = require("../../config/firebase");
+const walletHelper = require("../../utils/walletHelper");
 
 const { sendNotification } = require("../../utils/sendNotification");
 
@@ -29,9 +30,7 @@ exports.onOrderPlaced = onDocumentCreated(
         // ADMIN MAIN WALLET
         // ===============================
 
-        await admin.firestore()
-            .collection("Wallets")
-            .doc("admin_wallet")
+        await walletHelper.adminWalletRef()
             .set({
 
                 balance:
@@ -45,9 +44,7 @@ exports.onOrderPlaced = onDocumentCreated(
 
         if (restaurantId && subtotal) {
 
-            await admin.firestore()
-                .collection("Wallets")
-                .doc(restaurantId)
+            await walletHelper.walletRef(walletHelper.WALLET_ROLES.RESTAURANT, restaurantId)
                 .set({
 
                     pendingBalance:
@@ -55,9 +52,7 @@ exports.onOrderPlaced = onDocumentCreated(
 
                 }, { merge: true });
 
-            await admin.firestore()
-                .collection("Wallets")
-                .doc(restaurantId)
+            await walletHelper.walletRef(walletHelper.WALLET_ROLES.RESTAURANT, restaurantId)
                 .collection("history")
                 .add({
 
@@ -79,25 +74,25 @@ exports.onOrderPlaced = onDocumentCreated(
 
         if (restaurantId) {
 
-            await sendNotification({
+await sendNotification({
 
-    uid: restaurantId,
+                uid: restaurantId,
 
-    role: ROLES.RESTAURANT,
+                role: ROLES.RESTAURANT,
 
-    title: "🍽️ New Order",
+                title: "\ud83c\udf7d\ufe0f New Order",
 
-    body: "You have received a new order.",
+                body: "You have received a new order.",
 
-    data: {
+                data: {
 
-        orderId,
+                    orderId,
 
-        status: ORDER_STATUS.ACTIVE
+                    status: ORDER_STATUS.ACTIVE
 
-    }
+                }
 
-});
+            });
 
         }
 
@@ -107,25 +102,42 @@ exports.onOrderPlaced = onDocumentCreated(
 
         if (passengerUid) {
 
-           await sendNotification({
+           // Short line shows in the collapsed notification; fullMessage is
+            // revealed when the passenger expands or taps it.
+            const amount = Math.round(totalPrice || 0);
 
-    uid: passengerUid,
+            const itemNames = Array.isArray(data.items)
+                ? data.items.map((i) => i.name).filter(Boolean).join(", ")
+                : "";
 
-    role: ROLES.PASSENGER,
+            const detail =
+                "Payment of Rs " + amount + " received for order #" + orderId +
+                (itemNames ? ".\nItems: " + itemNames : ".") +
+                "\nYour order has been placed successfully.";
 
-    title: "✅ Order Placed",
+            await sendNotification({
 
-    body: "Your order has been placed successfully.",
+                uid: passengerUid,
 
-    data: {
+                role: ROLES.PASSENGER,
 
-        orderId,
+                title: "\u2705 Payment Successful",
 
-        status: ORDER_STATUS.ACTIVE
+                body: "Rs " + amount + " paid successfully",
 
-    }
+                data: {
 
-});
+                    orderId,
+
+                    status: ORDER_STATUS.ACTIVE,
+
+                    fullMessage: detail,
+
+                    amount: String(amount)
+
+                }
+
+            });
 
         }
 

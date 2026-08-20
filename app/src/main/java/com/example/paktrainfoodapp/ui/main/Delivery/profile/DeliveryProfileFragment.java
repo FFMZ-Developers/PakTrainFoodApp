@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,6 +22,7 @@ import com.bumptech.glide.Glide;
 import com.example.paktrainfoodapp.R;
 import com.example.paktrainfoodapp.Splash;
 import com.example.paktrainfoodapp.utils.PrefManager;
+import com.example.paktrainfoodapp.utils.ProfileImageUploader;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -30,6 +32,7 @@ public class DeliveryProfileFragment extends Fragment {
     private ImageView btnEditProfile;
     private TextView txtName,riderWallet, txtEmail;
     private TextView btnLogout; // Badla hua type Card List ke mutabiq
+    private LinearLayout layoutAccountInfo;
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
@@ -55,9 +58,27 @@ public class DeliveryProfileFragment extends Fragment {
         txtEmail = view.findViewById(R.id.txt_delivery_email);
         btnLogout = view.findViewById(R.id.btn_delivery_logout); // Matching ID text reference
         riderWallet  = view.findViewById(R.id.riderWallet);
+        layoutAccountInfo = view.findViewById(R.id.layout_account_info);
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
         prefManager = new PrefManager(requireContext());
+
+        wireRow(view, R.id.layout_settings,
+                new com.example.paktrainfoodapp.ui.shared.profile.SettingsFragment());
+
+        wireRow(view, R.id.layout_my_orders,
+                com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.newInstance(
+                        com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.ROLE_DELIVERY));
+
+        if (layoutAccountInfo != null) {
+
+            layoutAccountInfo.setOnClickListener(v ->
+                    getParentFragmentManager()
+                            .beginTransaction()
+                            .replace(R.id.fragment_loader, com.example.paktrainfoodapp.ui.shared.profile.PersonalInfoFragment.newInstance(com.example.paktrainfoodapp.ui.shared.profile.PersonalInfoFragment.ROLE_DELIVERY))
+                            .addToBackStack("personal_info")
+                            .commit());
+        }
 
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
@@ -71,7 +92,43 @@ public class DeliveryProfileFragment extends Fragment {
                                         .circleCrop()
                                         .into(profileImage);
                             }
-                            Toast.makeText(getContext(), "Delivery Rider Image Changed!", Toast.LENGTH_SHORT).show();
+
+                            if (mAuth.getCurrentUser() != null) {
+
+                                String uid = mAuth.getCurrentUser().getUid();
+
+                                Toast.makeText(getContext(), "Uploading photo...", Toast.LENGTH_SHORT).show();
+
+                                ProfileImageUploader.upload(
+                                        requireContext(),
+                                        "delivery",
+                                        uid,
+                                        uri,
+                                        new ProfileImageUploader.UploadCallback() {
+
+                                            @Override
+                                            public void onSuccess(String downloadUrl) {
+
+                                                if (!isAdded()) return;
+
+                                                db.collection("Users")
+                                                        .document("Delivery")
+                                                        .collection("VerifiedRegister")
+                                                        .document(uid)
+                                                        .update("profileImageUrl", downloadUrl);
+
+                                                Toast.makeText(getContext(), "Delivery Rider Image Updated", Toast.LENGTH_SHORT).show();
+                                            }
+
+                                            @Override
+                                            public void onFailure(Exception e) {
+
+                                                if (!isAdded()) return;
+
+                                                Toast.makeText(getContext(), "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+                            }
                         }
                     }
                 }
@@ -95,7 +152,7 @@ public class DeliveryProfileFragment extends Fragment {
                     .beginTransaction()
                     .replace(
                             R.id.fragment_loader,
-                            new RiderWalletFragment()
+                            com.example.paktrainfoodapp.ui.shared.wallet.WalletFragment.newInstance(com.example.paktrainfoodapp.ui.shared.wallet.WalletFragment.ROLE_DELIVERY)
                     )
                     .addToBackStack("profile")
                     .commit();
@@ -130,7 +187,11 @@ public class DeliveryProfileFragment extends Fragment {
                     if (isAdded() && snapshot.exists()) {
                         String deliveryBoyName = snapshot.getString("name");
                         String email = snapshot.getString("email");
-                        String imageUrl = snapshot.getString("cnicFrontImageUrl");
+                        String imageUrl = snapshot.getString("profileImageUrl");
+                        if (imageUrl == null || imageUrl.isEmpty()) {
+                            // Fallback for accounts registered before profileImageUrl existed
+                            imageUrl = snapshot.getString("ownerCnicUrlfront");
+                        }
 
                         if (txtName != null) txtName.setText(deliveryBoyName != null ? deliveryBoyName : "No Name");
                         if (txtEmail != null) txtEmail.setText(email != null ? email : "No Email");
@@ -152,5 +213,20 @@ public class DeliveryProfileFragment extends Fragment {
                         Toast.makeText(getContext(), "Failed to load profile: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    /** Opens a shared screen from a profile row (see restaurant equivalent). */
+    private void wireRow(View parent, int rowId, androidx.fragment.app.Fragment target) {
+
+        View row = parent.findViewById(rowId);
+
+        if (row == null) return;
+
+        row.setOnClickListener(v ->
+                getParentFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.fragment_loader, target)
+                        .addToBackStack(null)
+                        .commit());
     }
 }

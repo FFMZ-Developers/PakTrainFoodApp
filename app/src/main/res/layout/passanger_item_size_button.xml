@@ -4,7 +4,7 @@
     android:layout_height="wrap_content"
     android:layout_marginEnd="8dp"
     android:backgroundTint="#ECECEC"
-    android:textColor="#000000"
+    android:textColor="@color/text_primary"
     android:textSize="12sp"
     android:background="@drawable/passanger_item_size_button"/>
 <!---->

@@ -6,6 +6,18 @@
         ".write": "auth != null"
       }
     },
+    "OrderLocations": {
+      "$orderId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "DeliveryRiders": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
     "Users": {
       "Passenger": {
         "$uid": {

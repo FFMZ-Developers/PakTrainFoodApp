@@ -8,7 +8,8 @@
     app:cardCornerRadius="14dp"
     app:cardElevation="4dp"
     app:cardUseCompatPadding="true"
-    android:background="#FFFFFF">
+    android:background="@color/surface"
+    app:cardBackgroundColor="@color/surface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -54,7 +55,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#EEEEEE"
+            android:background="@color/divider"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"/>
 
@@ -65,7 +66,7 @@
             android:layout_height="wrap_content"
             android:text="Order ID: #123456"
             android:textSize="13sp"
-            android:textColor="#333333"
+            android:textColor="@color/text_primary"
             android:textStyle="bold"/>
 
         <!-- DATE -->
@@ -75,7 +76,7 @@
             android:layout_height="wrap_content"
             android:text="22 June 2026"
             android:textSize="12sp"
-            android:textColor="#777777"
+            android:textColor="@color/text_secondary"
             android:layout_marginTop="4dp"/>
 
         <!-- STATUS -->

@@ -1,6 +1,7 @@
 const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 
 const admin = require("../../config/firebase");
+const walletHelper = require("../../utils/walletHelper");
 const { sendNotification } = require("../../utils/sendNotification");
 
 const {
@@ -37,9 +38,7 @@ exports.onRiderAccepted = onDocumentUpdated(
         // Rider Wallet
         // =========================
 
-        await admin.firestore()
-            .collection("Wallets")
-            .doc(riderId)
+        await walletHelper.walletRef(walletHelper.WALLET_ROLES.DELIVERY, riderId)
             .set({
 
                 pendingBalance:
@@ -47,9 +46,7 @@ exports.onRiderAccepted = onDocumentUpdated(
 
             }, { merge: true });
 
-        await admin.firestore()
-            .collection("Wallets")
-            .doc(riderId)
+        await walletHelper.walletRef(walletHelper.WALLET_ROLES.DELIVERY, riderId)
             .collection("history")
             .add({
 

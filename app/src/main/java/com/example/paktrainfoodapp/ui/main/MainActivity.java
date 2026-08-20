@@ -100,6 +100,28 @@ public class MainActivity extends AppCompatActivity {
 
                             }
 
+                        } else if (fragment instanceof restaurant_LoadFragment) {
+
+                            restaurant_LoadFragment loader =
+                                    (restaurant_LoadFragment) fragment;
+
+                            if (loader.handleBackPressed()) {
+
+                                return;
+
+                            }
+
+                        } else if (fragment instanceof DeliveryDashboardFragment) {
+
+                            DeliveryDashboardFragment loader =
+                                    (DeliveryDashboardFragment) fragment;
+
+                            if (loader.handleBackPressed()) {
+
+                                return;
+
+                            }
+
                         }
 
                         setEnabled(false);

@@ -58,6 +58,16 @@ public class Restaurant_list_Adapter extends RecyclerView.Adapter<Restaurant_lis
                 .error(R.drawable.station3)       // Fallback system asset mapping on processing drops
                 .centerCrop()                     // Image stretch parameters balanced smoothly inside layout item
                 .into(holder.imgRestaurant);
+
+        // Heart icon reflects saved favorite state
+        if (holder.btnFavorite != null) {
+
+            holder.btnFavorite.setImageResource(
+                    model.isFavorite()
+                            ? R.drawable.ic_heart_filled
+                            : R.drawable.ic_heart_outline
+            );
+        }
     }
 
     @Override

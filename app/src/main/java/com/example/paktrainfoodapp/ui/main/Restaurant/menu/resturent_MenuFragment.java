@@ -56,6 +56,11 @@ public class resturent_MenuFragment extends Fragment implements AddEditItemDialo
             public void onEdit(MenuItem item) { openEditDialog(item); }
             @Override
             public void onDelete(MenuItem item) { confirmDelete(item); }
+
+            @Override
+            public void onAvailabilityChanged(MenuItem item, boolean available) {
+                setItemAvailability(item, available);
+            }
         });
         rvMenu.setAdapter(adapter);
 
@@ -100,6 +105,37 @@ public class resturent_MenuFragment extends Fragment implements AddEditItemDialo
         if (menuListener != null) {
             menuListener.remove();
         }
+    }
+
+    /**
+     * Marks a menu item available/unavailable. Unlike deleting, this keeps the
+     * item so it can be switched back on later - passengers simply stop seeing
+     * it while it is off.
+     */
+    private void setItemAvailability(MenuItem item, boolean available) {
+
+        if (item.getId() == null) return;
+
+        db.collection("Users").document("Restaurant")
+                .collection("VerifiedRegister").document(currentRestaurantId)
+                .collection("MenuItems").document(item.getId())
+                .update("available", available)
+                .addOnSuccessListener(unused -> {
+
+                    if (!isAdded()) return;
+
+                    Toast.makeText(requireContext(),
+                            item.getName() + (available ? " is now available" : " hidden from menu"),
+                            Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+
+                    if (!isAdded()) return;
+
+                    Toast.makeText(requireContext(),
+                            "Could not update: " + e.getMessage(),
+                            Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void confirmDelete(MenuItem item) {

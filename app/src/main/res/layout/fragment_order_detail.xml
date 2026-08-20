@@ -53,7 +53,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@android:color/white"
+                android:background="@color/surface"
                 android:elevation="4dp"
                 android:padding="16dp"
                 android:orientation="vertical"
@@ -82,7 +82,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@android:color/white"
+                android:background="@color/surface"
                 android:elevation="4dp"
                 android:padding="16dp"
                 android:orientation="vertical"
@@ -118,7 +118,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@android:color/white"
+                android:background="@color/surface"
                 android:elevation="4dp"
                 android:padding="16dp"
                 android:layout_marginTop="12dp"

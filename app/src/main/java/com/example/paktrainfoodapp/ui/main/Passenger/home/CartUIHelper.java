@@ -22,6 +22,9 @@ public class CartUIHelper {
         Button btnOrderNowCart =
                 view.findViewById(R.id.btnOrderNowCart);
 
+        Button btnClear =
+                view.findViewById(R.id.btnClear);
+
         updateTotal(tvCartTotal);
 
         CartManager.addListener(() -> {
@@ -34,6 +37,31 @@ public class CartUIHelper {
                 });
             }
         });
+
+        if (btnClear != null) {
+
+            btnClear.setOnClickListener(v -> {
+
+                if (CartManager.isEmpty()) {
+
+                    Toast.makeText(
+                            fragment.getContext(),
+                            "Cart is already empty",
+                            Toast.LENGTH_SHORT
+                    ).show();
+
+                    return;
+                }
+
+                CartManager.clear();
+
+                Toast.makeText(
+                        fragment.getContext(),
+                        "Cart cleared",
+                        Toast.LENGTH_SHORT
+                ).show();
+            });
+        }
 
         btnOrderNowCart.setOnClickListener(v -> {
 

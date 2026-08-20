@@ -24,6 +24,12 @@ public class MenuItem {
     // MenuItem class mein ye add kar dein:
     private long etaEndTime;
 
+    /**
+     * Whether passengers can currently order this item. Defaults to true so
+     * every item created before this field existed stays orderable.
+     */
+    private boolean available = true;
+
 
     public MenuItem() {}
 
@@ -96,6 +102,10 @@ public class MenuItem {
     public long getEtaEndTime() { return etaEndTime; }
     public void setEtaEndTime(long etaEndTime) { this.etaEndTime = etaEndTime; }
 
+
+    public boolean isAvailable() { return available; }
+
+    public void setAvailable(boolean available) { this.available = available; }
 }
 
 

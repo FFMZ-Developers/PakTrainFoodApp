@@ -3,7 +3,7 @@
     android:id="@+id/dashboard_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="@color/surface">
 
     <!-- Top App Bar -->
     <LinearLayout
@@ -100,7 +100,7 @@
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
         android:gravity="center"
-        android:background="@color/white"
+        android:background="@color/surface"
         android:padding="4dp">
 
         <!-- Dashboard -->
@@ -134,15 +134,48 @@
             android:layout_height="wrap_content"
             android:layout_width="match_parent"
             android:layout_weight="1"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:padding="4dp">
-            <ImageView
-                android:id="@+id/icon_delivery_menu"
-                android:src="@drawable/ic_browse_menu"
-                android:layout_width="28dp"
-                android:layout_height="28dp"/>
+
+            <FrameLayout
+                android:layout_width="34dp"
+                android:layout_height="30dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <ImageView
+                    android:id="@+id/icon_delivery_menu"
+                    android:src="@drawable/ic_notification"
+                    android:layout_gravity="center"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"/>
+
+                <TextView
+                    android:id="@+id/txtRiderBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:minWidth="18dp"
+                    android:minHeight="18dp"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingTop="1dp"
+                    android:paddingBottom="1dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text="0"
+                    android:textColor="#FFFFFF"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    android:background="@drawable/bg_notification_badge"/>
+            </FrameLayout>
+
             <TextView
                 android:id="@+id/text_delivery_menu"
-                android:text="Notificatoins"
+                android:text="Alerts"
                 android:layout_height="wrap_content"
                 android:layout_width="wrap_content"
                 android:textSize="12sp"

@@ -17,10 +17,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.example.paktrainfoodapp.R;
 import com.example.paktrainfoodapp.ui.main.Delivery.order.DeliveryOrderFragment;
-import com.example.paktrainfoodapp.ui.main.Delivery.notification.DeliveryNotificationFragment;
+
 import com.example.paktrainfoodapp.ui.main.Delivery.profile.DeliveryProfileFragment;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -64,6 +66,12 @@ public class DeliveryDashboardFragment extends Fragment {
     private TextView statusText;
     private View statusDot;
 
+    private String currentTag = "home";
+
+    private TextView txtRiderBadge;
+    private com.example.paktrainfoodapp.ui.main.notification.NotificationRepository
+            riderNotificationRepository;
+
     @Override
     public View onCreateView(LayoutInflater inflater,
                              ViewGroup container,
@@ -100,6 +108,10 @@ public class DeliveryDashboardFragment extends Fragment {
 
         btn_delivery_menu =
                 view.findViewById(R.id.btn_delivery_menu);
+
+        txtRiderBadge = view.findViewById(R.id.txtRiderBadge);
+
+        startRiderNotificationBadge();
 
         btn_delivery_order =
                 view.findViewById(R.id.btn_delivery_order);
@@ -187,7 +199,7 @@ public class DeliveryDashboardFragment extends Fragment {
 
         // ================= DEFAULT FRAGMENT =================
 
-        openFragment(new DeliveryHomeFragment());
+        openFragment(new DeliveryHomeFragment(), "home", false);
 
         highlightButton(
                 btn_deliver_home,
@@ -199,7 +211,11 @@ public class DeliveryDashboardFragment extends Fragment {
 
         btn_delivery_menu.setOnClickListener(v -> {
 
-            openFragment(new DeliveryNotificationFragment());
+            openFragment(
+                    com.example.paktrainfoodapp.ui.main.notification.NotificationFragment
+                            .newInstance(com.example.paktrainfoodapp.ui.main.notification
+                                    .NotificationRepository.ROLE_DELIVERY),
+                    "notification", true);
 
             highlightButton(
                     btn_delivery_menu,
@@ -210,7 +226,7 @@ public class DeliveryDashboardFragment extends Fragment {
 
         btn_delivery_order.setOnClickListener(v -> {
 
-            openFragment(new DeliveryOrderFragment());
+            openFragment(new DeliveryOrderFragment(), "order", true);
 
             highlightButton(
                     btn_delivery_order,
@@ -221,7 +237,7 @@ public class DeliveryDashboardFragment extends Fragment {
 
         btn_deliver_home.setOnClickListener(v -> {
 
-            openFragment(new DeliveryHomeFragment());
+            openFragment(new DeliveryHomeFragment(), "home", true);
 
             highlightButton(
                     btn_deliver_home,
@@ -232,7 +248,7 @@ public class DeliveryDashboardFragment extends Fragment {
 
         btn_delivery_profile.setOnClickListener(v -> {
 
-            openFragment(new DeliveryProfileFragment());
+            openFragment(new DeliveryProfileFragment(), "profile", true);
 
             highlightButton(
                     btn_delivery_profile,
@@ -351,16 +367,68 @@ public class DeliveryDashboardFragment extends Fragment {
 
     // ================= OPEN FRAGMENT =================
 
-    private void openFragment(Fragment fragment) {
+    private void openFragment(Fragment fragment, String tag, boolean addToBackStack) {
 
-        getChildFragmentManager()
+        if (tag.equals(currentTag) && addToBackStack) {
+            // Already on this tab - avoid stacking a duplicate entry
+            return;
+        }
+
+        currentTag = tag;
+
+        FragmentTransaction transaction = getChildFragmentManager()
                 .beginTransaction()
                 .setCustomAnimations(
                         android.R.anim.fade_in,
                         android.R.anim.fade_out
                 )
-                .replace(R.id.fragment_loader, fragment)
-                .commit();
+                .replace(R.id.fragment_loader, fragment);
+
+        if (addToBackStack) {
+            transaction.addToBackStack(tag);
+        }
+
+        transaction.commit();
+    }
+
+    /**
+     * Called from the host Activity's back-press handler.
+     * Returns true if it consumed the back press, false if the Activity
+     * should handle it (e.g. exit / go to previous activity).
+     */
+    public boolean handleBackPressed() {
+
+        FragmentManager fm = getChildFragmentManager();
+
+        if (fm.getBackStackEntryCount() > 0) {
+
+            fm.popBackStack();
+            fm.executePendingTransactions();
+
+            for (Fragment f : fm.getFragments()) {
+
+                if (f != null && f.isAdded()) {
+
+                    if (f instanceof DeliveryHomeFragment) {
+                        currentTag = "home";
+                        highlightButton(btn_deliver_home, icon_deliver_home, text_deliver_home);
+                    } else if (f instanceof com.example.paktrainfoodapp.ui.main.notification.NotificationFragment) {
+                        currentTag = "notification";
+                        highlightButton(btn_delivery_menu, icon_delivery_menu, text_delivery_menu);
+                    } else if (f instanceof DeliveryOrderFragment) {
+                        currentTag = "order";
+                        highlightButton(btn_delivery_order, icon_delivery_order, text_delivery_order);
+                    } else if (f instanceof DeliveryProfileFragment) {
+                        currentTag = "profile";
+                        highlightButton(btn_delivery_profile, icon_delivery_profile, text_delivery_profile);
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     // ================= HIGHLIGHT BUTTON =================
@@ -453,6 +521,57 @@ public class DeliveryDashboardFragment extends Fragment {
         super.onDestroy();
 
         stopLocationUpdates();
+    }
+
+    /** Lets the dashboard's "Available Orders" shortcut switch to that tab. */
+    public void openOrdersTab() {
+
+        if (btn_delivery_order != null) {
+            btn_delivery_order.performClick();
+        }
+    }
+
+    /** Unread-count badge on the rider's notifications tab. */
+    private void startRiderNotificationBadge() {
+
+        riderNotificationRepository =
+                new com.example.paktrainfoodapp.ui.main.notification.NotificationRepository();
+
+        riderNotificationRepository.listenUnreadCount(
+                com.example.paktrainfoodapp.ui.main.notification
+                        .NotificationRepository.ROLE_DELIVERY,
+                new com.example.paktrainfoodapp.ui.main.notification
+                        .NotificationRepository.BadgeCallback() {
+
+                    @Override
+                    public void onCountChanged(int count) {
+
+                        if (!isAdded() || txtRiderBadge == null) return;
+
+                        requireActivity().runOnUiThread(() -> {
+
+                            if (count > 0) {
+                                txtRiderBadge.setVisibility(View.VISIBLE);
+                                txtRiderBadge.setText(
+                                        count > 99 ? "99+" : String.valueOf(count));
+                            } else {
+                                txtRiderBadge.setVisibility(View.GONE);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) { }
+                });
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+
+        if (riderNotificationRepository != null) {
+            riderNotificationRepository.removeListener();
+        }
     }
 }
 

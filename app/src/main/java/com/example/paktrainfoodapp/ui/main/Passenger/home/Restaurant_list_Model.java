@@ -8,6 +8,7 @@ public class Restaurant_list_Model {
     private String city;
     private String imageBase64;
     private String imageUrl;
+    private boolean favorite;
 
     // Required empty constructor for Firebase Firestore parsing layers
     public Restaurant_list_Model() { }
@@ -66,6 +67,14 @@ public class Restaurant_list_Model {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public boolean isFavorite() {
+        return favorite;
+    }
+
+    public void setFavorite(boolean favorite) {
+        this.favorite = favorite;
     }
 }
 
