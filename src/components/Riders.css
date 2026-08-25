@@ -637,3 +637,59 @@ grid-template-columns:1fr;
 
 
 }
+.btn-secondary {
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.reject-reason-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  width: 420px;
+  max-width: 90vw;
+}
+
+.reject-reason-modal h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.reject-reason-modal p {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.reject-reason-modal textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.reject-reason-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}

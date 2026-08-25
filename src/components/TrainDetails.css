@@ -175,3 +175,114 @@
 .form-row .half {
   flex: 1;
 }
+
+.loading {
+  padding: 3rem;
+  text-align: center;
+  color: #a3aed1;
+  font-size: 1rem;
+}
+
+.error-banner {
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 0.85rem 1.25rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.back-btn {
+  background: white;
+  border: 1px solid #e0e4f1;
+  color: #2b3674;
+  padding: 0.6rem 1.1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.back-btn:hover {
+  background: #f4f7fe;
+}
+
+.btn-primary {
+  background: #4318FF;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.btn-primary:hover {
+  background: #3311e0;
+}
+
+.btn-primary:disabled {
+  background: #c7c9d9;
+  cursor: not-allowed;
+}
+
+.station-item-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-move {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e0e4f1;
+  background: white;
+  color: #2b3674;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-move:hover:not(:disabled) {
+  background: #f4f7fe;
+}
+
+.btn-move:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.train-details-content,
+.timeline-card + .timeline-card {
+  margin-top: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #2b3674;
+}
+
+.form-group select {
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #e0e4f1;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #2b3674;
+  background: white;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: #4318FF;
+}

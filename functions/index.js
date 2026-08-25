@@ -1,4 +1,4 @@
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 
 if (!admin.apps.length) {
@@ -6,6 +6,120 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
+
+const { DEFAULT_ORDER_CONFIG } = require("./defaultOrderConfig");
+
+// ============================================================
+// 0) APP-WIDE SETTINGS (rider search radius, ETA thresholds,
+//    reliability strike limits, etc) - the Settings tab in this
+//    admin panel reads/writes these.
+//
+//    Unlike the payout functions below, these two verify the
+//    caller's identity server-side (via the Firebase ID token
+//    sent in the Authorization header) before allowing a write,
+//    because these settings gate payment/dispatch behaviour for
+//    every order on the platform and are worth the extra check.
+// ============================================================
+
+/** Verifies the request's Bearer token belongs to a real admin account. */
+async function requireAdmin(req) {
+
+  const authHeader = req.headers.authorization || "";
+  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+  if (!idToken) {
+    return { ok: false, status: 401, error: "Missing Authorization token." };
+  }
+
+  let decoded;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch (e) {
+    return { ok: false, status: 401, error: "Invalid or expired token." };
+  }
+
+  const adminDoc = await db.collection("admins").doc(decoded.uid).get();
+
+  if (!adminDoc.exists) {
+    return { ok: false, status: 403, error: "Not an admin account." };
+  }
+
+  return { ok: true, uid: decoded.uid };
+}
+
+exports.getOrderConfig = functions.https.onRequest(async (req, res) => {
+
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).send("");
+  }
+
+  try {
+    const ref = db.collection("Settings").doc("orderConfig");
+    const snap = await ref.get();
+
+    if (!snap.exists) {
+      // Nothing saved yet - hand back the defaults so the Settings
+      // screen still has something to display and edit.
+      return res.status(200).json({ success: true, config: DEFAULT_ORDER_CONFIG, isDefault: true });
+    }
+
+    return res.status(200).json({ success: true, config: snap.data(), isDefault: false });
+
+  } catch (error) {
+    console.error("getOrderConfig error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+exports.updateOrderConfig = functions.https.onRequest(async (req, res) => {
+
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).send("");
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ success: false, error: "Method Not Allowed" });
+  }
+
+  const authCheck = await requireAdmin(req);
+
+  if (!authCheck.ok) {
+    return res.status(authCheck.status).json({ success: false, error: authCheck.error });
+  }
+
+  try {
+    const updates = req.body || {};
+    const allowedKeys = Object.keys(DEFAULT_ORDER_CONFIG);
+    const sanitized = {};
+
+    for (const key of allowedKeys) {
+      if (Object.prototype.hasOwnProperty.call(updates, key)) {
+        sanitized[key] = updates[key];
+      }
+    }
+
+    if (Object.keys(sanitized).length === 0) {
+      return res.status(400).json({ success: false, error: "No recognised settings fields were provided." });
+    }
+
+    await db.collection("Settings").doc("orderConfig")
+        .set(sanitized, { merge: true });
+
+    return res.status(200).json({ success: true, updated: Object.keys(sanitized) });
+
+  } catch (error) {
+    console.error("updateOrderConfig error:", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // 🔑 Stripe secret key config se aa rahi hai
 // Set karne ka command (ek dafa terminal mein chalayein):

@@ -18,6 +18,9 @@ const Restaurant = () => {
   const [error, setError] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   useEffect(() => {
     const partnersRef = collection(db, 'Users', 'Restaurant', 'VerifiedRegister');
@@ -49,6 +52,10 @@ const Restaurant = () => {
     r.status?.toLowerCase() === 'pending' || r.status?.toLowerCase() === 'requested' || (!r.status && !r.isVerified)
   );
 
+  const rejectedPartners = allRestaurants.filter(r =>
+    r.status?.toLowerCase() === 'rejected'
+  );
+
   const pendingCount = verificationRequests.length;
   const totalPartners = activePartners.length;
   const activeNowCount = activePartners.filter(p => p.isLive === true).length;
@@ -78,12 +85,22 @@ const Restaurant = () => {
 };
 
   const handleApprove = async (id) => {
+
+    if (!window.confirm('Are you sure you want to approve this restaurant? It will go live immediately.')) {
+      return;
+    }
+
     try {
       await updateDoc(doc(db, 'Users', 'Restaurant', 'VerifiedRegister', id), {
         status: 'Approved',
         isVerified: true,
         verified: true,
-        isLive: true
+        isLive: true,
+        // Read by the app's login/dashboard gate and by the
+        // onRestaurantVerificationChanged Cloud Function trigger, which
+        // sends the "you're verified, you can log in" notification.
+        verificationStatus: 'verified',
+        rejectionReason: null,
       });
       setSelectedRequest(null);
     } catch (err) {
@@ -92,15 +109,37 @@ const Restaurant = () => {
     }
   };
 
-  const handleReject = async (id) => {
+  /**
+   * Opens the reason prompt instead of rejecting immediately - a reason is
+   * required so the applicant knows exactly what to fix and can resubmit
+   * the same account, instead of guessing or creating a duplicate one.
+   */
+  const startReject = (id) => {
+    setRejectingId(id);
+    setRejectReason('');
+  };
+
+  const confirmReject = async () => {
+
+    if (!rejectingId) return;
+
+    if (!rejectReason.trim()) {
+      setError('Please enter a reason before rejecting.');
+      return;
+    }
+
     try {
-      await updateDoc(doc(db, 'Users', 'Restaurant', 'VerifiedRegister', id), {
+      await updateDoc(doc(db, 'Users', 'Restaurant', 'VerifiedRegister', rejectingId), {
         status: 'Rejected',
         isVerified: false,
         verified: false,
-        isLive: false
+        isLive: false,
+        verificationStatus: 'rejected',
+        rejectionReason: rejectReason.trim(),
       });
       setSelectedRequest(null);
+      setRejectingId(null);
+      setRejectReason('');
     } catch (err) {
       console.error("Reject error: ", err);
       setError('Could not reject restaurant.');
@@ -129,22 +168,44 @@ const Restaurant = () => {
     );
   });
 
+  const filteredRejected = rejectedPartners.filter(r => {
+    const term = searchQuery.toLowerCase();
+    const nameToSearch = r.restaurantName || r.name || '';
+    const ownerToSearch = r.ownerName || '';
+    return (
+      nameToSearch.toLowerCase().includes(term) ||
+      ownerToSearch.toLowerCase().includes(term)
+    );
+  });
+
   const openImageInNewTab = (url) => {
     if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      setLightboxImage(url);
     }
   };
 
-  const getCnicImage = (req) => {
-    return req.ownerCnicImageUrl || req.CNICImage || req.cnicImage || req.cnicFront || req.cnicUrl || null;
+  const getCnicFrontImage = (req) => {
+    return req.cnicFrontUrl || req.ownerCnicImageUrl || req.CNICImage || req.cnicImage || null;
+  };
+
+  const getCnicBackImage = (req) => {
+    return req.cnicBackUrl || null;
   };
 
   const getLicenseImage = (req) => {
     return req.licenseImageUrl || req.tradeLicenseImage || req.licenseImage || req.license || req.licenseUrl || null;
   };
 
+  const getSelfieImage = (req) => {
+    return req.selfieUrl || null;
+  };
+
   const getLogoImage = (req) => {
-    return req.logoImage || req.restaurantLogo || req.logo || req.logo_url || null;
+    // profileImageUrl is what the app's own profile-picture upload writes;
+    // selfieUrl is the verification selfie, used as a fallback so new
+    // requests that haven't set a profile picture yet still show a face
+    // instead of a blank avatar.
+    return req.profileImageUrl || req.selfieUrl || req.logoImage || req.restaurantLogo || req.logo || req.logo_url || null;
   };
 
   return (
@@ -164,6 +225,13 @@ const Restaurant = () => {
         >
           <span className="tab-prefix-icon">📋</span> Verification Requests 
           <span className="tab-badge-count">{pendingCount}</span>
+        </button>
+        <button 
+          className={`btn-tab ${activeTab === 'Rejected' ? 'btn-tab-active' : ''}`}
+          onClick={() => { setActiveTab('Rejected'); setSearchQuery(''); }}
+        >
+          <span className="tab-prefix-icon">✕</span> Rejected
+          <span className="tab-badge-count">{rejectedPartners.length}</span>
         </button>
       </div>
 
@@ -220,7 +288,7 @@ const Restaurant = () => {
         {/* Directory Header with Search aligned like Template */}
         <div className="directory-control-header">
           <h3 className="directory-title">
-            {activeTab === 'Active Partners' ? 'Partner Directory' : 'Verification Queue'}
+            {activeTab === 'Active Partners' ? 'Partner Directory' : activeTab === 'Verification Requests' ? 'Verification Queue' : 'Rejected Requests'}
           </h3>
           <div className="search-box-container">
             <input 
@@ -294,7 +362,7 @@ const Restaurant = () => {
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : activeTab === 'Verification Requests' ? (
           <div className="table-responsive">
             <table className="rest-table">
               <thead>
@@ -330,7 +398,7 @@ const Restaurant = () => {
                     </td>
                     <td className="text-right">
                       <div className="action-buttons">
-                        <button className="btn-action-text text-red" onClick={() => handleReject(request.id)}>Reject</button>
+                        <button className="btn-action-text text-red" onClick={() => startReject(request.id)}>Reject</button>
                         <button className="btn-action-text text-green" onClick={() => handleApprove(request.id)}>Approve</button>
                         <button className="btn-action-solid-purple" onClick={() => setSelectedRequest(request)}>Details</button>
                       </div>
@@ -340,6 +408,53 @@ const Restaurant = () => {
                 {filteredPending.length === 0 && (
                   <tr>
                     <td colSpan="5" className="empty-table-cell">No pending verification requests found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="rest-table">
+              <thead>
+                <tr>
+                  <th>RESTAURANT NAME</th>
+                  <th>OWNER DETAILS</th>
+                  <th>CITY</th>
+                  <th>REASON</th>
+                  <th className="text-right">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRejected.map((request) => (
+                  <tr key={request.id}>
+                    <td>
+                      <div className="flex-cell">
+                        <img src={getLogoImage(request) || DEFAULT_LOGO} alt="Logo" className="table-row-logo" />
+                        <div>
+                          <p className="primary-text">{request.restaurantName || 'Unnamed Rest.'}</p>
+                          <p className="secondary-text">{request.address || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <p className="primary-text">{request.ownerName || 'N/A'}</p>
+                      <p className="secondary-text">{request.email || 'N/A'}</p>
+                    </td>
+                    <td>{request.city || 'N/A'}</td>
+                    <td>
+                      <p className="secondary-text">{request.rejectionReason || 'No reason recorded'}</p>
+                    </td>
+                    <td className="text-right">
+                      <div className="action-buttons">
+                        <button className="btn-action-solid-purple" onClick={() => setSelectedRequest(request)}>Details</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredRejected.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="empty-table-cell">No rejected requests.</td>
                   </tr>
                 )}
               </tbody>
@@ -383,7 +498,6 @@ const Restaurant = () => {
                   <div className="fullscreen-detail-item"><span>Owner Full Name:</span><p>{selectedRequest.ownerName || 'N/A'}</p></div>
                   <div className="fullscreen-detail-item"><span>Phone Number:</span><p>{selectedRequest.phone || 'N/A'}</p></div>
                   <div className="fullscreen-detail-item"><span>Email Address:</span><p>{selectedRequest.email || 'N/A'}</p></div>
-                  <div className="fullscreen-detail-item"><span>Owner CNIC Number:</span><p>{selectedRequest.ownerCnic || 'N/A'}</p></div>
                 </div>
               </div>
 
@@ -391,9 +505,15 @@ const Restaurant = () => {
                 <h4>Uploaded Verification Documents</h4>
                 <div className="fullscreen-documents-grid">
                   <div className="fullscreen-doc-box">
-                    <span className="fullscreen-doc-title">CNIC (National Identity Card)</span>
-                    <div className="fullscreen-image-wrapper" onClick={() => openImageInNewTab(getCnicImage(selectedRequest))}>
-                      <img src={getCnicImage(selectedRequest) || DEFAULT_DOC} alt="CNIC" onError={(e) => { e.currentTarget.src = DEFAULT_DOC; }} />
+                    <span className="fullscreen-doc-title">CNIC Front</span>
+                    <div className="fullscreen-image-wrapper" onClick={() => openImageInNewTab(getCnicFrontImage(selectedRequest))}>
+                      <img src={getCnicFrontImage(selectedRequest) || DEFAULT_DOC} alt="CNIC Front" onError={(e) => { e.currentTarget.src = DEFAULT_DOC; }} />
+                    </div>
+                  </div>
+                  <div className="fullscreen-doc-box">
+                    <span className="fullscreen-doc-title">CNIC Back</span>
+                    <div className="fullscreen-image-wrapper" onClick={() => openImageInNewTab(getCnicBackImage(selectedRequest))}>
+                      <img src={getCnicBackImage(selectedRequest) || DEFAULT_DOC} alt="CNIC Back" onError={(e) => { e.currentTarget.src = DEFAULT_DOC; }} />
                     </div>
                   </div>
                   <div className="fullscreen-doc-box">
@@ -402,15 +522,47 @@ const Restaurant = () => {
                       <img src={getLicenseImage(selectedRequest) || DEFAULT_DOC} alt="License" onError={(e) => { e.currentTarget.src = DEFAULT_DOC; }} />
                     </div>
                   </div>
+                  <div className="fullscreen-doc-box">
+                    <span className="fullscreen-doc-title">Live Selfie</span>
+                    <div className="fullscreen-image-wrapper" onClick={() => openImageInNewTab(getSelfieImage(selectedRequest))}>
+                      <img src={getSelfieImage(selectedRequest) || DEFAULT_DOC} alt="Selfie" onError={(e) => { e.currentTarget.src = DEFAULT_DOC; }} />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="fullscreen-modal-footer">
-              <button className="btn-reject" onClick={() => handleReject(selectedRequest.id)}>Reject Partner Request</button>
+              <button className="btn-reject" onClick={() => startReject(selectedRequest.id)}>Reject Partner Request</button>
               <button className="btn-approve" onClick={() => handleApprove(selectedRequest.id)}>Approve & Go Live</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {rejectingId && (
+        <div className="modal-overlay" onClick={() => setRejectingId(null)}>
+          <div className="reject-reason-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Reason for rejection</h3>
+            <p>This is sent to the applicant so they know exactly what to fix before resubmitting.</p>
+            <textarea
+              rows={4}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g. License number could not be verified - please re-upload a clearer photo."
+            />
+            <div className="reject-reason-actions">
+              <button className="btn-secondary" onClick={() => setRejectingId(null)}>Cancel</button>
+              <button className="btn-reject" onClick={confirmReject}>Confirm Reject</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {lightboxImage && (
+        <div className="modal-overlay" onClick={() => setLightboxImage(null)}>
+          <img src={lightboxImage} alt="Enlarged document" className="lightbox-image" onClick={(e) => e.stopPropagation()} />
+          <button className="lightbox-close-btn" onClick={() => setLightboxImage(null)}>✕</button>
         </div>
       )}
     </div>

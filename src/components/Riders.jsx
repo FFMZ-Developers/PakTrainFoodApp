@@ -23,6 +23,9 @@ const [profiles,setProfiles] = useState({});
 const [activeTab,setActiveTab] = useState("Active Riders");
 const [selectedRequest,setSelectedRequest] = useState(null);
 const [search,setSearch] = useState("");
+const [rejectingId, setRejectingId] = useState(null);
+const [rejectReason, setRejectReason] = useState("");
+const [lightboxImage, setLightboxImage] = useState(null);
 
 
 
@@ -75,7 +78,7 @@ collection(
 db,
 "Users",
 "Delivery",
-"Register"
+"VerifiedRegister"
 )
 );
 
@@ -85,7 +88,7 @@ let img={};
 
 snap.forEach(d=>{
 
-img[d.id]=d.data().profileImageUrl;
+img[d.id]=d.data().profileImageUrl || d.data().selfieUrl;
 
 });
 
@@ -109,6 +112,10 @@ loadProfile();
 
 const approve = async(id)=>{
 
+if (!window.confirm("Are you sure you want to approve this rider? Their account will be activated immediately.")) {
+  return;
+}
+
 
 await updateDoc(
 
@@ -123,7 +130,9 @@ id
 {
 status:"Approved",
 isVerified:true,
-isLive:true
+isLive:true,
+verificationStatus:"verified",
+rejectionReason:null
 }
 
 );
@@ -133,38 +142,41 @@ setSelectedRequest(null);
 
 };
 
-
-
-
-
-
-
-const reject = async(id)=>{
-
-
-await updateDoc(
-
-doc(
-db,
-"Users",
-"Delivery",
-"VerifiedRegister",
-id
-),
-
-{
-status:"Rejected",
-isVerified:false,
-isLive:false
-}
-
-);
-
-
-setSelectedRequest(null);
-
+const startReject = (id) => {
+  setRejectingId(id);
+  setRejectReason("");
 };
 
+const confirmReject = async () => {
+
+  if (!rejectingId) return;
+  if (!rejectReason.trim()) return;
+
+  await updateDoc(
+
+  doc(
+  db,
+  "Users",
+  "Delivery",
+  "VerifiedRegister",
+  rejectingId
+  ),
+
+  {
+  status:"Rejected",
+  isVerified:false,
+  isLive:false,
+  verificationStatus:"rejected",
+  rejectionReason:rejectReason.trim()
+  }
+
+  );
+
+  setSelectedRequest(null);
+  setRejectingId(null);
+  setRejectReason("");
+
+};
 
 
 
@@ -213,8 +225,18 @@ r.isVerified===true
 
 const pendingRiders = riders.filter(r=>
 
-r.status!=="Approved" ||
-r.isVerified!==true
+r.status!=="Approved" &&
+r.status!=="Rejected"
+
+);
+
+
+
+
+
+const rejectedRiders = riders.filter(r=>
+
+r.status==="Rejected"
 
 );
 
@@ -226,8 +248,11 @@ const data = activeTab==="Active Riders"
 ?
 activeRiders
 :
-pendingRiders;
-
+activeTab==="Verification Requests"
+?
+pendingRiders
+:
+rejectedRiders;
 
 
 
@@ -320,6 +345,31 @@ onClick={()=>setActiveTab("Verification Requests")}
 <span className="tab-badge-count">
 
 {pendingRiders.length}
+
+</span>
+
+</button>
+
+
+<button
+
+className={
+activeTab==="Rejected"
+?
+"btn-tab btn-tab-active"
+:
+"btn-tab"
+}
+
+onClick={()=>setActiveTab("Rejected")}
+
+>
+
+✕ Rejected
+
+<span className="tab-badge-count">
+
+{rejectedRiders.length}
 
 </span>
 
@@ -503,7 +553,11 @@ activeTab==="Active Riders"
 ?
 "Rider Directory"
 :
+activeTab==="Verification Requests"
+?
 "Verification Queue"
+:
+"Rejected Requests"
 }
 
 </h3>
@@ -679,6 +733,10 @@ Go Offline
 
 :
 
+activeTab==="Verification Requests"
+
+?
+
 <>
 
 
@@ -700,7 +758,7 @@ Approve
 
 className="btn-action-text text-red"
 
-onClick={()=>reject(r.id)}
+onClick={()=>startReject(r.id)}
 
 >
 
@@ -726,6 +784,19 @@ Details
 
 </>
 
+:
+
+<button
+
+className="btn-action-solid-purple"
+
+onClick={()=>setSelectedRequest(r)}
+
+>
+
+Details
+
+</button>
 
 }
 
@@ -825,6 +896,10 @@ Rider Details
 
 <p>Address: {selectedRequest.address}</p>
 
+<p>Driving License Number: {selectedRequest.drivingLicenseNumber || 'N/A'}</p>
+
+<p>Bike Registration Number: {selectedRequest.vehicleRegistrationNumber || 'N/A'}</p>
+
 
 </div>
 
@@ -846,18 +921,16 @@ Documents
 <img
 
 src={
+selectedRequest.cnicFrontUrl ||
 selectedRequest.ownerCnicUrlfront ||
 DEFAULT_IMAGE
 }
 
 className="fullscreen-image-wrapper"
 
-alt="cnic"
+alt="cnic front"
 
-onClick={()=>window.open(
-selectedRequest.ownerCnicUrlfront,
-"_blank"
-)}
+onClick={()=>setLightboxImage(selectedRequest.cnicFrontUrl || selectedRequest.ownerCnicUrlfront)}
 
 />
 
@@ -867,23 +940,73 @@ selectedRequest.ownerCnicUrlfront,
 <img
 
 src={
+selectedRequest.cnicBackUrl ||
 selectedRequest.ownerCnicUrlback ||
 DEFAULT_IMAGE
 }
 
 className="fullscreen-image-wrapper"
 
-alt="cnic"
+alt="cnic back"
 
-onClick={()=>window.open(
-selectedRequest.ownerCnicUrlback,
-"_blank"
-)}
+onClick={()=>setLightboxImage(selectedRequest.cnicBackUrl || selectedRequest.ownerCnicUrlback)}
+
+/>
+
+
+
+<img
+
+src={
+selectedRequest.selfieUrl ||
+DEFAULT_IMAGE
+}
+
+className="fullscreen-image-wrapper"
+
+alt="selfie"
+
+onClick={()=>setLightboxImage(selectedRequest.selfieUrl)}
+
+/>
+
+
+
+<img
+
+src={
+selectedRequest.drivingLicenseImageUrl ||
+DEFAULT_IMAGE
+}
+
+className="fullscreen-image-wrapper"
+
+alt="driving license"
+
+onClick={()=>setLightboxImage(selectedRequest.drivingLicenseImageUrl)}
+
+/>
+
+
+
+<img
+
+src={
+selectedRequest.bikeImageUrl ||
+DEFAULT_IMAGE
+}
+
+className="fullscreen-image-wrapper"
+
+alt="bike"
+
+onClick={()=>setLightboxImage(selectedRequest.bikeImageUrl)}
 
 />
 
 
 </div>
+
 
 
 
@@ -901,7 +1024,7 @@ selectedRequest.ownerCnicUrlback,
 
 className="btn-reject"
 
-onClick={()=>reject(selectedRequest.id)}
+onClick={()=>startReject(selectedRequest.id)}
 
 >
 
@@ -938,6 +1061,34 @@ Approve
 
 }
 
+
+
+{rejectingId && (
+<div className="modal-overlay" onClick={() => setRejectingId(null)}>
+  <div className="reject-reason-modal" onClick={(e) => e.stopPropagation()}>
+    <h3>Reason for rejection</h3>
+    <p>This is sent to the applicant so they know exactly what to fix before resubmitting.</p>
+    <textarea
+      rows={4}
+      value={rejectReason}
+      onChange={(e) => setRejectReason(e.target.value)}
+      placeholder="e.g. Vehicle registration photo is unreadable - please re-upload."
+    />
+    <div className="reject-reason-actions">
+      <button className="btn-secondary" onClick={() => setRejectingId(null)}>Cancel</button>
+      <button className="btn-reject" onClick={confirmReject}>Confirm Reject</button>
+    </div>
+  </div>
+</div>
+)}
+
+
+{lightboxImage && (
+<div className="modal-overlay" onClick={() => setLightboxImage(null)}>
+  <img src={lightboxImage} alt="Enlarged document" className="lightbox-image" onClick={(e) => e.stopPropagation()} />
+  <button className="lightbox-close-btn" onClick={() => setLightboxImage(null)}>✕</button>
+</div>
+)}
 
 
 </div>
