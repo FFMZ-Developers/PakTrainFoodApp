@@ -19,8 +19,6 @@ import androidx.fragment.app.Fragment;
 
 import com.example.paktrainfoodapp.R;
 import com.example.paktrainfoodapp.ui.main.MainActivity;
-import com.example.paktrainfoodapp.ui.main.Delivery.DeliveryRegisterFragment;
-import com.example.paktrainfoodapp.ui.main.Restaurant.restaurant_registers;
 import com.example.paktrainfoodapp.utils.GoogleSignInHelper;
 import com.example.paktrainfoodapp.utils.PrefManager;
 import com.google.android.material.textfield.TextInputEditText;
@@ -187,6 +185,28 @@ public class LoginFragment extends Fragment {
                 roleDoc = "Passenger";
         }
 
+        // Restaurant/Delivery data only ever lives at VerifiedRegister/{uid} -
+        // there is no separate "Register" pre-step for those two roles (only
+        // Passenger uses that collection). Checking "Register" for them
+        // always came back empty, which made the wizard reopen on every
+        // single login no matter what verificationStatus they were
+        // actually at - this branch goes straight to the real location.
+        if (selectedRole.equals("RESTAURANT") || selectedRole.equals("DELIVERY")) {
+
+            db.collection("Users")
+                    .document(roleDoc)
+                    .collection("VerifiedRegister")
+                    .document(uid)
+                    .get()
+                    .addOnSuccessListener(verifiedDoc -> handleUserCheck(verifiedDoc, uid, email, roleDoc))
+                    .addOnFailureListener(e -> {
+                        progressDialog.dismiss();
+                        Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+
+            return;
+        }
+
         // 🔍 Sab se pehle Register collection check karo
         db.collection("Users")
                 .document(roleDoc)
@@ -261,27 +281,34 @@ public class LoginFragment extends Fragment {
         PrefManager pref = new PrefManager(requireContext());
 
         if (doc.exists()) {
-            // 🚨 SECURITY GATE: Pehle check karo kya yeh Restaurant hai aur iska status false to nahi?
-            if (selectedRole.equals("RESTAURANT")
-                    || selectedRole.equals("DELIVERY")) {
 
-                Boolean isVerified = doc.getBoolean("isVerified");
+            // A blocked account is stopped here, before ever reaching
+            // MainActivity - unlike a rejection (which still lets the
+            // applicant log in to see why and resubmit), a block is meant
+            // to prevent login outright.
+            Boolean isBlocked = doc.getBoolean("isBlocked");
 
-                if (isVerified == null || !isVerified) {
+            if (isBlocked != null && isBlocked) {
 
-                    progressDialog.dismiss();
+                progressDialog.dismiss();
 
-                    FirebaseAuth.getInstance().signOut();
+                FirebaseAuth.getInstance().signOut();
 
-                    Toast.makeText(
-                            getContext(),
-                            "Your profile is waiting for Admin Approval.",
-                            Toast.LENGTH_LONG
-                    ).show();
+                Toast.makeText(
+                        getContext(),
+                        "This account has been blocked. Please contact support.",
+                        Toast.LENGTH_LONG
+                ).show();
 
-                    return;
-                }
+                return;
             }
+
+            // Restaurant/Delivery accounts that aren't verified yet still get
+            // signed in - MainActivity checks verificationStatus itself and
+            // routes to the Pending/Rejected screen instead of the
+            // dashboard. Blocking here (the old behaviour) meant those
+            // screens could never actually be reached, since sign-out
+            // happened before MainActivity ever loaded.
 
             // 🎉 Agar PASSENGER hai, ya approved RESTAURANT hai, to hi yeh niche wala purana code chalay ga:
             String name = doc.getString("name"); // ya jo bhi field restaurantName hai
@@ -356,31 +383,31 @@ public class LoginFragment extends Fragment {
     }
 
     private void openRestaurantRegisterForm(String uid, String email) {
-        restaurant_registers fragment = new restaurant_registers();
-        Bundle args = new Bundle();
-        args.putString("uid", uid);
-        args.putString("email", email);
-        fragment.setArguments(args);
 
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (isAdded() && getActivity() instanceof AuthActivity) {
-                ((AuthActivity) getActivity()).loadFragment(fragment, true);
-            }
-        }, 300);
+        Intent intent = new Intent(getActivity(),
+                com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.class);
+
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_ROLE, "RESTAURANT");
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_UID, uid);
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_EMAIL, email);
+
+        startActivity(intent);
+
+        if (getActivity() != null) requireActivity().finish();
     }
 
     private void openDeliveryRegisterForm(String uid, String email) {
-        DeliveryRegisterFragment fragment = new DeliveryRegisterFragment();
-        Bundle args = new Bundle();
-        args.putString("uid", uid);
-        args.putString("email", email);
-        fragment.setArguments(args);
 
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (isAdded() && getActivity() instanceof AuthActivity) {
-                ((AuthActivity) getActivity()).loadFragment(fragment, true);
-            }
-        }, 300);
+        Intent intent = new Intent(getActivity(),
+                com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.class);
+
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_ROLE, "DELIVERY");
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_UID, uid);
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_EMAIL, email);
+
+        startActivity(intent);
+
+        if (getActivity() != null) requireActivity().finish();
     }
 
     // ---------------- GOOGLE SIGN-IN ---------------- //

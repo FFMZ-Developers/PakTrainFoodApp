@@ -64,6 +64,10 @@
             android:name=".ui.main.MainActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".ui.shared.verification.VerificationWizardActivity"
+            android:exported="false" />
+
         <!-- 🔥 LOCATION SERVICE (With Android Q+ type safety) -->
         <service
             android:name=".ui.main.Passenger.LocationService"

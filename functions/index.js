@@ -27,6 +27,14 @@ require("./triggers/orders/onOrderPickedUp").onOrderPickedUp;
 exports.onOrderCompleted =
 require("./triggers/orders/onOrderCompleted").onOrderCompleted;
 
+// Verification Triggers (Module 1)
+
+exports.onRestaurantVerificationChanged =
+require("./triggers/verification/onRestaurantVerificationChanged").onRestaurantVerificationChanged;
+
+exports.onDeliveryVerificationChanged =
+require("./triggers/verification/onDeliveryVerificationChanged").onDeliveryVerificationChanged;
+
 
 
 
