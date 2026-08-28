@@ -50,6 +50,8 @@ const NOTIFICATION_TYPES = {
 
     OFFER: "offer",
 
+    VERIFICATION: "verification",
+
     SYSTEM: "system"
 
 };

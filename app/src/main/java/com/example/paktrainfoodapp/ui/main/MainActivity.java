@@ -14,11 +14,8 @@ import androidx.fragment.app.Fragment;
 
 import com.example.paktrainfoodapp.R;
 import com.example.paktrainfoodapp.ui.main.Delivery.dashboard.DeliveryDashboardFragment;
-import com.example.paktrainfoodapp.ui.main.Delivery.DeliveryRegisterFragment;
 import com.example.paktrainfoodapp.ui.main.Passenger.Passenger_Fragment_Loader;
-import com.example.paktrainfoodapp.ui.main.Restaurant.RestaurantPendingFragment;
 import com.example.paktrainfoodapp.ui.main.Restaurant.restaurant_LoadFragment;
-import com.example.paktrainfoodapp.ui.main.Restaurant.restaurant_registers;
 import com.example.paktrainfoodapp.utils.PrefManager;
 import com.google.firebase.appcheck.FirebaseAppCheck;
 import com.google.firebase.auth.FirebaseAuth;
@@ -266,32 +263,34 @@ public class MainActivity extends AppCompatActivity {
                 .addOnSuccessListener(this::handleRestaurantDocument)
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    loadFragment(new restaurant_registers());
+                    startVerificationWizard("RESTAURANT", uid, auth.getCurrentUser().getEmail());
                 });
     }
 
     private void handleRestaurantDocument(DocumentSnapshot doc) {
         if (doc == null || !doc.exists()) {
             prefManager.setRegistered(false, auth.getCurrentUser().getEmail());
-            loadFragment(new restaurant_registers());
+            startVerificationWizard("RESTAURANT", auth.getCurrentUser().getUid(), auth.getCurrentUser().getEmail());
             return;
         }
 
         Boolean isVerified = doc.getBoolean("isVerified");
         String email = doc.getString("email");
         String city = doc.getString("city");
+        String status = doc.getString("verificationStatus");
 
         if (isVerified != null && isVerified) {
             prefManager.setRegistered(true, email);
             prefManager.setIsRestaurantVerified(true);
             prefManager.setUserCity(city);
             loadFragment(new restaurant_LoadFragment());
-        } else {
-//            prefManager.setRegistered(false, email);
-//            loadFragment(new restaurant_registers());
+        } else if ("rejected".equals(status)) {
             prefManager.setRegistered(true, email);
-
-            loadFragment(new RestaurantPendingFragment());
+            loadFragment(com.example.paktrainfoodapp.ui.shared.verification.RejectedFragment.newInstance(
+                    "RESTAURANT", auth.getCurrentUser().getUid(), email, doc.getString("rejectionReason")));
+        } else {
+            prefManager.setRegistered(true, email);
+            loadFragment(new com.example.paktrainfoodapp.ui.shared.verification.PendingReviewFragment());
         }
     }
 
@@ -309,30 +308,49 @@ public class MainActivity extends AppCompatActivity {
                 .addOnSuccessListener(this::handleDeliveryDocument)
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    loadFragment(new DeliveryRegisterFragment());
+                    startVerificationWizard("DELIVERY", uid, auth.getCurrentUser().getEmail());
                 });
     }
 
     private void handleDeliveryDocument(DocumentSnapshot doc) {
         if (doc == null || !doc.exists()) {
             prefManager.setRegistered(false, auth.getCurrentUser().getEmail());
-            loadFragment(new DeliveryRegisterFragment());
+            startVerificationWizard("DELIVERY", auth.getCurrentUser().getUid(), auth.getCurrentUser().getEmail());
             return;
         }
 
         Boolean isVerified = doc.getBoolean("isVerified");
         String email = doc.getString("email");
         String city = doc.getString("city");
+        String status = doc.getString("verificationStatus");
 
         if (isVerified != null && isVerified) {
             prefManager.setRegistered(true, email);
             prefManager.setIsDeliveryVerified(true);
             prefManager.setUserCity(city);
             loadFragment(new DeliveryDashboardFragment());
+        } else if ("rejected".equals(status)) {
+            prefManager.setRegistered(true, email);
+            loadFragment(com.example.paktrainfoodapp.ui.shared.verification.RejectedFragment.newInstance(
+                    "DELIVERY", auth.getCurrentUser().getUid(), email, doc.getString("rejectionReason")));
         } else {
-            prefManager.setRegistered(false, email);
-            loadFragment(new DeliveryRegisterFragment());
+            prefManager.setRegistered(true, email);
+            loadFragment(new com.example.paktrainfoodapp.ui.shared.verification.PendingReviewFragment());
         }
+    }
+
+    /** Launches the multi-step verification wizard for a brand-new applicant. */
+    private void startVerificationWizard(String role, String uid, String email) {
+
+        Intent intent = new Intent(this,
+                com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.class);
+
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_ROLE, role);
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_UID, uid);
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_EMAIL, email);
+
+        startActivity(intent);
+        finish();
     }
 
     private void loadFragment(Fragment fragment) {
