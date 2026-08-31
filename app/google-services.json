@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "584020651389",
+    "firebase_url": "https://paktrainfoodservice-default-rtdb.firebaseio.com",
     "project_id": "paktrainfoodservice",
     "storage_bucket": "paktrainfoodservice.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.example.paktrainfoodapp"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "584020651389-4gem1l8fjjkk091jdkjn33ramlmdhnb7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.paktrainfoodapp",
+            "certificate_hash": "b6665e54652bb069c31aaefd4e2165eca59c6ca0"
+          }
+        },
+        {
+          "client_id": "584020651389-cfgph68rrciith85tdne95o9racevfqk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAoB8vKW2f5JMD_DgY_vzfE-62g76-oTPQ"
@@ -20,7 +34,49 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "584020651389-cfgph68rrciith85tdne95o9racevfqk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:584020651389:android:41df01f15ad8b0c6c1f014",
+        "android_client_info": {
+          "package_name": "com.fahad.paktrainfoodservice"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "584020651389-hdm9snvbsu0ejhklev0orbe5rqpurcnd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fahad.paktrainfoodservice",
+            "certificate_hash": "b6665e54652bb069c31aaefd4e2165eca59c6ca0"
+          }
+        },
+        {
+          "client_id": "584020651389-cfgph68rrciith85tdne95o9racevfqk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoB8vKW2f5JMD_DgY_vzfE-62g76-oTPQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "584020651389-cfgph68rrciith85tdne95o9racevfqk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

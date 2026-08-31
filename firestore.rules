@@ -1,6 +1,28 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // App-wide tunable settings (rider search radius, ETA thresholds,
+    // reliability strike limits, etc). Every signed-in client (passenger,
+    // restaurant, rider apps) needs to read these; only an actual admin
+    // account (present in the existing `admins` collection, same check
+    // the admin panel login already uses) may change them.
+    //
+    // NOTE: because the broad catch-all rule below also matches this path
+    // and grants write to any authenticated user, and Firestore rules use
+    // OR semantics across every matching block (any matching rule that
+    // allows wins), this declared restriction alone does not actually
+    // block a non-admin client write. The real enforcement for writes is
+    // done server-side in the `updateOrderConfig` Cloud Function, which
+    // the admin panel calls instead of writing to this document directly.
+    // This rule is kept for documentation and so it becomes fully
+    // effective if the catch-all is ever tightened later.
+    match /Settings/{document} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

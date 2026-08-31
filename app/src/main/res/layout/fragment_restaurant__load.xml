@@ -3,7 +3,7 @@
     android:id="@+id/dashboard_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="@color/surface">
 
     <!-- Fragment Container -->
     <FrameLayout
@@ -20,7 +20,7 @@
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
         android:gravity="center"
-        android:background="@color/white"
+        android:background="@color/surface"
         android:padding="4dp">
 
         <!-- HOme Button -->
@@ -93,7 +93,7 @@
                 android:textStyle="bold"/>
         </LinearLayout>
 
-        <!-- Delivery -->
+        <!-- Notifications -->
         <LinearLayout
             android:id="@+id/btn_delivery"
             android:orientation="vertical"
@@ -101,15 +101,48 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:layout_width="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:padding="4dp">
-            <ImageView
-                android:id="@+id/icon_delivery"
-                android:src="@drawable/delivery"
-                android:layout_width="28dp"
-                android:layout_height="28dp"/>
+
+            <FrameLayout
+                android:layout_width="34dp"
+                android:layout_height="30dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <ImageView
+                    android:id="@+id/icon_delivery"
+                    android:src="@drawable/ic_notification"
+                    android:layout_gravity="center"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"/>
+
+                <TextView
+                    android:id="@+id/txtRestaurantBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:minWidth="18dp"
+                    android:minHeight="18dp"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingTop="1dp"
+                    android:paddingBottom="1dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text="0"
+                    android:textColor="#FFFFFF"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    android:background="@drawable/bg_notification_badge"/>
+            </FrameLayout>
+
             <TextView
                 android:id="@+id/text_delivery"
-                android:text="Delivery"
+                android:text="Alerts"
                 android:layout_height="wrap_content"
                 android:layout_width="wrap_content"
                 android:textSize="12sp"

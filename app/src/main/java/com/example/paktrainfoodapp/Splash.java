@@ -8,6 +8,7 @@ import android.view.WindowManager;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.paktrainfoodapp.ui.main.FirebaseSeeder;
 import com.example.paktrainfoodapp.ui.auth.AuthActivity;
 import com.example.paktrainfoodapp.ui.main.MainActivity;
 import com.example.paktrainfoodapp.utils.PrefManager;
@@ -47,6 +48,8 @@ public class Splash extends AppCompatActivity {
             e.printStackTrace();
         }
 
+        FirebaseSeeder seeder = new FirebaseSeeder();
+        seeder.seedAll();
         // 🚂 Background worker for station coordinates (Saves stations data offline)
         SaveStationLocations.saveAllStations();
 
@@ -75,6 +78,7 @@ public class Splash extends AppCompatActivity {
             }
         }, SPLASH_DELAY_MS);
     }
+
 }
 
 //

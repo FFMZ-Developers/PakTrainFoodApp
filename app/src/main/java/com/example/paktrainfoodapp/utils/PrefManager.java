@@ -175,9 +175,9 @@ public class PrefManager {
         return pref.getString(KEY_DELIVERY_ID, null);
     }
 
-    // 🔹 ADDED: Restaurant Name
-    public void seDeliveryName(String name) {
-        editor.putString(KEY_DELIVERY_ID, name);
+    // 🔹 ADDED: Delivery Name (FIXED: was overwriting KEY_DELIVERY_ID by mistake)
+    public void setDeliveryName(String name) {
+        editor.putString(KEY_DELIVERY_NAME, name);
         editor.apply();
     }
 
@@ -200,6 +200,5 @@ public class PrefManager {
         editor.apply();
     }
 }
-
 
 //

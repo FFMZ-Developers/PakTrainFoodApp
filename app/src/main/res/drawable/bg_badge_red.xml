@@ -1,5 +1,6 @@
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="@color/red" />
-    <corners android:radius="8dp" />
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFEBEE" />
+    <corners android:radius="20dp" />
 </shape>
-<!--It is a red color-->

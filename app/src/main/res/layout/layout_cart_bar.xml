@@ -2,7 +2,7 @@
 <LinearLayout android:id="@+id/cartFloatingBar"
     android:layout_width="match_parent"
     android:layout_height="60dp"
-    android:background="#FFFFFF"
+    android:background="@color/surface"
     android:gravity="center_vertical"
     android:padding="10dp"
     android:elevation="10dp"
@@ -15,6 +15,12 @@
         android:layout_weight="1"
         android:text="Total: Rs. 0"
         android:textStyle="bold"/>
+    <Button
+        android:id="@+id/btnClear"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Clear Cart"
+        android:backgroundTint="@color/red"/>
 
     <Button
         android:id="@+id/btnOrderNowCart"

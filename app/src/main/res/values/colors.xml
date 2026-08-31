@@ -17,5 +17,16 @@
     <color name="teal_500">#009688</color>
     <color name="transparent">#00000000</color>
     <color name="half_white">#E5E4E2</color>
+
+    <!-- Semantic colors: each has a values-night counterpart so every screen
+         follows the light/dark setting automatically. -->
+    <color name="app_background">#F8F9FA</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_hint">#9E9E9E</color>
+    <color name="divider">#EEEEEE</color>
+    <color name="input_background">#F8F9FA</color>
+    <color name="input_stroke">#DDDDDD</color>
 </resources>
 <!---->

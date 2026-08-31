@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="12dp"
-    android:background="#FAFAFA">
+    android:background="@color/app_background">
 
     <ProgressBar
         android:id="@+id/progressRefresh"
@@ -17,7 +17,7 @@
         android:id="@+id/recyclerOrders"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="gone" />
+        android:visibility="gone"/>
 
     <!-- Empty State -->
     <LinearLayout
@@ -30,8 +30,8 @@
         <ImageView
             android:layout_width="120dp"
             android:layout_height="120dp"
-            android:src="@drawable/deliveryboy"
-            android:contentDescription="No Orders" />
+            android:contentDescription="No Orders"
+            android:src="@drawable/deliveryboy" />
 
         <TextView
             android:layout_width="wrap_content"

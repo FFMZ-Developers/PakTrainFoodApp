@@ -3,7 +3,10 @@
     android:id="@+id/dashboard_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="@color/surface">
+
+
+
 
     <!-- Fragment Container -->
     <FrameLayout
@@ -20,12 +23,15 @@
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
         android:gravity="center"
-        android:background="@color/white"
+        android:elevation="8dp"
+        android:background="@color/surface"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:padding="4dp">
 
-        <!-- Menu Button -->
+        <!-- Order Food (journey selection) -->
         <LinearLayout
-            android:id="@+id/btn_menu"
+            android:id="@+id/btnJourney"
             android:orientation="vertical"
             android:gravity="center"
             android:layout_weight="1"
@@ -33,16 +39,16 @@
             android:layout_height="match_parent"
             android:padding="4dp">
             <ImageView
-                android:id="@+id/icon_menu"
+                android:id="@+id/icon_journey"
                 android:src="@drawable/ic_browse_menu"
                 android:layout_width="28dp"
                 android:layout_height="28dp"/>
             <TextView
-                android:id="@+id/text_menu"
-                android:text="Menu"
-                android:textSize="12sp"
-                android:layout_height="wrap_content"
+                android:id="@+id/text_journey"
                 android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Order Food"
+                android:textSize="12sp"
                 android:textColor="@color/gray"/>
         </LinearLayout>
 

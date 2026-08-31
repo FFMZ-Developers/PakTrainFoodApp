@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F7F7F7"
-    tools:context=".ui.main.Restaurant.resturent_DashboardFragment">
+    tools:context=".ui.main.Restaurant.dashboard.resturent_DashboardFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,6 +26,24 @@
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
                 android:src="@drawable/station3" />
+
+            <!-- Scrim so the title stays readable over any photo -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#66000000" />
+
+            <!-- Title: restaurant name from Firestore -->
+            <TextView
+                android:id="@+id/tvDashboardTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|start"
+                android:layout_margin="16dp"
+                android:text="Restaurant"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold" />
 
             <!-- Verified Tag -->
             <TextView
@@ -71,7 +89,8 @@
                 android:layout_rowWeight="1"
                 card_view:cardCornerRadius="12dp"
                 card_view:cardElevation="3dp"
-                android:layout_margin="6dp">
+                android:layout_margin="6dp"
+    card_view:cardBackgroundColor="@color/surface">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -112,7 +131,8 @@
                 android:layout_rowWeight="1"
                 card_view:cardCornerRadius="12dp"
                 card_view:cardElevation="3dp"
-                android:layout_margin="6dp">
+                android:layout_margin="6dp"
+    card_view:cardBackgroundColor="@color/surface">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -153,7 +173,8 @@
                 android:layout_rowWeight="1"
                 card_view:cardCornerRadius="12dp"
                 card_view:cardElevation="3dp"
-                android:layout_margin="6dp">
+                android:layout_margin="6dp"
+    card_view:cardBackgroundColor="@color/surface">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -195,7 +216,8 @@
                 android:layout_rowWeight="1"
                 card_view:cardCornerRadius="12dp"
                 card_view:cardElevation="3dp"
-                android:layout_margin="6dp">
+                android:layout_margin="6dp"
+    card_view:cardBackgroundColor="@color/surface">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -235,7 +257,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             card_view:cardCornerRadius="12dp"
-            card_view:cardElevation="3dp">
+            card_view:cardElevation="3dp"
+    card_view:cardBackgroundColor="@color/surface">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -336,7 +359,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             card_view:cardCornerRadius="12dp"
-            card_view:cardElevation="3dp">
+            card_view:cardElevation="3dp"
+    card_view:cardBackgroundColor="@color/surface">
 
             <LinearLayout
                 android:layout_width="match_parent"
