@@ -7,6 +7,7 @@ import {
   updateDoc
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import AccountActionsModal from './AccountActionsModal';
 import './Restaurant.css';
 
 const DEFAULT_LOGO = 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80';
@@ -21,6 +22,7 @@ const Restaurant = () => {
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [lightboxImage, setLightboxImage] = useState(null);
+  const [managingUser, setManagingUser] = useState(null);
 
   useEffect(() => {
     const partnersRef = collection(db, 'Users', 'Restaurant', 'VerifiedRegister');
@@ -350,6 +352,12 @@ const Restaurant = () => {
                         >
                           {partner.isLive ? 'Go Offline' : 'Go Live'}
                         </button>
+                        <button
+                          className="btn-action-outline"
+                          onClick={() => setManagingUser(partner)}
+                        >
+                          Manage
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -564,6 +572,14 @@ const Restaurant = () => {
           <img src={lightboxImage} alt="Enlarged document" className="lightbox-image" onClick={(e) => e.stopPropagation()} />
           <button className="lightbox-close-btn" onClick={() => setLightboxImage(null)}>✕</button>
         </div>
+      )}
+
+      {managingUser && (
+        <AccountActionsModal
+          user={managingUser}
+          role="Restaurant"
+          onClose={() => setManagingUser(null)}
+        />
       )}
     </div>
   );

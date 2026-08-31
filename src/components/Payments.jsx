@@ -6,12 +6,11 @@ import {
   doc,
   getDoc,
   getDocs,
-  updateDoc,
-  addDoc,
-  serverTimestamp,
 } from "firebase/firestore";
 
-import { db } from "../firebase/config";
+import { httpsCallable } from "firebase/functions";
+
+import { db, functions } from "../firebase/config";
 
 // Currency formatting utility shifted to PKR
 const formatCurrency = (amount, currency = "PKR") => {
@@ -36,6 +35,12 @@ const Payments = () => {
   const [wallets, setWallets] = useState([]);
   const [history, setHistory] = useState([]);
 
+  // Module: separate per-role lists so each role gets its own section
+  // with its own totals, instead of one mixed table.
+  const [restaurantWallets, setRestaurantWallets] = useState([]);
+  const [riderWallets, setRiderWallets] = useState([]);
+  const [passengerWallets, setPassengerWallets] = useState([]);
+
   // Metrics Display States
   const [restaurantPending, setRestaurantPending] = useState(0);
   const [riderPending, setRiderPending] = useState(0);
@@ -46,6 +51,10 @@ const Payments = () => {
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [payoutError, setPayoutError] = useState("");
+
+  // Module: Stripe Connect onboarding state (per-wallet loading flag so
+  // only the button that was actually clicked shows "Connecting...").
+  const [connectingId, setConnectingId] = useState(null);
 
   // ----------------------------------------------------
   // REAL TIME ADMIN STRIPE WALLET FETCH
@@ -69,15 +78,27 @@ const Payments = () => {
       const availableItems = data.available || [];
       const pendingItems = data.pending || [];
 
-      const availableAmt = availableItems.length > 0 ? (availableItems[0].amount || 0) / 100 : 0;
-      const pendingAmt = pendingItems.length > 0 ? (pendingItems[0].amount || 0) / 100 : 0;
-      const currencyType = availableItems.length > 0 ? (availableItems[0].currency || "PKR").toUpperCase() : "PKR";
+      // ✅ FIX: this used to blindly take availableItems[0] - whatever
+      // currency Stripe happened to list FIRST for this account. Our
+      // entire payment/transfer system only ever uses USD
+      // (pkrToUsdCents() everywhere), but this Stripe account apparently
+      // also has a EUR balance (shown as index 0), so the dashboard was
+      // displaying an unrelated €9,097 EUR figure while the ACTUAL USD
+      // balance our transfers draw from could be genuinely low/zero -
+      // which is exactly why "insufficient available funds" kept
+      // happening even though the card showed a healthy number. Now
+      // specifically finds the USD entry.
+      const usdAvailable = availableItems.find((item) => item.currency === "usd");
+      const usdPending = pendingItems.find((item) => item.currency === "usd");
+
+      const availableAmt = usdAvailable ? (usdAvailable.amount || 0) / 100 : 0;
+      const pendingAmt = usdPending ? (usdPending.amount || 0) / 100 : 0;
 
       if (isMounted.current) {
         setAdminWallet({
           available: Number(availableAmt),
           pending: Number(pendingAmt),
-          currency: currencyType
+          currency: "USD"
         });
       }
     } catch (err) {
@@ -86,159 +107,165 @@ const Payments = () => {
   }, []);
 
   // ----------------------------------------------------
-  // FETCH FIRESTORE WALLETS DATA WITH EXTENDED FIELDS
+  // FETCH FIRESTORE WALLETS DATA
+  //
+  // ✅ FIX: this used to read `collection(db, "Wallets")` as if every
+  // wallet were a flat top-level document (Wallets/{uid}). The app's
+  // ACTUAL structure (WalletPaths.java / functions/utils/walletHelper.js
+  // on the backend) is nested by role:
+  //
+  //   Wallets/Restaurant/Accounts/{uid}
+  //   Wallets/Delivery/Accounts/{uid}
+  //   Wallets/Passenger/Accounts/{uid}
+  //
+  // Reading the top-level "Wallets" collection directly only ever finds
+  // the three role "folder" documents themselves (Restaurant/Delivery/
+  // Passenger), never the actual per-user wallets nested under them -
+  // which is exactly why nothing showed up here before. Now each role's
+  // Accounts subcollection is queried directly and kept in its own
+  // separate list.
   // ----------------------------------------------------
+  const fetchWalletsForRole = useCallback(async (roleFolder, uiRole) => {
+
+    const accountsSnapshot = await getDocs(
+      collection(db, "Wallets", roleFolder, "Accounts")
+    );
+
+    const walletList = [];
+    const historyList = [];
+
+    for (const walletDoc of accountsSnapshot.docs) {
+
+      const walletData = walletDoc.data();
+      const available = Number(walletData.availableBalance || 0);
+      const pending = Number(walletData.pendingBalance || 0);
+
+      let user = null;
+      let name = "";
+      let phone = "";
+      let email = "";
+      let city = "";
+
+      let bankName = "Not Set";
+      let accountTitle = "Not Set";
+      let accountNumber = "Not Available";
+
+      let stripeAccountId = "No Stripe Account Linked";
+      let stripeOnboardingComplete = false;
+
+      // Where each role's real profile document lives (matches the
+      // Android app's own docRef() logic for each role).
+      let profileRef = null;
+
+      if (uiRole === "Restaurant") {
+        profileRef = doc(db, "Users", "Restaurant", "VerifiedRegister", walletDoc.id);
+      } else if (uiRole === "Delivery") {
+        profileRef = doc(db, "Users", "Delivery", "VerifiedRegister", walletDoc.id);
+      } else {
+        profileRef = doc(db, "Users", "Passenger", "Register", walletDoc.id);
+      }
+
+      const profileSnap = await getDoc(profileRef);
+
+      if (profileSnap.exists()) {
+        user = profileSnap.data();
+        name = user.restaurantName || user.ownerName || user.name || (uiRole + " User");
+        phone = user.phone || "";
+        email = user.email || "";
+        city = user.city || "";
+        bankName = user.bankName || "Not Set";
+        accountTitle = user.bankAccountHolder || user.ownerName || name;
+        accountNumber = user.bankAccountNumber || "Not Available";
+
+        if (user.stripeAccountId) stripeAccountId = user.stripeAccountId;
+        stripeOnboardingComplete = user.stripeOnboardingComplete || false;
+      }
+
+      walletList.push({
+        id: walletDoc.id,
+        role: uiRole,
+        name,
+        phone,
+        email,
+        city,
+
+        available,
+        pending,
+
+        bankName,
+        accountTitle,
+        accountNumber,
+
+        stripeAccountId,
+        stripeOnboardingComplete
+      });
+
+      // Full transaction history for this wallet.
+      const historySnapshot = await getDocs(
+        collection(db, "Wallets", roleFolder, "Accounts", walletDoc.id, "history")
+      );
+
+      historySnapshot.forEach((item) => {
+        const h = item.data();
+        historyList.push({
+          walletId: walletDoc.id,
+          role: uiRole,
+          name,
+          phone,
+          amount: h.amount || 0,
+          orderId: h.orderId || "-",
+          type: h.type || "",
+          date: h.date || "",
+          transferId: h.transferId || "-",
+          method: h.method || "manual"
+        });
+      });
+    }
+
+    return { walletList, historyList };
+  }, []);
+
   const fetchWallets = useCallback(async (isMounted = { current: true }) => {
     try {
       if (isMounted.current) setLoading(true);
 
-      const walletSnapshot = await getDocs(collection(db, "Wallets"));
-      const walletList = [];
-      const historyList = [];
+      const [restaurantResult, riderResult, passengerResult] = await Promise.all([
+        fetchWalletsForRole("Restaurant", "Restaurant"),
+        fetchWalletsForRole("Delivery", "Delivery"),
+        fetchWalletsForRole("Passenger", "Passenger")
+      ]);
 
-      let restaurantTotal = 0;
-      let riderTotal = 0;
+      const allWallets = [
+        ...restaurantResult.walletList,
+        ...riderResult.walletList,
+        ...passengerResult.walletList
+      ];
+
+      const allHistory = [
+        ...restaurantResult.historyList,
+        ...riderResult.historyList,
+        ...passengerResult.historyList
+      ];
+
       let paidTotal = 0;
-
-      for (const walletDoc of walletSnapshot.docs) {
-        if (walletDoc.id === "admin_wallet") continue;
-
-        const walletData = walletDoc.data();
-        const available = Number(walletData.availableBalance || 0);
-        const pending = Number(walletData.pendingBalance || 0);
-
-        let user = null;
-        let role = "";
-        let name = "";
-        let phone = "";
-        let email = "";
-        let city = "";
-
-        let bankName = "Not Set";
-        let accountTitle = "Not Set";
-        let accountNumber = "Not Available";
-        let iban = "Not Available";
-
-        // FIX: pehle default "No Stripe Account Linked" rakhte hain,
-        // baad mein user document se asli value nikalenge (walletData se nahi)
-        let stripeAccountId = "No Stripe Account Linked";
-        let stripeOnboardingComplete = false;
-
-        // Restaurant Registration Context Document Reference
-        const restaurantRef = doc(
-          db,
-          "Users",
-          "Restaurant",
-          "VerifiedRegister",
-          walletDoc.id
-        );
-        const restaurantSnap = await getDoc(restaurantRef);
-
-        if (restaurantSnap.exists()) {
-          user = restaurantSnap.data();
-          role = "Restaurant";
-          name = user.restaurantName || user.ownerName || "Restaurant";
-          phone = user.phone || "";
-          email = user.email || "";
-          city = user.city || "";
-          bankName = user.bankName || "HBL Sandbox";
-          accountTitle = user.ownerName || name;
-          accountNumber = user.phone || "Not Available";
-          iban = user.iban || user.IBAN || "Not Available";
-
-          // FIX: asli Stripe Account ID yahan se milegi
-          if (user.stripeAccountId) {
-            stripeAccountId = user.stripeAccountId;
-          }
-          stripeOnboardingComplete = user.stripeOnboardingComplete || false;
-
-          restaurantTotal += available;
-        }
-
-        // Rider Registration Document Reference
-        if (!user) {
-          const riderRef = doc(
-            db,
-            "Users",
-            "Delivery",
-            "VerifiedRegister",
-            walletDoc.id
-          );
-          const riderSnap = await getDoc(riderRef);
-
-          if (riderSnap.exists()) {
-            user = riderSnap.data();
-            role = "Delivery";
-            name = user.name || "Delivery Boy";
-            phone = user.phone || "";
-            email = user.email || "";
-            city = user.city || "";
-            bankName = user.bankName || "EasyPaisa Sandbox";
-            accountTitle = user.name || "Rider Account";
-            accountNumber = user.phone || "Not Available";
-            iban = user.iban || user.IBAN || "Not Available";
-
-            // FIX: asli Stripe Account ID yahan se milegi
-            if (user.stripeAccountId) {
-              stripeAccountId = user.stripeAccountId;
-            }
-            stripeOnboardingComplete = user.stripeOnboardingComplete || false;
-
-            riderTotal += available;
-          }
-        }
-
-        walletList.push({
-          id: walletDoc.id,
-          role,
-          name,
-          phone,
-          email,
-          city,
-
-          available,
-          pending,
-
-          bankName,
-          accountTitle,
-          accountNumber,
-          iban,
-
-          stripeAccountId,
-          stripeOnboardingComplete
-        });
-
-        // Subcollection Sub-History Queries
-        const historySnapshot = await getDocs(
-          collection(db, "Wallets", walletDoc.id, "history")
-        );
-
-        historySnapshot.forEach((item) => {
-          const h = item.data();
-          historyList.push({
-            walletId: walletDoc.id,
-            role,
-            name,
-            phone,
-            amount: h.amount || 0,
-            orderId: h.orderId || "-",
-            type: h.type || "",
-            date: h.date || "",
-            transferId: h.transferId || "-",
-            method: h.method || "manual"
-          });
-
-          if (h.type === "Paid by Admin") {
-            paidTotal += Number(h.amount || 0);
-          }
-        });
-      }
+      allHistory.forEach((h) => {
+        if (h.type === "Paid by Admin") paidTotal += Number(h.amount || 0);
+      });
 
       if (isMounted.current) {
-        setWallets(walletList);
-        setHistory(historyList);
-        setRestaurantPending(restaurantTotal);
-        setRiderPending(riderTotal);
+        setRestaurantWallets(restaurantResult.walletList);
+        setRiderWallets(riderResult.walletList);
+        setPassengerWallets(passengerResult.walletList);
+
+        setWallets(allWallets);
+        setHistory(allHistory);
+
+        setRestaurantPending(
+          restaurantResult.walletList.reduce((sum, w) => sum + w.pending, 0)
+        );
+        setRiderPending(
+          riderResult.walletList.reduce((sum, w) => sum + w.pending, 0)
+        );
         setTotalPaid(paidTotal);
         setLoading(false);
       }
@@ -246,7 +273,7 @@ const Payments = () => {
       console.error("Error reading Firestore collection nodes:", error);
       if (isMounted.current) setLoading(false);
     }
-  }, []);
+  }, [fetchWalletsForRole]);
 
   // ----------------------------------------------------
   // INITIAL LOAD AND SCHEDULER SUBSCRIPTION
@@ -272,6 +299,78 @@ const Payments = () => {
   }, [loadStripeBalance, fetchWallets]);
 
   // ----------------------------------------------------
+  // STRIPE CONNECT - creates a connected account + onboarding link for a
+  // wallet that isn't linked yet, and lets the admin re-check status once
+  // the restaurant/rider has completed onboarding externally.
+  // ----------------------------------------------------
+  const handleConnectStripe = async (wallet) => {
+
+    if (!wallet.email) {
+      alert("This account has no email on file - can't create a Stripe account without one.");
+      return;
+    }
+
+    setConnectingId(wallet.id);
+
+    try {
+      const createConnectedAccount = httpsCallable(functions, "createConnectedAccount");
+
+      const result = await createConnectedAccount({
+        email: wallet.email,
+        uid: wallet.id,
+        type: wallet.role === "Restaurant" ? "restaurant" : "rider"
+      });
+
+      if (result.data && result.data.onboardingUrl) {
+        window.open(result.data.onboardingUrl, "_blank");
+        alert(
+          "Stripe onboarding opened in a new tab. Once " + wallet.name +
+          " completes it, come back and click \"Check Status\" to confirm."
+        );
+      }
+
+      await fetchWallets();
+
+    } catch (error) {
+      console.error("Stripe connect failed:", error);
+      alert("Could not start Stripe connect: " + (error.message || ""));
+    } finally {
+      setConnectingId(null);
+    }
+  };
+
+  const handleCheckStripeStatus = async (wallet) => {
+
+    if (!wallet.stripeAccountId || !wallet.stripeAccountId.startsWith("acct_")) return;
+
+    setConnectingId(wallet.id);
+
+    try {
+      const checkStripeAccountStatus = httpsCallable(functions, "checkStripeAccountStatus");
+
+      const result = await checkStripeAccountStatus({
+        stripeAccountId: wallet.stripeAccountId,
+        uid: wallet.id,
+        type: wallet.role === "Restaurant" ? "restaurant" : "rider"
+      });
+
+      if (result.data && result.data.isComplete) {
+        alert(wallet.name + "'s Stripe account is fully connected and ready for payouts.");
+      } else {
+        alert(wallet.name + " hasn't finished Stripe onboarding yet - still pending.");
+      }
+
+      await fetchWallets();
+
+    } catch (error) {
+      console.error("Stripe status check failed:", error);
+      alert("Could not check Stripe status: " + (error.message || ""));
+    } finally {
+      setConnectingId(null);
+    }
+  };
+
+  // ----------------------------------------------------
   // OPEN PAYOUT SHEET TRIGGER
   // ----------------------------------------------------
   const handleOpenPayoutSheet = (wallet) => {
@@ -288,86 +387,60 @@ const Payments = () => {
 
     setPayoutError("");
 
-    const hasValidStripeAccount =
-      selectedWallet.stripeAccountId &&
-      selectedWallet.stripeAccountId.startsWith("acct_");
-
     try {
       setIsProcessing(true);
 
-      let transferId = null;
-      let method = "manual";
-
-      // ============================================
-      // AGAR REAL STRIPE CONNECTED ACCOUNT HAI,
-      // TOU ASAL TRANSFER CALL KARO (Admin Stripe
-      // balance real mein kam hoga)
-      // ============================================
-      if (hasValidStripeAccount) {
-        const response = await fetch(
-          "https://us-central1-paktrainfoodservice.cloudfunctions.net/payoutToPartner",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              walletId: selectedWallet.id,
-              amount: selectedWallet.available,
-              stripeAccountId: selectedWallet.stripeAccountId,
-              receiverType: selectedWallet.role,
-              name: selectedWallet.name
-            })
-          }
-        );
-
-        const result = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.error || "Stripe transfer failed");
-        }
-
-        transferId = result.transferId;
-        method = "stripe";
-      }
-      // Agar valid connected account nahi hai, tou purana
-      // manual flow chalta rahega (sirf Firestore record) -
-      // isliye demo/testing rukta nahi.
-
-      const walletRef = doc(db, "Wallets", selectedWallet.id);
-
-      // Reset internal database entries
-      await updateDoc(walletRef, {
-        availableBalance: 0,
-        pendingBalance: 0
-      });
-
-      // Insert ledger notification document
-      await addDoc(
-        collection(db, "Wallets", selectedWallet.id, "history"),
+      // ✅ REWRITE: this used to only call the backend for a real Stripe
+      // transfer, and did the wallet reset + history write + (missing)
+      // notification directly from the browser for the manual/simulated
+      // case. Now payoutToPartner ALWAYS runs, for both cases - it's the
+      // one place that updates Firestore (with the correct nested
+      // Wallets/{Role}/Accounts/{uid} path) AND sends the restaurant/
+      // rider their "payment sent" notification. Fixes both the "No
+      // document to update" crash and manual payouts never notifying
+      // anyone.
+      const response = await fetch(
+        "https://us-central1-paktrainfoodservice.cloudfunctions.net/payoutToPartner",
         {
-          amount: selectedWallet.available,
-          orderId: "ADMIN_STRIPE_PAYOUT",
-          type: "Paid by Admin",
-          role: selectedWallet.role,
-          receiver: selectedWallet.name,
-          phone: selectedWallet.phone,
-          email: selectedWallet.email,
-          city: selectedWallet.city,
-          bankName: selectedWallet.bankName,
-          accountTitle: selectedWallet.accountTitle,
-          method,
-          transferId: transferId || "N/A",
-          date: new Date().toISOString(),
-          timestamp: serverTimestamp()
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            walletId: selectedWallet.id,
+            amount: selectedWallet.available,
+            stripeAccountId: selectedWallet.stripeAccountId,
+            receiverType: selectedWallet.role,
+            name: selectedWallet.name,
+            bankName: selectedWallet.bankName,
+            accountNumber: selectedWallet.accountNumber
+          })
         }
       );
+
+      const result = await response.json();
+
+      if (!result.success) {
+
+        if (result.needsStripeConnect) {
+          // Module - simulated payouts removed: this is expected, not a
+          // crash - the partner just hasn't connected Stripe yet (they've
+          // already been notified server-side).
+          setIsModalOpen(false);
+          setSelectedWallet(null);
+          alert(result.error);
+          await fetchWallets();
+          return;
+        }
+
+        throw new Error(result.error || "Payout failed");
+      }
 
       setIsModalOpen(false);
       setSelectedWallet(null);
 
-      if (method === "stripe") {
-        alert("Real Stripe sandbox transfer successful! Admin balance updated.");
+      if (result.method === "stripe") {
+        alert("Real Stripe sandbox transfer successful! " + selectedWallet.name + " has been notified.");
       } else {
-        alert("Payout recorded (manual/no Stripe account linked yet).");
+        alert("Payout recorded and " + selectedWallet.name + " has been notified (manual/simulated - no Stripe account linked yet).");
       }
 
       // Admin ka real balance turant refresh karo (Stripe se live fetch)
@@ -392,6 +465,109 @@ const Payments = () => {
   const sortedHistory = [...history].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   const sortedWallets = [...wallets].sort((a, b) => b.available - a.available);
 
+  // ----------------------------------------------------
+  // One reusable section per role: heading, its own Total
+  // Available / Total Pending summary, and a table with a "View" button
+  // on every row (opens the same payout sheet - Pay stays disabled there
+  // if there's nothing to pay out). Full payout workflows (auto-payout
+  // schedules, payout history filters, etc.) are a later pass - this is
+  // just the visibility piece for now.
+  // ----------------------------------------------------
+  const renderWalletSection = (title, walletList) => {
+
+    const sectionSorted = [...walletList].sort((a, b) => b.available - a.available);
+    const totalAvailable = walletList.reduce((sum, w) => sum + Number(w.available || 0), 0);
+    const totalPending = walletList.reduce((sum, w) => sum + Number(w.pending || 0), 0);
+
+    return (
+      <div className="payments-table-card" style={{ marginTop: "20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px", flexWrap: "wrap", gap: "10px" }}>
+          <h3 style={{ padding: 0 }}>{title} ({walletList.length})</h3>
+          <div style={{ display: "flex", gap: "20px", fontWeight: "bold" }}>
+            <span style={{ color: "#2e7d32" }}>Total Available: {formatCurrency(totalAvailable, "PKR")}</span>
+            <span style={{ color: "#e07b00" }}>Total Pending: {formatCurrency(totalPending, "PKR")}</span>
+          </div>
+        </div>
+
+        <table className="payments-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Stripe Status</th>
+              <th>Available Balance</th>
+              <th>Pending Balance</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="6">Loading...</td></tr>
+            ) : sectionSorted.length === 0 ? (
+              <tr><td colSpan="6">No {title} Found</td></tr>
+            ) : (
+              sectionSorted.map((wallet) => (
+                <tr key={wallet.id}>
+                  <td>{wallet.name}</td>
+                  <td>{wallet.phone}</td>
+                  <td>
+                    {wallet.stripeAccountId?.startsWith("acct_") ? (
+                      wallet.stripeOnboardingComplete ? (
+                        <span style={{ color: "green", fontWeight: "bold" }}>Linked ✓</span>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
+                          <span style={{ color: "#a15c00", fontWeight: "bold" }}>Pending Onboarding</span>
+                          <button
+                            className="pay-now-btn"
+                            style={{ fontSize: "12px", padding: "4px 10px" }}
+                            disabled={connectingId === wallet.id}
+                            onClick={() => handleCheckStripeStatus(wallet)}
+                          >
+                            {connectingId === wallet.id ? "Checking..." : "Check Status"}
+                          </button>
+                        </div>
+                      )
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
+                        <span style={{ color: "#999" }}>Not Linked</span>
+                        {wallet.role !== "Passenger" && (
+                          <button
+                            className="pay-now-btn"
+                            style={{ fontSize: "12px", padding: "4px 10px" }}
+                            disabled={connectingId === wallet.id}
+                            onClick={() => handleConnectStripe(wallet)}
+                          >
+                            {connectingId === wallet.id ? "Connecting..." : "Connect Stripe"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="available-balance">
+                    {formatCurrency(wallet.available, "PKR")}
+                  </td>
+                  <td className="pending-balance">
+                    {formatCurrency(wallet.pending, "PKR")}
+                  </td>
+                  <td style={{ display: "flex", gap: "6px" }}>
+                    <button
+                      className="pay-now-btn"
+                      style={{ backgroundColor: "#555" }}
+                      onClick={() => handleOpenPayoutSheet(wallet)}
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <div className="payments-container animate-fade-in">
       {/* MAIN VIEW HEADER */}
@@ -412,14 +588,33 @@ const Payments = () => {
           </p>
         </div>
 
+        {/* Module - restaurant + rider now each show BOTH balances
+            (available in green, pending in orange), instead of only a
+            single "Pending" number that hid the available side entirely. */}
         <div className="payment-card">
-          <h3>RESTAURANT PENDING</h3>
-          <h2>{formatCurrency(restaurantPending, "PKR")}</h2>
+          <h3>RESTAURANT BALANCE</h3>
+          <h2 style={{ color: "#2e7d32" }}>
+            {formatCurrency(
+              restaurantWallets.reduce((sum, w) => sum + Number(w.available || 0), 0),
+              "PKR"
+            )}
+          </h2>
+          <p style={{ marginTop: "10px", color: "#e07b00", fontWeight: "bold" }}>
+            Pending : {formatCurrency(restaurantPending, "PKR")}
+          </p>
         </div>
 
         <div className="payment-card">
-          <h3>RIDER PENDING</h3>
-          <h2>{formatCurrency(riderPending, "PKR")}</h2>
+          <h3>RIDER BALANCE</h3>
+          <h2 style={{ color: "#2e7d32" }}>
+            {formatCurrency(
+              riderWallets.reduce((sum, w) => sum + Number(w.available || 0), 0),
+              "PKR"
+            )}
+          </h2>
+          <p style={{ marginTop: "10px", color: "#e07b00", fontWeight: "bold" }}>
+            Pending : {formatCurrency(riderPending, "PKR")}
+          </p>
         </div>
 
         <div className="payment-card">
@@ -428,78 +623,10 @@ const Payments = () => {
         </div>
       </div>
 
-      {/* ACCOUNT BALANCES DATA GRID */}
-      <div className="payments-table-card">
-        <h3 style={{ padding: "20px" }}>Wallets</h3>
-
-        <table className="payments-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Role</th>
-              <th>Phone</th>
-              <th>Stripe Status</th>
-              <th>Available Balance</th>
-              <th>Pending Balance</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan="7">Loading...</td>
-              </tr>
-            ) : sortedWallets.length === 0 ? (
-              <tr>
-                <td colSpan="7">No Wallet Found</td>
-              </tr>
-            ) : (
-              sortedWallets.map((wallet) => (
-                <tr key={wallet.id}>
-                  <td>{wallet.name}</td>
-                  <td>
-                    <span
-                      className={
-                        wallet.role === "Restaurant"
-                          ? "role-badge restaurant"
-                          : "role-badge rider"
-                      }
-                    >
-                      {wallet.role}
-                    </span>
-                  </td>
-                  <td>{wallet.phone}</td>
-                  <td>
-                    {wallet.stripeAccountId?.startsWith("acct_") ? (
-                      <span style={{ color: "green", fontWeight: "bold" }}>
-                        {wallet.stripeOnboardingComplete ? "Linked ✓" : "Pending Onboarding"}
-                      </span>
-                    ) : (
-                      <span style={{ color: "#999" }}>Not Linked</span>
-                    )}
-                  </td>
-                  <td className="available-balance">
-                    {formatCurrency(wallet.available, "PKR")}
-                  </td>
-                  <td className="pending-balance">
-                    {formatCurrency(wallet.pending, "PKR")}
-                  </td>
-                  <td>
-                    <button
-                      className="pay-now-btn"
-                      disabled={wallet.available <= 0}
-                      onClick={() => handleOpenPayoutSheet(wallet)}
-                    >
-                      Pay Now
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* ACCOUNT BALANCES - ONE SECTION PER ROLE, EACH WITH ITS OWN TOTALS */}
+      {renderWalletSection("Restaurant Wallets", restaurantWallets)}
+      {renderWalletSection("Rider Wallets", riderWallets)}
+      {renderWalletSection("Passenger Wallets", passengerWallets)}
 
       {/* HISTORICAL LEDGER ENTRIES */}
       <div className="payments-table-card">
@@ -596,8 +723,16 @@ const Payments = () => {
               <button className="cancel-action-btn" onClick={() => setIsModalOpen(false)} disabled={isProcessing}>
                 Cancel
               </button>
-              <button className="confirm-payout-btn" onClick={handleConfirmPayout} disabled={isProcessing}>
-                {isProcessing ? "Processing Transfer..." : "Confirm Payment"}
+              <button
+                className="confirm-payout-btn"
+                onClick={handleConfirmPayout}
+                disabled={isProcessing || !selectedWallet || selectedWallet.available <= 0}
+              >
+                {isProcessing
+                  ? "Processing Transfer..."
+                  : (selectedWallet && selectedWallet.available <= 0)
+                    ? "No Balance To Pay Out"
+                    : "Confirm Payment"}
               </button>
             </div>
           </div>

@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
+import AccountActionsModal from "./AccountActionsModal";
 import "./Riders.css";
 
 
@@ -19,6 +20,7 @@ const DEFAULT_IMAGE =
 const Riders = () => {
 
 const [riders,setRiders] = useState([]);
+const [managingUser,setManagingUser] = useState(null);
 const [profiles,setProfiles] = useState({});
 const [activeTab,setActiveTab] = useState("Active Riders");
 const [selectedRequest,setSelectedRequest] = useState(null);
@@ -718,6 +720,8 @@ activeTab==="Active Riders"
 
 ?
 
+<>
+
 <button
 
 className="btn-action-outline btn-green-outline"
@@ -729,6 +733,20 @@ onClick={()=>goOffline(r.id)}
 Go Offline
 
 </button>
+
+<button
+
+className="btn-action-outline"
+
+onClick={()=>setManagingUser(r)}
+
+>
+
+Manage
+
+</button>
+
+</>
 
 
 :
@@ -1090,6 +1108,13 @@ Approve
 </div>
 )}
 
+{managingUser && (
+<AccountActionsModal
+user={managingUser}
+role="Delivery"
+onClose={() => setManagingUser(null)}
+/>
+)}
 
 </div>
 

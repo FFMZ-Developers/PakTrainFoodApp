@@ -4,7 +4,10 @@ import './Dashboard.css';
 import Restaurant from './Restaurant';
 import Riders from './Riders';
 import Payments from './Payments';
-import OrderReports from './OrderReports';
+import Disputes from './Disputes';
+import Orders from './Orders';
+import LiveMap from './LiveMap';
+import Passengers from './Passengers';
 import Settings from './Settings';
 
 // Firebase Firestore ke imports
@@ -20,7 +23,9 @@ const Dashboard = () => {
     { name: 'Restaurants', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
     { name: 'Delivery Riders', icon: 'M12 19l9 2-9-18-9 18 9-2zm0 0v-8' },
     { name: 'Payments', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
-    { name: 'Order Reports', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    { name: 'Passengers', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zm-8 8a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6z' },
+    { name: 'Orders', icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' },
+    { name: 'Disputes', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
     { name: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
   ];
 
@@ -31,15 +36,19 @@ const Dashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'Dashboard':
-        return <DashboardOverview />;
+        return <DashboardOverview setActiveTab={setActiveTab} />;
       case 'Restaurants':
         return <Restaurant />;
       case 'Delivery Riders':
         return <Riders />;
       case 'Payments':
         return <Payments />;
-      case 'Order Reports':
-        return <OrderReports />;
+      case 'Passengers':
+        return <Passengers />;
+      case 'Orders':
+        return <Orders />;
+      case 'Disputes':
+        return <Disputes />;
       case 'Settings':
         return <Settings />;
       default:
@@ -134,7 +143,7 @@ const Dashboard = () => {
   );
 };
 
-const DashboardOverview = () => {
+const DashboardOverview = ({ setActiveTab }) => {
   // Chaaron metrics ke liye states
   const [orderCount, setOrderCount] = useState(0);
   const [passengerCount, setPassengerCount] = useState(0);
@@ -147,11 +156,17 @@ const DashboardOverview = () => {
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
   const [loadingRiders, setLoadingRiders] = useState(true);
 
+  // Module: real order data for the trend chart + recent-orders table -
+  // both of these used to be entirely hardcoded mock numbers/rows.
+  const [allOrders, setAllOrders] = useState([]);
+  const [chartMode, setChartMode] = useState("week"); // "week" | "month"
+
   useEffect(() => {
     // 1. Orders Real-time Listener (Main Root Collection)
     const orderCollectionRef = collection(db, 'Orders');
     const unsubscribeOrders = onSnapshot(orderCollectionRef, (snapshot) => {
       setOrderCount(snapshot.size);
+      setAllOrders(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoadingOrders(false);
     }, (error) => {
       console.error("Orders fetch error: ", error);
@@ -197,6 +212,85 @@ const DashboardOverview = () => {
     };
   }, []);
 
+  // ---- Real weekly / monthly order-volume bars ----
+  const orderPlacedMs = (o) =>
+    typeof o.timestamp === "number" ? o.timestamp : Date.parse(o.timestamp || "");
+
+  const weeklyBars = () => {
+    const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    const counts = new Array(7).fill(0);
+    const now = new Date();
+    const weekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+
+    allOrders.forEach((o) => {
+      const ms = orderPlacedMs(o);
+      if (!ms || ms < weekAgo) return;
+      counts[new Date(ms).getDay()] += 1;
+    });
+
+    const max = Math.max(1, ...counts);
+    // Re-order so it reads Mon -> Sun rather than starting on whatever
+    // getDay() index today happens to be.
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    return order.map((i) => ({ label: days[i], value: counts[i], pct: (counts[i] / max) * 100 }));
+  };
+
+  const monthlyBars = () => {
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ label: d.toLocaleString("default", { month: "short" }), year: d.getFullYear(), month: d.getMonth(), value: 0 });
+    }
+
+    allOrders.forEach((o) => {
+      const ms = orderPlacedMs(o);
+      if (!ms) return;
+      const d = new Date(ms);
+      const bucket = months.find((m) => m.year === d.getFullYear() && m.month === d.getMonth());
+      if (bucket) bucket.value += 1;
+    });
+
+    const max = Math.max(1, ...months.map((m) => m.value));
+    return months.map((m) => ({ label: m.label, value: m.value, pct: (m.value / max) * 100 }));
+  };
+
+  const bars = chartMode === "week" ? weeklyBars() : monthlyBars();
+
+  // ---- Real 5 most recent orders ----
+  const recentOrders = [...allOrders]
+    .sort((a, b) => (orderPlacedMs(b) || 0) - (orderPlacedMs(a) || 0))
+    .slice(0, 5);
+
+  const orderRefOf = (o) =>
+    o && typeof o.orderNumber === "number" && o.orderNumber > 0
+      ? "#" + String(o.orderNumber).padStart(4, "0")
+      : "#" + String(o?.id || "").slice(0, 6).toUpperCase();
+
+  const STATUS_DISPLAY = {
+    completed: { label: "Delivered", cls: "status-green", dot: "dot-green" },
+    pick_up: { label: "On The Way", cls: "status-blue", dot: "dot-blue" },
+    dropped: { label: "Handed to Rider", cls: "status-blue", dot: "dot-blue" },
+    accepted_by_rider: { label: "Rider Assigned", cls: "status-blue", dot: "dot-blue" },
+    arrive_rider_at_resturent: { label: "Rider Arrived", cls: "status-blue", dot: "dot-blue" },
+    ready_for_delivery: { label: "Waiting for Rider", cls: "status-orange", dot: "dot-orange" },
+    Accepted: { label: "Preparing", cls: "status-orange", dot: "dot-orange" },
+    Active: { label: "Pending", cls: "status-gray", dot: "dot-gray" },
+    Cancelled: { label: "Cancelled", cls: "status-gray", dot: "dot-gray" },
+    Rejected: { label: "Rejected", cls: "status-gray", dot: "dot-gray" },
+    delivery_failed: { label: "Failed", cls: "status-gray", dot: "dot-gray" },
+    disputed: { label: "Disputed", cls: "status-orange", dot: "dot-orange" },
+  };
+
+  const money = (a) =>
+    new Intl.NumberFormat("en-PK", { style: "currency", currency: "PKR", minimumFractionDigits: 0 }).format(Number(a || 0));
+
+  const initialsOf = (name) => {
+    if (!name) return "?";
+    const parts = name.trim().split(/\s+/);
+    return (parts[0][0] + (parts[1] ? parts[1][0] : "")).toUpperCase();
+  };
+
   return (
     <div className="overview-container">
       {/* Header */}
@@ -206,50 +300,48 @@ const DashboardOverview = () => {
           <p>Real-time performance metrics for the PakTrain network.</p>
         </div>
         <div className="header-actions">
-          <button className="btn-secondary">Download Report</button>
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={() => setActiveTab && setActiveTab('Orders')}>
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            New Distribution
+            View All Orders
           </button>
         </div>
       </div>
 
       {/* Metric Cards */}
       <div className="metrics-grid">
-        <MetricCard 
-          title="TOTAL ORDERS" 
-          // Real-time main orders collection count
-          value={loadingOrders ? "Loading..." : orderCount.toLocaleString()} 
-          trend="+12.5%" 
-          trendClass="trend-positive" 
-          icon="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" 
-          iconClass="icon-blue" 
+        <MetricCard
+          title="TOTAL ORDERS"
+          value={loadingOrders ? "Loading..." : orderCount.toLocaleString()}
+          trend={`${allOrders.filter(o => o.orderStatus === 'completed').length} delivered`}
+          trendClass="trend-positive"
+          icon="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+          iconClass="icon-blue"
         />
-        <MetricCard 
-          title="ACTIVE RESTAURANTS" 
-          value={loadingRestaurants ? "Loading..." : restaurantCount.toLocaleString()} 
-          trend="Stable" 
-          trendClass="trend-neutral" 
-          icon="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" 
-          iconClass="icon-orange" 
+        <MetricCard
+          title="ACTIVE RESTAURANTS"
+          value={loadingRestaurants ? "Loading..." : restaurantCount.toLocaleString()}
+          trend="Verified & live"
+          trendClass="trend-neutral"
+          icon="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+          iconClass="icon-orange"
         />
-        <MetricCard 
-          title="TOTAL PASSENGERS" 
-          value={loadingPassengers ? "Loading..." : passengerCount.toLocaleString()} 
-          trend="+8.4%" 
-          trendClass="trend-positive" 
-          icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-8 8a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6z" 
-          iconClass="icon-purple" 
+        <MetricCard
+          title="TOTAL PASSENGERS"
+          value={loadingPassengers ? "Loading..." : passengerCount.toLocaleString()}
+          trend="Registered users"
+          trendClass="trend-positive"
+          icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-8 8a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6z"
+          iconClass="icon-purple"
         />
-        <MetricCard 
-          title="DELIVERY BOYS" 
-          value={loadingRiders ? "Loading..." : riderCount.toLocaleString()} 
-          trend="+48 New" 
-          trendClass="trend-positive" 
-          icon="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" 
-          iconClass="icon-green" 
+        <MetricCard
+          title="DELIVERY RIDERS"
+          value={loadingRiders ? "Loading..." : riderCount.toLocaleString()}
+          trend="Verified & live"
+          trendClass="trend-positive"
+          icon="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+          iconClass="icon-green"
         />
       </div>
 
@@ -258,45 +350,28 @@ const DashboardOverview = () => {
         <div className="chart-card bar-chart-card">
           <div className="chart-header">
             <div>
-              <h3>Weekly Order Trends</h3>
-              <p>Fluctuations in delivery volume across all hubs</p>
+              <h3>Order Trends</h3>
+              <p>{chartMode === 'week' ? 'Orders placed each day, last 7 days' : 'Orders placed each month, last 6 months'}</p>
             </div>
             <div className="chart-toggle">
-              <button className="active">Week</button>
-              <button>Month</button>
+              <button className={chartMode === 'week' ? 'active' : ''} onClick={() => setChartMode('week')}>Week</button>
+              <button className={chartMode === 'month' ? 'active' : ''} onClick={() => setChartMode('month')}>Month</button>
             </div>
           </div>
           <div className="bar-chart">
-            {[40, 60, 100, 70, 90, 50, 60].map((h, i) => (
-              <div key={i} className="bar-container group">
-                <div 
-                  className={`bar ${i === 2 ? 'active' : ''}`} 
-                  style={{ height: `${h}%` }}
+            {bars.map((b, i) => (
+              <div key={i} className="bar-container group" title={`${b.label}: ${b.value} order(s)`}>
+                <div
+                  className={`bar ${b.value > 0 && b.pct === 100 ? 'active' : ''}`}
+                  style={{ height: `${Math.max(4, b.pct)}%` }}
                 ></div>
-                <span className="bar-label">
-                  {['MON','TUE','WED','THU','FRI','SAT','SUN'][i]}
-                </span>
+                <span className="bar-label">{b.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="chart-card map-card">
-          <h3 className="chart-title">Live Distribution Map</h3>
-          <p className="chart-subtitle">Current rider density in Lahore Hub</p>
-          <div className="map-container">
-            <div className="map-bg"></div>
-            <div className="map-dot dot-1"></div>
-            <div className="map-dot dot-2"></div>
-            <div className="map-overlay">
-              <div className="overlay-avatars">
-                <div className="avatar-green">120</div>
-                <div className="avatar-orange">14</div>
-              </div>
-              <span className="overlay-text">Active Riders & Hubs</span>
-            </div>
-          </div>
-        </div>
+        <LiveMap />
       </div>
 
       {/* Recent Orders Table */}
@@ -306,11 +381,6 @@ const DashboardOverview = () => {
             <h3>Recent Orders</h3>
             <p>Latest transactions across the platform</p>
           </div>
-          <button className="icon-button">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-            </svg>
-          </button>
         </div>
         <div className="table-responsive">
           <table className="orders-table">
@@ -325,15 +395,32 @@ const DashboardOverview = () => {
               </tr>
             </thead>
             <tbody>
-              <TableRow id="#ORD-9021" name="Ahmed Hassan" initials="AH" rest="Spice Village" status="In Transit" statusClass="status-blue" dotClass="dot-blue" amount="$45.50" />
-              <TableRow id="#ORD-9022" name="Sara Khan" initials="SK" rest="The Burger Co." status="Delayed" statusClass="status-orange" dotClass="dot-orange" amount="$28.00" />
-              <TableRow id="#ORD-9023" name="M. Zaid" initials="MZ" rest="Daily Deli Co." status="Delivered" statusClass="status-green" dotClass="dot-green" amount="$62.10" />
-              <TableRow id="#ORD-9024" name="Fatima Ali" initials="FA" rest="Pasta Grill" status="Pending" statusClass="status-gray" dotClass="dot-gray" amount="$112.00" />
+              {recentOrders.length === 0 ? (
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: '#888' }}>No orders yet.</td></tr>
+              ) : (
+                recentOrders.map((o) => {
+                  const st = STATUS_DISPLAY[o.orderStatus] || { label: o.orderStatus || 'Unknown', cls: 'status-gray', dot: 'dot-gray' };
+                  return (
+                    <TableRow
+                      key={o.id}
+                      id={orderRefOf(o)}
+                      name={o.passengerName || '\u2014'}
+                      initials={initialsOf(o.passengerName)}
+                      rest={o.restaurantName || '\u2014'}
+                      status={st.label}
+                      statusClass={st.cls}
+                      dotClass={st.dot}
+                      amount={money(o.totalPrice)}
+                      onView={() => setActiveTab && setActiveTab('Orders')}
+                    />
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
         <div className="table-footer">
-          <button className="view-all">View All History &rarr;</button>
+          <button className="view-all" onClick={() => setActiveTab && setActiveTab('Orders')}>View All History &rarr;</button>
         </div>
       </div>
     </div>
@@ -357,7 +444,7 @@ const MetricCard = ({ title, value, trend, trendClass, icon, iconClass }) => (
   </div>
 );
 
-const TableRow = ({ id, name, initials, rest, status, statusClass, dotClass, amount }) => (
+const TableRow = ({ id, name, initials, rest, status, statusClass, dotClass, amount, onView }) => (
   <tr>
     <td className="font-medium text-dark">{id}</td>
     <td>
@@ -375,7 +462,7 @@ const TableRow = ({ id, name, initials, rest, status, statusClass, dotClass, amo
     </td>
     <td className="font-semibold text-dark">{amount}</td>
     <td className="text-right">
-      <button className="view-details">View Details</button>
+      <button className="view-details" onClick={onView}>View Details</button>
     </td>
   </tr>
 );
