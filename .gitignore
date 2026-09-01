@@ -1,0 +1,32 @@
+# Android/Gradle
+*.iml
+.gradle/
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Node / Cloud Functions
+functions/node_modules/
+functions_fixed/node_modules/
+npm-debug.log
+*.log
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Secrets - never commit these
+service-account.json
+*.keystore
+*.jks

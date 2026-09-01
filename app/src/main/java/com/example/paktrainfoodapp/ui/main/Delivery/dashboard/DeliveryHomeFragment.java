@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -25,6 +27,12 @@ public class DeliveryHomeFragment extends Fragment {
 
     private TextView txtGreeting, txtName, txtStatus;
     private TextView txtTotal, txtActive, txtCompleted, txtEarnings;
+    private Switch switchOnline;
+
+    // Set while we're pushing the OBSERVED (already-saved) value into the
+    // switch, so that update doesn't itself get treated as "the user
+    // tapped the toggle" and re-written straight back to the database.
+    private boolean suppressToggleCallback = false;
 
     private DeliveryDashboardViewModel viewModel;
 
@@ -44,6 +52,7 @@ public class DeliveryHomeFragment extends Fragment {
         txtGreeting = view.findViewById(R.id.txtRiderGreeting);
         txtName = view.findViewById(R.id.txtRiderName);
         txtStatus = view.findViewById(R.id.txtRiderStatus);
+        switchOnline = view.findViewById(R.id.switchOnline);
         txtTotal = view.findViewById(R.id.txtRiderTotalDeliveries);
         txtActive = view.findViewById(R.id.txtRiderActive);
         txtCompleted = view.findViewById(R.id.txtRiderCompleted);
@@ -77,6 +86,24 @@ public class DeliveryHomeFragment extends Fragment {
                     on ? R.drawable.bg_badge_green : R.drawable.bg_badge_grey);
 
             txtStatus.setTextColor(on ? 0xFF2E7D32 : 0xFF616161);
+
+            // ✅ FIX: sync the switch to the REAL saved value (not
+            // hardcoded to off) - this is what actually fixes "toggle
+            // resets to off every time I reopen the app". suppressToggleCallback
+            // stops this sync itself from being mistaken for a user tap
+            // and re-triggering a write.
+            suppressToggleCallback = true;
+            switchOnline.setChecked(on);
+            suppressToggleCallback = false;
+        });
+
+        switchOnline.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
+
+            if (suppressToggleCallback) return;
+
+            if (getParentFragment() instanceof DeliveryDashboardFragment) {
+                ((DeliveryDashboardFragment) getParentFragment()).setOnlineStatus(isChecked);
+            }
         });
 
         viewModel.start();

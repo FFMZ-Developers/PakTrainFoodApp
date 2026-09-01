@@ -61,11 +61,6 @@ public class restaurant_LoadFragment extends Fragment {
         textDelivery = view.findViewById(R.id.text_delivery);
         textProfile = view.findViewById(R.id.text_profile);
 
-<<<<<<< HEAD
-        // Default fragment open (Dashboard) - first screen, not added to back stack
-        openFragment(new resturent_DashboardFragment(), "dashboard", false);
-        highlightButton(btnDashboard, iconDashboard, textDashboard);
-=======
         // Default fragment open (Dashboard) - first screen, not added to back
         // stack.
         //
@@ -93,7 +88,6 @@ public class restaurant_LoadFragment extends Fragment {
 
             restoreHighlightForCurrentTag();
         }
->>>>>>> origin/Fahad
 
         // Click listeners
         btnMenu.setOnClickListener(v -> {
@@ -129,8 +123,6 @@ public class restaurant_LoadFragment extends Fragment {
     }
 
     /**
-<<<<<<< HEAD
-=======
      * Re-applies the bottom-nav highlight for whichever tab `currentTag`
      * says is active, without touching the child fragment manager's actual
      * content (used when this fragment's view is being recreated but its
@@ -165,7 +157,6 @@ public class restaurant_LoadFragment extends Fragment {
     }
 
     /**
->>>>>>> origin/Fahad
      * @param tag             identifies which tab this is, used to avoid pushing
      *                        a duplicate back-stack entry when the same tab is tapped again
      * @param addToBackStack  false only for the very first screen shown

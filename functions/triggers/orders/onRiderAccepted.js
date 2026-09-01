@@ -24,6 +24,33 @@ exports.onRiderAccepted = onDocumentUpdated(
         }
 
         const riderId = after.acceptedBy;
+
+        // Module: copy the rider's contact details onto the order so the
+        // restaurant and passenger can call/chat them without needing read
+        // access to the rider's profile document.
+        if (riderId) {
+
+            try {
+
+                const riderSnap = await admin.firestore()
+                    .collection("Users").doc("Delivery")
+                    .collection("VerifiedRegister").doc(riderId).get();
+
+                if (riderSnap.exists) {
+
+                    const r = riderSnap.data();
+
+                    await event.data.after.ref.update({
+                        riderPhone: r.phone || null,
+                        riderName: r.name || "PakTrain Rider",
+                        riderAssignedAt: Date.now()
+                    });
+                }
+
+            } catch (e) {
+                console.error("onRiderAccepted: couldn't copy rider contact details", e);
+            }
+        }
         const passengerUid = after.passengerUid;
         const restaurantId = after.restaurantId;
 
@@ -62,33 +89,12 @@ exports.onRiderAccepted = onDocumentUpdated(
 
         console.log("Rider Pending Wallet Updated");
 
-        // =========================
-        // Passenger Notification
-        // =========================
-
-        if (passengerUid) {
-
-            await sendNotification({
-
-    uid: passengerUid,
-
-    role: ROLES.PASSENGER,
-
-    title: "🛵 Rider Accepted",
-
-    body: "A rider has accepted your order and is on the way to the restaurant.",
-
-    data: {
-
-        orderId,
-
-        status: ORDER_STATUS.ACCEPTED_BY_RIDER
-
-    }
-
-});
-
-        }
+        // Module 8 - "rider accepted" is NOT one of the fixed passenger
+        // milestones. The passenger already knows their order is
+        // "preparing"; the next thing they need to hear is "on the way"
+        // once a rider actually has the food in hand
+        // (onOrderDropped.js) - an intermediate "a rider accepted" ping
+        // doesn't change what the passenger needs to do and is just noise.
 
         // =========================
         // Restaurant Notification

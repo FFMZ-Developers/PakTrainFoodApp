@@ -1,57 +1,20 @@
 const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
-const { sendNotification } = require("../../utils/sendNotification");
 
-const {
-    ROLES,
-    ORDER_STATUS
-} = require("../../utils/constants");
-
+// ✅ This trigger's job (telling the passenger their order was accepted)
+// moved into captureOrderPayment.js, which fires on the exact same
+// orderStatus -> "Accepted" transition. Doing it there instead means the
+// passenger is told "payment processed" only once the Stripe capture
+// actually succeeds - sending it from here (a separate trigger on the
+// same event) could fire before/regardless of whether the capture
+// succeeded, since Firestore doesn't guarantee ordering between two
+// triggers on the same write.
+//
+// Kept as a registered no-op (rather than removed) purely so `firebase
+// deploy` doesn't prompt to delete it - avoids a confusing decision for
+// whoever runs the next deploy.
 exports.onRestaurantAccepted = onDocumentUpdated(
     "Orders/{orderId}",
-    async (event) => {
-
-        const before = event.data.before.data();
-        const after = event.data.after.data();
-
-        if (
-            before.orderStatus === "Accepted" ||
-            after.orderStatus !== "Accepted"
-        ) {
-            return;
-        }
-
-        const passengerUid = after.passengerUid;
-        const orderId = after.orderId;
-
-        // ===============================
-        // Passenger Notification
-        // ===============================
-
-        if (passengerUid) {
-
-          await sendNotification({
-
-    uid: passengerUid,
-
-    role: ROLES.PASSENGER,
-
-    title: "🍽️ Order Accepted",
-
-    body: "Your order has been accepted by the restaurant and is being prepared.",
-
-    data: {
-
-        orderId,
-
-        status: ORDER_STATUS.ACCEPTED
-
-    }
-
-});
-
-        }
-
-        console.log("Restaurant Accepted Notification Sent");
-
+    async () => {
+        return null;
     }
 );

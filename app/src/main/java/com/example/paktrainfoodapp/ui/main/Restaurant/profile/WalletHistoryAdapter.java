@@ -54,7 +54,12 @@ public class WalletHistoryAdapter
         holder.amount.setText("Rs " + model.getAmount());
         holder.date.setText(model.getDate());
         holder.orderId.setText(
-                "Order ID: " + model.getOrderId());
+                // Payout rows carry sentinel ids like "ADMIN_PAYOUT" rather
+                // than a real order, so those are shown as-is.
+                model.getOrderId() != null && model.getOrderId().matches("[A-Z_0-9]{6,}")
+                        ? model.getOrderId().replace("_", " ")
+                        : com.example.paktrainfoodapp.utils.OrderNumberUtils
+                                .format(null, model.getOrderId()));
 
         String type = model.getType();
 
@@ -64,6 +69,8 @@ public class WalletHistoryAdapter
         switch (type) {
 
             case "Pending":
+            case "Payment Held":
+            case "Refund Pending":
 
                 holder.type.setTextColor(
                         Color.parseColor("#FF9800"));
@@ -74,6 +81,11 @@ public class WalletHistoryAdapter
                 break;
 
             case "Available":
+            case "Payment Sent":
+            case "Refund Completed":
+            case "Auto Payout":
+            case "Paid by Admin":
+            case "Dispute Resolution":
 
                 holder.type.setTextColor(
                         Color.parseColor("#4CAF50"));
@@ -84,6 +96,7 @@ public class WalletHistoryAdapter
                 break;
 
             case "Withdraw":
+            case "Refund Failed":
 
                 holder.type.setTextColor(
                         Color.RED);

@@ -20,6 +20,7 @@ import com.google.android.material.tabs.TabLayout;
 public class OrderFragment extends Fragment implements Refreshable {
 
     private TabLayout tabsOrders;
+    private final com.example.paktrainfoodapp.utils.OrderTabCounter tabCounter = new com.example.paktrainfoodapp.utils.OrderTabCounter();
     private ImageView headerImage;
     private Toolbar toolbarOrders;
     private ProgressBar progressRefresh;
@@ -56,6 +57,17 @@ public class OrderFragment extends Fragment implements Refreshable {
             tabsOrders.addTab(tabsOrders.newTab().setText("Accepted"));
             tabsOrders.addTab(tabsOrders.newTab().setText("Delivered"));
             tabsOrders.addTab(tabsOrders.newTab().setText("Completed"));
+
+        // Live counts next to each tab label - see OrderTabCounter.
+        String counterUid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
+        if (counterUid != null) {
+            tabCounter.attachStatuses(tabsOrders, 0, "Active", "passengerUid", counterUid, "Active", "Cancelled");
+            tabCounter.attachStatuses(tabsOrders, 1, "Accepted", "passengerUid", counterUid, "Accepted","ready_for_delivery");
+            // Must mirror DeliveredOrdersFragment's own filter exactly - it does
+            // NOT include pick_up (that sits in the Completed tab), so counting
+            // it here made the badge show orders the list wouldn't display.
+            tabCounter.attachStatuses(tabsOrders, 2, "Delivered", "passengerUid", counterUid, "accepted_by_rider","arrive_rider_at_resturent","dropped","pick_up");
+        }
         }
 
         if (savedInstanceState == null) {
@@ -173,6 +185,12 @@ public class OrderFragment extends Fragment implements Refreshable {
 
     }
 
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        tabCounter.detachAll();
+    }
 }
 
 

@@ -101,7 +101,12 @@ public class DeliveryDashboardViewModel extends ViewModel {
 
         // Online/offline is written to the Realtime Database by the dashboard's
         // switch, so it has to be read from there rather than Firestore.
-        onlineRef = com.google.firebase.database.FirebaseDatabase.getInstance()
+        //
+        // ✅ FIX: same explicit-database-URL fix as DeliveryDashboardFragment.java
+        // - no URL here meant this could read from a different RTDB
+        // instance than the dashboard actually wrote to.
+        onlineRef = com.google.firebase.database.FirebaseDatabase.getInstance(
+                        "https://paktrainfoodservice-default-rtdb.firebaseio.com/")
                 .getReference("DeliveryRiders")
                 .child(uid)
                 .child("online");

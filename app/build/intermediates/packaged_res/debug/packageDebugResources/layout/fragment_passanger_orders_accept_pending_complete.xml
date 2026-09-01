@@ -1,0 +1,42 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="12dp"
+    android:background="@color/app_background">
+
+    <!-- ✅ RecyclerView for Active Orders -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerOrders"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <!-- ✅ Empty State (No Orders Yet) -->
+    <LinearLayout
+        android:id="@+id/layoutNoOrders"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/deliveryboy"
+            android:contentDescription="No Orders" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="There are no active orders yet"
+            android:textSize="16sp"
+            android:textColor="@color/gray"
+            android:layout_marginTop="12dp" />
+    </LinearLayout>
+</LinearLayout>
+
+
+
+<!---->

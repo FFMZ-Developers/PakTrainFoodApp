@@ -1,6 +1,8 @@
 const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 
+const admin = require("../../config/firebase");
 const { sendNotification } = require("../../utils/sendNotification");
+const passengerNotifications = require("../../utils/passengerNotifications");
 
 const {
     ROLES,
@@ -20,6 +22,15 @@ exports.onOrderDropped = onDocumentUpdated(
         ) {
             return;
         }
+
+        // Module 6 (Failure 3) - this is the "food physically left the
+        // restaurant" moment. If the rider fails to complete the delivery
+        // AFTER this point, the restaurant still gets paid for the food
+        // they made (see onDeliveryFailed.js) - before this point, they
+        // don't, since nothing was actually handed over yet.
+        await event.data.after.ref.update({
+            pickupConfirmedAt: Date.now()
+        });
 
         const riderId = after.acceptedBy;
         const passengerUid = after.passengerUid;
@@ -56,31 +67,16 @@ exports.onOrderDropped = onDocumentUpdated(
 
         // =========================
         // Passenger Notification
+        //
+        // Module 8 - "on the way" milestone. This is the moment the food
+        // actually leaves the restaurant with the rider - the clearest,
+        // most accurate point to tell the passenger their order is on its
+        // way (onOrderPickedUp.js's later "pick_up" status doesn't get a
+        // separate passenger ping - from their point of view it's the
+        // same "on the way" moment, just an internal rider-app step).
         // =========================
 
-        if (passengerUid) {
-
-           await sendNotification({
-
-    uid: passengerUid,
-
-    role: ROLES.PASSENGER,
-
-    title: "🍽️ Order Handover",
-
-    body: "The restaurant has handed your order to the rider.",
-
-    data: {
-
-        orderId,
-
-        status: ORDER_STATUS.DROPPED
-
-    }
-
-});
-
-        }
+        await passengerNotifications.onTheWay(passengerUid, orderId);
 
         // =========================
         // Restaurant Notification

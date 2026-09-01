@@ -96,6 +96,7 @@ public class DeliveredOrdersFragment extends Fragment {
 
                         MenuItem item = new MenuItem();
                         item.setId(doc.getId());
+                        item.setOrderNumber(doc.getLong("orderNumber"));
                         item.setStatus(status);
 
                         Long time = doc.getLong("etaEndTime");
@@ -141,7 +142,7 @@ public class DeliveredOrdersFragment extends Fragment {
 
             MenuItem m = items.get(position);
 
-            h.txtOrderId.setText("#" + m.getId());
+            h.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(m.getOrderNumber(), m.getId()));
 
             double total = (m.getVariations() != null && !m.getVariations().isEmpty())
                     ? m.getVariations().values().iterator().next()
@@ -156,14 +157,36 @@ public class DeliveredOrdersFragment extends Fragment {
             h.btnReady.setAlpha(1f);
             h.btnReady.setVisibility(View.VISIBLE);
              h.timeRow.setVisibility(View.VISIBLE);
+
+            // Only the arrival estimate is meaningful here - the raw
+            // txtTimer placeholder was showing through empty.
+            bindEtaArrival(h.txtEtaArrival, m.getTrainEtaEndTime());
+            h.txtTimer.setVisibility(View.GONE);
+
+            // ✅ FIX: cards in this tab had no click handler at all, so
+            // once an order moved here (rider assigned onwards) the
+            // restaurant had no way to open the live tracking map and see
+            // where their rider actually was. Same destination the
+            // Accepted tab uses.
+            h.itemView.setOnClickListener(v -> {
+
+                if (!isAdded()) return;
+
+                requireActivity().getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.main_container, OrderDetailFragment.newInstance(m.getId()))
+                        .addToBackStack(null)
+                        .commit();
+            });
+
             // ================= STATUS LOGIC =================
 
             switch (status) {
 
                 case "accepted_by_rider":
-                    h.btnReady.setText("Accepted By Rider");
+                    com.example.paktrainfoodapp.utils.StatusBadge.apply(h.btnReady, status);
                     h.btnReady.setEnabled(false);
-                    h.btnReady.setAlpha(0.5f);
+                    h.btnReady.setAlpha(1f);
                     break;
 
                 case "arrive_rider_at_resturent":
@@ -179,8 +202,13 @@ public class DeliveredOrdersFragment extends Fragment {
                     break;
 
                 case "pick_up":
-                    h.itemView.setVisibility(View.GONE); // REMOVE ORDER
-                    return;
+                    // Was hidden entirely here, which - now that Completed
+                    // no longer carries pick_up - left the order invisible
+                    // to the restaurant everywhere.
+                    com.example.paktrainfoodapp.utils.StatusBadge.apply(h.btnReady, status);
+                    h.btnReady.setEnabled(false);
+                    h.btnReady.setAlpha(1f);
+                    break;
             }
 
             // ================= CLICK =================
@@ -227,7 +255,7 @@ public class DeliveredOrdersFragment extends Fragment {
 
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice;
+            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival;
             Button btnReady;
 LinearLayout timeRow;
             ViewHolder(@NonNull View itemView) {
@@ -237,7 +265,23 @@ LinearLayout timeRow;
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
                 btnReady = itemView.findViewById(R.id.btnReady);
                 timeRow = itemView.findViewById(R.id.timeRow);
+                txtTimer = itemView.findViewById(R.id.txtTimer);
+                txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
             }
         }
+    }
+
+    private void bindEtaArrival(TextView view, long trainEtaEndTimeMillis) {
+
+        if (view == null) return;
+
+        if (trainEtaEndTimeMillis <= 0) {
+            view.setText("Estimated Arrival: Calculating...");
+            return;
+        }
+
+        view.setText("Estimated Arrival: " + new java.text.SimpleDateFormat(
+                "hh:mm a", java.util.Locale.getDefault())
+                .format(new java.util.Date(trainEtaEndTimeMillis)));
     }
 }

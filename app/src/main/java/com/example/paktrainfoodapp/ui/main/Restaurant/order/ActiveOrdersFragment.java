@@ -89,6 +89,10 @@ public class ActiveOrdersFragment extends Fragment {
         orderListener = firestore.collection("Orders")
                 .whereEqualTo("restaurantId", restaurantUid)
                 .whereEqualTo("orderStatus", "Active")
+                // Module 4 - only orders the train-ETA threshold has
+                // already surfaced (see onOrderEtaThresholdReached.js).
+                // Orders placed far in advance stay hidden here until then.
+                .whereEqualTo("visibleToRestaurant", true)
                 .addSnapshotListener((query, e) -> {
 
                     if (e != null || query == null || !isAdded()) return;
@@ -99,8 +103,12 @@ public class ActiveOrdersFragment extends Fragment {
 
                         MenuItem item = new MenuItem();
                         item.setId(doc.getId());
+                        item.setOrderNumber(doc.getLong("orderNumber"));
                         item.setPassengerUid(doc.getString("passengerUid"));
                         item.setDocPath(doc.getReference().getPath());
+
+                        Long trainEta = doc.getLong("trainEtaEndTime");
+                        item.setTrainEtaEndTime(trainEta != null ? trainEta : 0L);
 
                         Double totalPrice = doc.getDouble("totalPrice");
                         if (totalPrice != null) {
@@ -151,7 +159,7 @@ public class ActiveOrdersFragment extends Fragment {
 
             MenuItem m = items.get(position);
 
-            h.txtOrderId.setText("#" + m.getId());
+            h.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(m.getOrderNumber(), m.getId()));
 
             double total = 0;
             if (m.getVariations() != null && !m.getVariations().isEmpty()) {
@@ -160,16 +168,56 @@ public class ActiveOrdersFragment extends Fragment {
 
             h.txtTotalPrice.setText("Total: Rs " + total);
 
+            // Module 2 - "Estimated Arrival" (auto-updates via the Firestore
+            // snapshot listener whenever trainEtaEndTime changes - no need
+            // to open the order detail screen for this to refresh).
+            bindEtaArrival(h.txtEtaArrival, m.getTrainEtaEndTime());
+
             // ACTIVE TAB UI
             h.btnAccept.setVisibility(View.VISIBLE);
             h.timeRow.setVisibility(View.GONE);
+
+            // Module 3 - Reject button (reuses the delete icon slot, which
+            // was previously unused on this tab). Rejecting a still-pending
+            // order releases the Stripe hold on the passenger's card - see
+            // onOrderPaymentReversal.js. The passenger is never charged for
+            // an order the restaurant declined.
+            h.btnDelete.setVisibility(View.VISIBLE);
+            h.btnDelete.setOnClickListener(v -> {
+
+                // Module: restaurant must give a reason when rejecting -
+                // passed straight through to the passenger's notification
+                // (onOrderPaymentReversal.js) instead of a generic message.
+                android.widget.EditText input = new android.widget.EditText(requireContext());
+                input.setHint("e.g. Kitchen is closed, item out of stock...");
+                int pad = (int) (16 * getResources().getDisplayMetrics().density);
+                input.setPadding(pad, pad, pad, pad);
+
+                new AlertDialog.Builder(requireContext())
+                        .setTitle("Reject Order")
+                        .setMessage("Order reject karne ki wajah likhein - passenger ko yehi wajah dikhai jayegi.")
+                        .setView(input)
+                        .setPositiveButton("Reject Order", (d, w) -> {
+
+                            String reason = input.getText() != null
+                                    ? input.getText().toString().trim() : "";
+
+                            if (reason.isEmpty()) {
+                                reason = "the restaurant is currently unable to accept new orders";
+                            }
+
+                            updateOrderStatus(m, "Rejected", reason);
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            });
 
             // ACCEPT CLICK
             h.btnAccept.setOnClickListener(v -> {
                 new AlertDialog.Builder(requireContext())
                         .setTitle("Accept Order")
-                        .setMessage("Kya aap is order ko accept karna chahte ho?")
-                        .setPositiveButton("Yes", (d, w) -> updateOrderStatus(m, "Accepted"))
+                        .setMessage("Kya aap is order ko accept karna chahte ho? Accept karte hi passenger ka payment charge ho jayega.")
+                        .setPositiveButton("Yes", (d, w) -> updateOrderStatus(m, "Accepted", null))
                         .setNegativeButton("No", null)
                         .show();
             });
@@ -186,16 +234,17 @@ public class ActiveOrdersFragment extends Fragment {
             });
         }
 
-        private void updateOrderStatus(MenuItem m, String status) {
+        private void updateOrderStatus(MenuItem m, String status, String rejectionReason) {
 
             DocumentReference globalRef = firestore.document(m.getDocPath());
-
-
 
             WriteBatch batch = firestore.batch();
 
             batch.update(globalRef, "orderStatus", status);
 
+            if (rejectionReason != null) {
+                batch.update(globalRef, "rejectionReason", rejectionReason);
+            }
 
             batch.commit().addOnSuccessListener(a -> {
                 Toast.makeText(requireContext(),
@@ -209,10 +258,30 @@ public class ActiveOrdersFragment extends Fragment {
             return items.size();
         }
 
+        /**
+         * Module 2 - shows the trainEtaEndTime (millis) as a clock time,
+         * e.g. "Estimated Arrival: 10:00 PM". Shows "Calculating..." until
+         * the value has been computed at least once (order placement writes
+         * an initial estimate immediately, so this is rarely empty for long
+         * - see OrderNowFragment.placeOrder()).
+         */
+        private void bindEtaArrival(TextView txtEtaArrival, long trainEtaEndTimeMillis) {
+
+            if (trainEtaEndTimeMillis <= 0) {
+                txtEtaArrival.setText("Estimated Arrival: Calculating...");
+                return;
+            }
+
+            java.text.SimpleDateFormat fmt =
+                    new java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault());
+
+            txtEtaArrival.setText("Estimated Arrival: " + fmt.format(new java.util.Date(trainEtaEndTimeMillis)));
+        }
+
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice;
-            ImageView btnAccept;
+            TextView txtOrderId, txtTotalPrice, txtEtaArrival;
+            ImageView btnAccept, btnDelete;
             LinearLayout timeRow;
 
             ViewHolder(@NonNull View itemView) {
@@ -220,7 +289,9 @@ public class ActiveOrdersFragment extends Fragment {
 
                 txtOrderId = itemView.findViewById(R.id.txtOrderId);
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
+                txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
                 btnAccept = itemView.findViewById(R.id.btnAccept);
+                btnDelete = itemView.findViewById(R.id.btnDelete);
                 timeRow = itemView.findViewById(R.id.timeRow);
             }
         }

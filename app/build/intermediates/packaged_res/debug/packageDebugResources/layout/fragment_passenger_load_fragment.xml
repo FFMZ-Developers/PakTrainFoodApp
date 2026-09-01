@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dashboard_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface">
+
+
+
+
+    <!-- Fragment Container -->
+    <FrameLayout
+        android:id="@+id/fragment_holder"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/bottom_nav" />
+
+    <!-- Bottom Navigation -->
+    <LinearLayout
+        android:id="@+id/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:elevation="8dp"
+        android:background="@color/surface"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:padding="4dp">
+
+        <!-- Order Food (journey selection) -->
+        <LinearLayout
+            android:id="@+id/btnJourney"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:padding="4dp">
+            <ImageView
+                android:id="@+id/icon_journey"
+                android:src="@drawable/ic_browse_menu"
+                android:layout_width="28dp"
+                android:layout_height="28dp"/>
+            <TextView
+                android:id="@+id/text_journey"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Order Food"
+                android:textSize="12sp"
+                android:textColor="@color/gray"/>
+        </LinearLayout>
+
+        <!-- Order Button -->
+        <LinearLayout
+            android:id="@+id/btn_order"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:padding="4dp">
+            <ImageView
+                android:id="@+id/icon_order"
+                android:src="@drawable/ic_order"
+                android:layout_width="28dp"
+                android:layout_height="28dp"/>
+            <TextView
+                android:id="@+id/text_order"
+                android:text="Order"
+                android:textSize="12sp"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:textColor="@color/gray"/>
+        </LinearLayout>
+
+        <!-- Dashboard Button -->
+        <LinearLayout
+            android:id="@+id/btn_dashboard"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:padding="4dp">
+            <ImageView
+                android:id="@+id/icon_dashboard"
+                android:src="@drawable/ic_dashboard"
+                android:layout_width="36dp"
+                android:layout_height="36dp"/>
+            <TextView
+                android:id="@+id/text_dashboard"
+                android:text="Dashboard"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:textColor="@color/green"/>
+        </LinearLayout>
+
+        <!-- Cart Button -->
+        <LinearLayout
+            android:id="@+id/btn_cart"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:padding="4dp">
+            <ImageView
+                android:id="@+id/icon_cart"
+                android:src="@drawable/ic_cart"
+                android:layout_width="28dp"
+                android:layout_height="28dp"/>
+            <TextView
+                android:id="@+id/text_cart"
+                android:text="Cart"
+                android:textSize="12sp"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:textColor="@color/gray"/>
+        </LinearLayout>
+
+
+        <LinearLayout
+            android:id="@+id/btn_profile"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:padding="4dp">
+            <ImageView
+                android:id="@+id/icon_profile"
+                android:src="@drawable/ic_profile"
+                android:layout_width="28dp"
+                android:layout_height="28dp"/>
+            <TextView
+                android:id="@+id/text_profile"
+                android:text="Profile"
+                android:textSize="12sp"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:textColor="@color/gray"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</RelativeLayout>

@@ -1,0 +1,17 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/auth_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"/>
+
+
+
+
+
+<!--FrameLayout Android ka ek simple container (box) hota hai.
+
+Iska kaam hota hai dusre views ya fragments ko apne andar rakhna.
+
+Ye zyada tar single screen ya fragment show karne ke liye use hota hai.
+
+Isko ek empty frame / holder samajh lo jisme baad mein koi screen load hoti hai.-->
+    

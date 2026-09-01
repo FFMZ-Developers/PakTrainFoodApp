@@ -80,6 +80,11 @@ public class DeliveryProfileFragment extends Fragment {
                             .commit());
         }
 
+        View layoutUpdateVerification = view.findViewById(R.id.layout_update_verification);
+        if (layoutUpdateVerification != null) {
+            layoutUpdateVerification.setOnClickListener(v -> launchVerificationUpdate());
+        }
+
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 new ActivityResultCallback<Uri>() {
@@ -160,6 +165,8 @@ public class DeliveryProfileFragment extends Fragment {
 
         if (btnLogout != null) {
             btnLogout.setOnClickListener(v -> {
+                // Guarded by a confirmation - see LogoutConfirm.
+                com.example.paktrainfoodapp.utils.LogoutConfirm.show(requireContext(), () -> {
                 if (mAuth != null) {
                     mAuth.signOut();
                 }
@@ -170,6 +177,7 @@ public class DeliveryProfileFragment extends Fragment {
                     getActivity().finish();
                 }
                 startActivity(new Intent(getContext(), Splash.class));
+                });
             });
         }
     }
@@ -228,5 +236,24 @@ public class DeliveryProfileFragment extends Fragment {
                         .replace(R.id.fragment_loader, target)
                         .addToBackStack(null)
                         .commit());
+    }
+
+    /** Module: re-verification on sensitive-field edit (see restaurant equivalent for full explanation). */
+    private void launchVerificationUpdate() {
+
+        if (mAuth.getCurrentUser() == null || !isAdded()) return;
+
+        String uid = mAuth.getCurrentUser().getUid();
+        String email = mAuth.getCurrentUser().getEmail();
+
+        Intent intent = new Intent(requireContext(),
+                com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.class);
+
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_ROLE, "DELIVERY");
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_UID, uid);
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_EMAIL, email);
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_RESUBMIT, true);
+
+        startActivity(intent);
     }
 }

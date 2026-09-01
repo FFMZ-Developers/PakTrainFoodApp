@@ -3,10 +3,7 @@ package com.example.paktrainfoodapp.ui.main;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
-<<<<<<< HEAD
-=======
 import android.text.TextUtils;
->>>>>>> origin/Fahad
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -21,10 +18,7 @@ import com.example.paktrainfoodapp.ui.main.Delivery.dashboard.DeliveryDashboardF
 import com.example.paktrainfoodapp.ui.main.Passenger.Passenger_Fragment_Loader;
 import com.example.paktrainfoodapp.ui.main.Restaurant.restaurant_LoadFragment;
 import com.example.paktrainfoodapp.utils.PrefManager;
-<<<<<<< HEAD
-=======
 import com.example.paktrainfoodapp.utils.LocationEnforcementWatcher;
->>>>>>> origin/Fahad
 import com.google.firebase.appcheck.FirebaseAppCheck;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -49,13 +43,10 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private Passenger_Fragment_Loader passengerLoader;
-<<<<<<< HEAD
-=======
 
     // Module 2 - checks every 5s (while app is foregrounded) that device
     // location is on and that background order-tracking is actually alive.
     private LocationEnforcementWatcher locationEnforcementWatcher;
->>>>>>> origin/Fahad
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -187,8 +178,6 @@ public class MainActivity extends AppCompatActivity {
                 });
 
 
-<<<<<<< HEAD
-=======
         // Module: restriction check - runs regardless of which path below
         // loads the role's screen (some take a fast-path using cached
         // local prefs that skip a fresh Firestore read entirely), so a
@@ -196,7 +185,6 @@ public class MainActivity extends AppCompatActivity {
         // still gets caught the next time the app opens.
         checkAccountRestriction(userRole, uid);
 
->>>>>>> origin/Fahad
         switch (userRole) {
             case "RESTAURANT":
                 handleRestaurantRole(uid);
@@ -228,8 +216,6 @@ public class MainActivity extends AppCompatActivity {
         handleNotificationIntent(getIntent());
     }
 
-<<<<<<< HEAD
-=======
     /**
      * Shows a dismissible warning if an admin has restricted this account -
      * they can still browse/view existing orders and their wallet, but
@@ -276,7 +262,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
->>>>>>> origin/Fahad
     //jab app open ho then notificaton pr clik krny pr call hoga
     @Override
     protected void onNewIntent(Intent intent) {
@@ -295,40 +280,6 @@ public class MainActivity extends AppCompatActivity {
 
         if (screen == null) return;
 
-<<<<<<< HEAD
-        if ("orders".equals(screen)) {
-
-            String status = intent.getStringExtra("status");
-
-            int tab = 0;
-
-            if ("Accepted".equals(status)) {
-
-                tab = 1;
-
-            } else if ("pick_up".equals(status)
-                    || "dropped".equals(status)
-                    || "ready_for_delivery".equals(status)
-                    || "accepted_by_rider".equals(status)
-                    || "arrive_rider_at_resturent".equals(status)) {
-
-                tab = 2;
-
-            } else if ("completed".equals(status)) {
-
-                tab = 3;
-
-            }
-
-            if (passengerLoader != null) {
-
-                passengerLoader.navigateToOrders(tab);
-
-            }
-
-        }
-    }
-=======
         // Module: auto-payout receipt notifications deep-link here -
         // works for any role since it replaces the top-level container
         // directly (same pattern OrderDetailFragment uses), rather than
@@ -466,7 +417,6 @@ public class MainActivity extends AppCompatActivity {
 
         return f;
     }
->>>>>>> origin/Fahad
     private void handleRestaurantRole(String uid) {
         if (prefManager.isRegistered() && prefManager.isRestaurantVerified()) {
             loadFragment(new restaurant_LoadFragment());
@@ -596,8 +546,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-<<<<<<< HEAD
-=======
     // =========================================================
     // Module 2 - start/stop the app-open watchdog with the activity's
     // foreground lifecycle. Only needs to run while something is actually
@@ -623,7 +571,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
->>>>>>> origin/Fahad
 }
 
 

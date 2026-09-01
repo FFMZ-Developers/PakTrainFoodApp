@@ -1,14 +1,7 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 
 const admin = require("../../config/firebase");
-const walletHelper = require("../../utils/walletHelper");
-
-const { sendNotification } = require("../../utils/sendNotification");
-
-const {
-    ROLES,
-    ORDER_STATUS
-} = require("../../utils/constants");
+const passengerNotifications = require("../../utils/passengerNotifications");
 
 exports.onOrderPlaced = onDocumentCreated(
     "Orders/{orderId}",
@@ -19,276 +12,74 @@ exports.onOrderPlaced = onDocumentCreated(
         const {
             orderId,
             passengerUid,
-            restaurantId,
-            subtotal,
-            deliveryFee,
-            adminFee,
             totalPrice
         } = data;
 
-        // ===============================
-        // ADMIN MAIN WALLET
-        // ===============================
+        // ✅ FIX: admin wallet + restaurant pending-balance crediting used
+        // to happen HERE, immediately at order placement - before the
+        // restaurant had even seen the order (Module 4 might not surface
+        // it for hours, and the restaurant might reject it entirely).
+        // That contradicted Module 3's "authorize now, capture later"
+        // design - money should only start moving once it's actually
+        // captured. Both wallet credits now happen in
+        // captureOrderPayment.js, at the moment the restaurant accepts.
 
-        await walletHelper.adminWalletRef()
-            .set({
+        // Module: assign a human-readable sequential order number.
+        // Firestore doc ids are random strings - fine as keys, useless to
+        // read out over the phone. A transaction on a single counter doc
+        // guarantees no two orders ever get the same number, even if
+        // several are placed at the same instant.
+        try {
 
-                balance:
-                    admin.firestore.FieldValue.increment(totalPrice)
+            const counterRef = admin.firestore().collection("Counters").doc("orders");
 
-            }, { merge: true });
+            const assignedNumber = await admin.firestore().runTransaction(async (tx) => {
 
-        // ===============================
-        // RESTAURANT PENDING WALLET
-        // ===============================
+                const counterSnap = await tx.get(counterRef);
 
-        if (restaurantId && subtotal) {
+                const next = counterSnap.exists && typeof counterSnap.data().lastNumber === "number"
+                    ? counterSnap.data().lastNumber + 1
+                    : 1;
 
-            await walletHelper.walletRef(walletHelper.WALLET_ROLES.RESTAURANT, restaurantId)
-                .set({
+                tx.set(counterRef, { lastNumber: next }, { merge: true });
 
-                    pendingBalance:
-                        admin.firestore.FieldValue.increment(subtotal)
+                return next;
+            });
 
-                }, { merge: true });
+            await event.data.ref.update({ orderNumber: assignedNumber });
 
-            await walletHelper.walletRef(walletHelper.WALLET_ROLES.RESTAURANT, restaurantId)
-                .collection("history")
-                .add({
+            console.log("onOrderPlaced: order", orderId, "assigned number", assignedNumber);
 
-                    type: "Pending",
+        } catch (e) {
+            // Non-fatal - the order still works, it just falls back to
+            // showing a shortened doc id until this is retried.
+            console.error("onOrderPlaced: couldn't assign sequential order number", e);
+        }
 
-                    amount: subtotal,
+        // Module - payment lifecycle: "held" receipt entry in the
+        // passenger's wallet history, the moment the card hold is placed
+        // (not yet charged). Informational only - no balance change.
+        if (passengerUid && totalPrice > 0) {
 
-                    orderId: orderId,
-
+            await admin.firestore()
+                .collection("Wallets").doc("Passenger")
+                .collection("Accounts").doc(passengerUid)
+                .collection("history").add({
+                    type: "Payment Held",
+                    amount: totalPrice,
+                    orderId,
                     date: new Date().toISOString()
-
                 });
 
+            await passengerNotifications.paymentHeld(passengerUid, orderId, totalPrice);
         }
 
-        // ===============================
-        // NOTIFICATION TO RESTAURANT
-        // ===============================
+        // Module 8 - "order confirmed" is one of the fixed passenger
+        // milestones. No payment amount, no item list, no order id in the
+        // visible copy - see passengerNotifications.js for the policy.
+        await passengerNotifications.orderConfirmed(passengerUid, orderId);
 
-        if (restaurantId) {
-
-await sendNotification({
-
-                uid: restaurantId,
-
-                role: ROLES.RESTAURANT,
-
-                title: "\ud83c\udf7d\ufe0f New Order",
-
-                body: "You have received a new order.",
-
-                data: {
-
-                    orderId,
-
-                    status: ORDER_STATUS.ACTIVE
-
-                }
-
-            });
-
-        }
-
-        // ===============================
-        // NOTIFICATION TO PASSENGER
-        // ===============================
-
-        if (passengerUid) {
-
-           // Short line shows in the collapsed notification; fullMessage is
-            // revealed when the passenger expands or taps it.
-            const amount = Math.round(totalPrice || 0);
-
-            const itemNames = Array.isArray(data.items)
-                ? data.items.map((i) => i.name).filter(Boolean).join(", ")
-                : "";
-
-            const detail =
-                "Payment of Rs " + amount + " received for order #" + orderId +
-                (itemNames ? ".\nItems: " + itemNames : ".") +
-                "\nYour order has been placed successfully.";
-
-            await sendNotification({
-
-                uid: passengerUid,
-
-                role: ROLES.PASSENGER,
-
-                title: "\u2705 Payment Successful",
-
-                body: "Rs " + amount + " paid successfully",
-
-                data: {
-
-                    orderId,
-
-                    status: ORDER_STATUS.ACTIVE,
-
-                    fullMessage: detail,
-
-                    amount: String(amount)
-
-                }
-
-            });
-
-        }
-
-        console.log("Order Placed Trigger Completed");
+        console.log("Order Placed Trigger Completed - payment authorized (hold only), wallet crediting deferred to capture");
 
     }
 );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-
-// const admin = require("../../config/firebase");
-
-// const { sendNotification } = require("../../utils/sendNotification");
-
-// exports.onOrderPlaced = onDocumentCreated(
-//     "Orders/{orderId}",
-//     async (event) => {
-
-//         const data = event.data.data();
-
-//         const {
-//             orderId,
-//             passengerUid,
-//             restaurantId,
-//             subtotal,
-//             deliveryFee,
-//             adminFee,
-//             totalPrice
-//         } = data;
-
-//         // ===============================
-//         // ADMIN MAIN WALLET
-//         // ===============================
-
-//         await admin.firestore()
-//             .collection("Wallets")
-//             .doc("admin_wallet")
-//             .set({
-
-//                 balance:
-//                     admin.firestore.FieldValue.increment(totalPrice)
-
-//             }, { merge: true });
-
-//         // ===============================
-//         // RESTAURANT PENDING WALLET
-//         // ===============================
-
-//         if (restaurantId && subtotal) {
-
-//             await admin.firestore()
-//                 .collection("Wallets")
-//                 .doc(restaurantId)
-//                 .set({
-
-//                     pendingBalance:
-//                         admin.firestore.FieldValue.increment(subtotal)
-
-//                 }, { merge: true });
-
-//             await admin.firestore()
-//                 .collection("Wallets")
-//                 .doc(restaurantId)
-//                 .collection("history")
-//                 .add({
-
-//                     type: "Pending",
-
-//                     amount: subtotal,
-
-//                     orderId: orderId,
-
-//                     date: new Date().toISOString()
-
-//                 });
-
-//         }
-
-//         // ===============================
-//         // NOTIFICATION TO RESTAURANT
-//         // ===============================
-
-//         if (restaurantId) {
-
-//             await sendNotification(
-
-//                 restaurantId,
-
-//                 "🍽️ New Order",
-
-//                 "You have received a new order.",
-
-//                 {
-
-//                     orderId: orderId,
-
-//                     status: "Active"
-
-//                 }
-
-//             );
-
-//         }
-
-//         // ===============================
-//         // NOTIFICATION TO PASSENGER
-//         // ===============================
-
-//         if (passengerUid) {
-
-//             await sendNotification(
-
-//                 passengerUid,
-
-//                 "✅ Order Placed",
-
-//                 "Your order has been placed successfully.",
-
-//                 {
-
-//                     orderId: orderId,
-
-//                     status: "Active"
-
-//                 }
-
-//             );
-
-//         }
-
-//         console.log("Order Placed Trigger Completed");
-
-//     }
-// );

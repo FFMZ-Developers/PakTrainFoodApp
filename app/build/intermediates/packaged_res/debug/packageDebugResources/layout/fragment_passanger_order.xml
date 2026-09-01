@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface"
+    android:clickable="true"
+    android:focusable="true"
+    tools:context=".ui.main.Passenger.order.OrderFragment">
+
+    <!-- Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbarOrders"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/teal_700"
+        app:titleTextColor="@color/white"
+        app:title="My Orders"
+        app:menu="@menu/menu_refresh"
+        app:titleTextAppearance="@style/Toolbar.Title" />
+
+    <!-- Header Image -->
+    <ImageView
+        android:id="@+id/headerImage"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:adjustViewBounds="true"
+        android:scaleType="centerCrop"
+        android:src="@drawable/order1" />
+
+    <!-- Tabs -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabsOrders"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/half_white"
+        app:tabMode="fixed"
+        app:tabGravity="fill"
+        app:tabIndicatorColor="@color/teal_700"
+        app:tabIndicatorHeight="3dp"
+        app:tabSelectedTextColor="@color/teal_700"
+        app:tabTextColor="@color/black" />
+    <ProgressBar
+        android:id="@+id/progressRefresh"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="20dp"
+        android:layout_gravity="center_horizontal"
+        android:visibility="gone"/>
+    <!-- Container for Tab Fragments -->
+    <FrameLayout
+        android:id="@+id/orders_tab_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="12dp" />
+
+</LinearLayout>
+
+
+<!---->
+

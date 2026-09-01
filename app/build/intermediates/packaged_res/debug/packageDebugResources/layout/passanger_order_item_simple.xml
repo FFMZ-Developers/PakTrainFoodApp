@@ -1,0 +1,216 @@
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:card_view="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="10dp"
+    android:backgroundTint="@color/half_white"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    card_view:cardCornerRadius="12dp"
+    card_view:cardElevation="6dp"
+    app:cardBackgroundColor="@color/surface">
+<!---->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/txtOrderId"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Order ID"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/txtTotalPrice"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/txtOrderId"
+            android:layout_marginTop="5dp"
+            android:text="Total Price" />
+
+        <TextView
+            android:id="@+id/txtEtaArrival"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/txtTotalPrice"
+            android:layout_marginTop="4dp"
+            android:text="Estimated Arrival: --"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/teal_700" />
+
+        <ImageView
+            android:id="@+id/btnDelete"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:padding="5dp"
+            android:src="@android:drawable/ic_menu_delete"
+            android:visibility="gone"
+            app:tint="@color/red" />
+
+        <ImageView
+            android:id="@+id/btnAccept"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_below="@id/btnDelete"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="10dp"
+            android:padding="5dp"
+            android:src="@android:drawable/checkbox_on_background"
+            app:tint="@color/green"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/timeRow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/txtEtaArrival"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/txtTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:text=""
+                android:visibility="gone"
+                android:textColor="@android:color/black"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnReady"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/teal_700"
+                android:elevation="4dp"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:text="Ready for Delivery"
+                android:textAllCaps="false"
+
+                android:textColor="@android:color/white" />
+        </LinearLayout>
+    </RelativeLayout>
+</androidx.cardview.widget.CardView>
+
+
+
+
+
+<!--<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"-->
+<!--    xmlns:card_view="http://schemas.android.com/apk/res-auto"-->
+<!--    android:layout_width="match_parent"-->
+<!--    android:layout_height="wrap_content"-->
+<!--    xmlns:app="http://schemas.android.com/tools"-->
+<!--    android:layout_margin="10dp"-->
+<!--    android:clickable="true"-->
+<!--    android:focusable="true"-->
+<!--    android:backgroundTint="@color/half_white"-->
+<!--    android:foreground="?attr/selectableItemBackground"-->
+<!--    card_view:cardCornerRadius="12dp"-->
+<!--    card_view:cardElevation="6dp">-->
+
+<!--    <RelativeLayout-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:padding="12dp">-->
+
+<!--        &lt;!&ndash; Order ID &ndash;&gt;-->
+<!--        <TextView-->
+<!--            android:id="@+id/txtOrderId"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="Order ID"-->
+<!--            android:textSize="16sp"-->
+<!--            android:textStyle="bold" />-->
+
+<!--        &lt;!&ndash; Total Price &ndash;&gt;-->
+<!--        <TextView-->
+<!--            android:id="@+id/txtTotalPrice"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_below="@id/txtOrderId"-->
+<!--            android:layout_marginTop="5dp"-->
+<!--            android:text="Total Price" />-->
+
+<!--        &lt;!&ndash; DELETE ICON &ndash;&gt;-->
+<!--        <ImageView-->
+<!--            android:id="@+id/btnDelete"-->
+<!--            android:layout_width="34dp"-->
+<!--            android:layout_height="34dp"-->
+<!--            android:layout_alignParentTop="true"-->
+<!--            android:layout_alignParentEnd="true"-->
+<!--            android:padding="5dp"-->
+<!--            android:src="@android:drawable/ic_menu_delete"-->
+<!--            android:visibility="gone"-->
+<!--            app:tint="@color/red" />-->
+
+<!--        &lt;!&ndash; ACCEPT ICON &ndash;&gt;-->
+<!--        <ImageView-->
+<!--            android:id="@+id/btnAccept"-->
+<!--            android:layout_width="34dp"-->
+<!--            android:layout_height="34dp"-->
+<!--            android:layout_below="@id/btnDelete"-->
+<!--            android:layout_alignParentEnd="true"-->
+<!--            android:layout_marginTop="10dp"-->
+<!--            android:padding="5dp"-->
+<!--            android:visibility="gone"-->
+<!--            android:src="@android:drawable/checkbox_on_background"-->
+
+
+<!--            />-->
+<!--        <LinearLayout-->
+<!--            android:id="@+id/timeRow"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:orientation="horizontal"-->
+<!--            android:layout_below="@id/txtTotalPrice"-->
+<!--            android:layout_alignParentEnd="true"-->
+<!--            android:layout_marginTop="10dp"-->
+<!--            android:layout_marginEnd="8dp"-->
+<!--            android:visibility="gone"-->
+<!--            android:gravity="center_vertical">-->
+
+<!--            &lt;!&ndash; TIME TEXT &ndash;&gt;-->
+<!--            <TextView-->
+<!--                android:id="@+id/txtTimer"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="1:20:49"-->
+<!--                android:textSize="14sp"-->
+<!--                android:textStyle="bold"-->
+<!--                android:textColor="@android:color/black"-->
+
+<!--                android:layout_marginEnd="10dp"/>-->
+
+<!--            &lt;!&ndash; READY BUTTON &ndash;&gt;-->
+<!--            <Button-->
+<!--                android:id="@+id/btnReady"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:paddingLeft="10dp"-->
+<!--                android:paddingRight="10dp"-->
+<!--                android:text="Ready for Delivery"-->
+<!--                android:textAllCaps="false"-->
+<!--                android:backgroundTint="@color/teal_700"-->
+<!--                android:textColor="@android:color/white"-->
+
+<!--                android:elevation="4dp"/>-->
+<!--        </LinearLayout>-->
+<!--    </RelativeLayout>-->
+
+<!--</androidx.cardview.widget.CardView>-->
+

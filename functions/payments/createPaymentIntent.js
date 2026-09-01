@@ -1,13 +1,7 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 
 const { getStripeClient, STRIPE_SECRET_KEY } = require("../config/stripe");
-
-// Stripe has no supported presentment/settlement currency for PKR (Pakistan
-// isn't a supported Stripe country), so the charge itself must be made in a
-// currency Stripe accepts. USD is used here purely for the Stripe API call;
-// everything the passenger sees in the app UI stays in Rs/PKR.
-const PKR_TO_USD_RATE = 283;
-const MIN_USD_CENTS = 50; // Stripe's own minimum charge for USD
+const { pkrToUsdCents } = require("../utils/currency");
 
 exports.createPaymentIntent = onCall(
     { secrets: [STRIPE_SECRET_KEY] },
@@ -27,10 +21,7 @@ exports.createPaymentIntent = onCall(
 
         }
 
-        const usdCents = Math.max(
-            MIN_USD_CENTS,
-            Math.round((amount / PKR_TO_USD_RATE) * 100)
-        );
+        const usdCents = pkrToUsdCents(amount);
 
         try {
 
@@ -42,6 +33,22 @@ exports.createPaymentIntent = onCall(
 
                 currency: "usd",
 
+                // ============================================
+                // Module 3 - authorize now, capture later.
+                //
+                // "manual" means Stripe places a HOLD on the passenger's
+                // card for this amount right now (when they confirm
+                // PaymentSheet), but does NOT actually take the money yet.
+                // The hold only turns into a real charge when
+                // captureOrderPayment (functions/payments/captureOrderPayment.js)
+                // runs - which happens when the restaurant accepts the
+                // order. If the restaurant never accepts (rejects, or the
+                // order times out), releaseOrderAuthorization cancels the
+                // hold instead - the passenger's card is never actually
+                // charged for an order that never got made.
+                // ============================================
+                capture_method: "manual",
+
                 metadata: {
                     originalAmountPKR: amount
                 }
@@ -50,7 +57,11 @@ exports.createPaymentIntent = onCall(
 
             return {
 
-                clientSecret: paymentIntent.client_secret
+                clientSecret: paymentIntent.client_secret,
+
+                // The app saves this onto the order document so the backend
+                // knows which PaymentIntent to capture/cancel later.
+                paymentIntentId: paymentIntent.id
 
             };
 

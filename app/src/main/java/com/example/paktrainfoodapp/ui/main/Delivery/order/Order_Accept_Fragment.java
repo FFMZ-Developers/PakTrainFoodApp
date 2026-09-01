@@ -34,6 +34,33 @@ public class Order_Accept_Fragment extends Fragment {
 
     private String riderId;
 
+    // Module: report-a-problem evidence photo. Uses the same
+    // TakePicturePreview + DocumentUploader path the verification wizard's
+    // selfie step uses, so no FileProvider setup is needed for this one
+    // capture.
+    private android.graphics.Bitmap capturedReportPhoto;
+    private android.widget.ImageView pendingReportPreview;
+    private androidx.activity.result.ActivityResultLauncher<Void> reportPhotoLauncher;
+
+    @Override
+    public void onCreate(@androidx.annotation.Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        reportPhotoLauncher = registerForActivityResult(
+                new androidx.activity.result.contract.ActivityResultContracts.TakePicturePreview(),
+                bitmap -> {
+
+                    if (bitmap == null) return;
+
+                    capturedReportPhoto = bitmap;
+
+                    if (pendingReportPreview != null) {
+                        pendingReportPreview.setVisibility(View.VISIBLE);
+                        pendingReportPreview.setImageBitmap(bitmap);
+                    }
+                });
+    }
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container,
@@ -76,6 +103,11 @@ public class Order_Accept_Fragment extends Fragment {
                     public void onButtonClick(DeliveryBoyModel order, int position) {
                         handleAction(order, position);
                     }
+
+                    @Override
+                    public void onReportProblem(DeliveryBoyModel order, int position) {
+                        showReportProblemDialog(order, position);
+                    }
                 });
 
         recyclerView.setAdapter(adapter);
@@ -92,10 +124,15 @@ public class Order_Accept_Fragment extends Fragment {
 
         db.collection("Orders")
                 .whereEqualTo("acceptedBy", riderId)
+                // ✅ FIX: pick_up added. The rider still has work to do at
+                // that point (drive to the station and hand over), so it
+                // belongs in the active tab - it was sitting in "Completed"
+                // instead, which read as finished when it wasn't.
                 .whereIn("orderStatus", Arrays.asList(
                         "accepted_by_rider",
                         "arrive_rider_at_resturent",
-                        "dropped"
+                        "dropped",
+                        "pick_up"
                 ))
                 .addSnapshotListener((query, e) -> {
 
@@ -115,6 +152,10 @@ public class Order_Accept_Fragment extends Fragment {
                                 );
 
                         order.setStatus(doc.getString("orderStatus"));
+                        order.setOrderNumber(doc.getLong("orderNumber"));
+
+                        Long trainEta = doc.getLong("trainEtaEndTime");
+                        order.setTrainEtaEndTime(trainEta != null ? trainEta : 0L);
                         orderList.add(order);
                     }
 
@@ -155,9 +196,31 @@ public class Order_Accept_Fragment extends Fragment {
 
                         updateStatus(order, "pick_up");
 
-                        // remove from list instantly
-                        orderList.remove(position);
-                        adapter.notifyItemRemoved(position);
+                        // Stays in this tab now (pick_up is still active
+                        // work) - just refresh the row so the button
+                        // becomes "Hand Over to Passenger".
+                        order.setStatus("pick_up");
+                        adapter.notifyItemChanged(position);
+                    })
+                    .setNegativeButton("NO", null)
+                    .show();
+        }
+
+        // 🔵 STEP 4 → HAND OVER (final step; moves the order to Completed)
+        else if ("pick_up".equals(status)) {
+
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Hand Over to Passenger")
+                    .setMessage("Kya aap order passenger ko de chuke hain?")
+                    .setPositiveButton("YES", (dialog, which) -> {
+
+                        updateStatus(order, "completed");
+
+                        if (position != RecyclerView.NO_POSITION
+                                && position < orderList.size()) {
+                            orderList.remove(position);
+                            adapter.notifyItemRemoved(position);
+                        }
                     })
                     .setNegativeButton("NO", null)
                     .show();
@@ -175,6 +238,125 @@ public class Order_Accept_Fragment extends Fragment {
                 .replace(R.id.main_container, fragment)
                 .addToBackStack(null)
                 .commit();
+    }
+
+    // ================= MODULE 6 (FAILURE 3) =================
+    //
+    // Rider reports they can't complete this delivery. Backend
+    // (onDeliveryFailed.js) branches on whether the food was already
+    // picked up: pays the restaurant + a reduced fee to the rider +
+    // refunds the rest to the passenger if so, otherwise cancels and
+    // refunds the passenger in full. Either way the rider gets a strike.
+    private void showReportProblemDialog(DeliveryBoyModel order, int position) {
+
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_report_problem, null);
+
+        android.widget.EditText input = dialogView.findViewById(R.id.edit_report_reason);
+        android.widget.ImageView imgPreview = dialogView.findViewById(R.id.img_report_photo);
+        android.widget.Button btnPhoto = dialogView.findViewById(R.id.btn_take_photo);
+
+        btnPhoto.setOnClickListener(v -> reportPhotoLauncher.launch(null));
+
+        pendingReportPreview = imgPreview;
+
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle("Report a Problem")
+                .setMessage("Wajah likhein - admin isay dekh kar payment decide karega. Photo lagana behtar hai (misaal: khana wapis laaya, passenger nahi mila).")
+                .setView(dialogView)
+                .setPositiveButton("Submit Report", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+
+        dialog.show();
+
+        // Set the click listener AFTER show() so a validation failure
+        // doesn't auto-dismiss the dialog and lose what they typed.
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+
+            String reason = input.getText() != null ? input.getText().toString().trim() : "";
+
+            if (reason.isEmpty()) {
+                input.setError("Please describe what happened");
+                return;
+            }
+
+            dialog.dismiss();
+
+            submitReport(order, position, reason);
+        });
+    }
+
+    /**
+     * Uploads the evidence photo (if one was taken) then flips the order
+     * to "delivery_failed" - which onDeliveryFailed.js picks up, freezing
+     * the order for admin review with the full timeline and both parties'
+     * last known locations attached.
+     */
+    private void submitReport(DeliveryBoyModel order, int position, String reason) {
+
+        Toast.makeText(getContext(), "Submitting report...", Toast.LENGTH_SHORT).show();
+
+        if (capturedReportPhoto == null) {
+            writeReportToFirestore(order, position, reason, null);
+            return;
+        }
+
+        com.example.paktrainfoodapp.utils.DocumentUploader.uploadBitmap(
+                "delivery", riderId, "report_" + order.getOrderId(), capturedReportPhoto,
+                new com.example.paktrainfoodapp.utils.DocumentUploader.UploadCallback() {
+
+                    @Override
+                    public void onSuccess(String downloadUrl) {
+                        writeReportToFirestore(order, position, reason, downloadUrl);
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        // Photo upload failing shouldn't block the report
+                        // itself - the reason and timeline still matter.
+                        writeReportToFirestore(order, position, reason, null);
+                    }
+                });
+    }
+
+    private void writeReportToFirestore(DeliveryBoyModel order, int position,
+                                        String reason, String photoUrl) {
+
+        java.util.Map<String, Object> updates = new java.util.HashMap<>();
+        updates.put("orderStatus", "delivery_failed");
+        updates.put("failureReason", reason);
+        updates.put("failureReportedAt", System.currentTimeMillis());
+        updates.put("failureReportedBy", "rider");
+
+        if (photoUrl != null) {
+            updates.put("failurePhotoUrl", photoUrl);
+        }
+
+        db.collection("Orders")
+                .document(order.getOrderId())
+                .update(updates)
+                .addOnSuccessListener(unused -> {
+
+                    if (!isAdded()) return;
+
+                    capturedReportPhoto = null;
+
+                    Toast.makeText(getContext(),
+                            "Reported - admin will review and process payment.",
+                            Toast.LENGTH_LONG).show();
+
+                    if (position != RecyclerView.NO_POSITION &&
+                            position < orderList.size()) {
+                        orderList.remove(position);
+                        adapter.notifyItemRemoved(position);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (isAdded()) {
+                        Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 
     // ================= UPDATE =================

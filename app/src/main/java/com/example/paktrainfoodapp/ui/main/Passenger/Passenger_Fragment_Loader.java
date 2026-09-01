@@ -224,38 +224,6 @@ public class Passenger_Fragment_Loader extends Fragment {
 
             showFragment(profileFragment);
         });
-<<<<<<< HEAD
-
-        if (openOrderAfterLoad) {
-
-            openOrderAfterLoad = false;
-
-            view.post(() -> {
-
-                navigateToOrders();
-
-            });
-
-        }
-        startBadgeListener();
-        startNotificationBadge();
-
-    }
-    public void navigateToOrders() {
-
-        if (!isAdded()) {
-
-            openOrderAfterLoad = true;
-            return;
-
-        }
-
-        showFragment(orderFragment);
-
-        selectNavButton(btnOrder);
-
-    }
-=======
 
         if (openOrderAfterLoad) {
 
@@ -302,7 +270,6 @@ public class Passenger_Fragment_Loader extends Fragment {
         selectNavButton(btnJourney);
     }
 
->>>>>>> origin/Fahad
     public void navigateToOrders(int tabIndex) {
 
         orderFragment.setSelectedTab(tabIndex);
@@ -1002,8 +969,6 @@ public class Passenger_Fragment_Loader extends Fragment {
     }
 
 
-<<<<<<< HEAD
-=======
 
     /** Which bottom-nav button corresponds to a given content fragment. */
     private LinearLayout navButtonFor(Fragment f) {
@@ -1015,6 +980,5 @@ public class Passenger_Fragment_Loader extends Fragment {
 
         return btnDashboard;
     }
->>>>>>> origin/Fahad
 }
 

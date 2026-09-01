@@ -2,6 +2,9 @@ const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 
 const admin = require("../../config/firebase");
 const walletHelper = require("../../utils/walletHelper");
+const routeHistoryHelper = require("../../utils/routeHistoryHelper");
+const reliabilityHelper = require("../../utils/reliabilityHelper");
+const passengerNotifications = require("../../utils/passengerNotifications");
 
 const { sendNotification } = require("../../utils/sendNotification");
 const {
@@ -98,32 +101,57 @@ exports.onOrderCompleted = onDocumentUpdated(
         }
 
         // =====================================
-        // Passenger Notification
+        // Module 2 - Route history (for ETA prediction)
+        //
+        // Save how long this leg (boarding station -> meal station) actually
+        // took, split across every station pair along the way, so future
+        // orders on the same stretch get a better predicted ETA. Wrapped in
+        // its own try/catch so any problem here (bad route data, missing
+        // station coords, etc.) can never block the wallet payout or the
+        // notifications above/below - this is a "nice to have" enrichment,
+        // not part of the money/notification critical path.
         // =====================================
 
-        if (passengerUid) {
+        try {
 
-           await sendNotification({
+            await saveRouteHistoryForOrder(after);
 
-    uid: passengerUid,
+        } catch (err) {
 
-    role: ROLES.PASSENGER,
-
-    title: "✅ Order Completed",
-
-    body: "Your order has been delivered successfully. Thank you for choosing Pak Train Food.",
-
-    data: {
-
-        orderId,
-
-        status: ORDER_STATUS.COMPLETED
-
-    }
-
-});
-
+            console.error("routeHistory save failed for order", orderId, err);
         }
+
+        // =====================================
+        // Module 7 - reliability: small score bump for both the
+        // restaurant and rider on a genuinely completed order (capped at
+        // the starting/maximum score - see reliabilityHelper). Wrapped in
+        // its own try/catch for the same reason as the route-history save
+        // above - never let a "nice to have" reliability update block the
+        // wallet payout or notifications.
+        // =====================================
+
+        try {
+
+            if (restaurantId) {
+                await reliabilityHelper.recordCompletion(ROLES.RESTAURANT, restaurantId);
+            }
+
+            if (riderId) {
+                await reliabilityHelper.recordCompletion(ROLES.DELIVERY, riderId);
+            }
+
+        } catch (err) {
+
+            console.error("reliability recordCompletion failed for order", orderId, err);
+        }
+
+        // =====================================
+        // Passenger Notification
+        //
+        // Module 8 - "delivered" milestone.
+        // =====================================
+
+        await passengerNotifications.delivered(passengerUid, orderId);
 
         // =====================================
         // Restaurant Notification
@@ -185,3 +213,120 @@ exports.onOrderCompleted = onDocumentUpdated(
 
     }
 );
+
+// ============================================================================
+// Module 2 helper - works out the ordered list of stations actually
+// travelled on this order (boarding station -> mealStation, with lat/lng)
+// and the total elapsed minutes since the order was placed, then hands both
+// to routeHistoryHelper.recordRouteCompletion().
+//
+// "order placed -> completed" is used as the elapsed-time window because
+// that's the only pair of real timestamps we have. It's an approximation
+// (order isn't necessarily placed the instant the passenger boards), but it
+// gets more accurate as more samples come in via the last-5-average.
+// ============================================================================
+
+async function saveRouteHistoryForOrder(order) {
+
+    const routeId = order.routeId;
+    const fromStation = order.fromStation;
+    const mealStation = order.mealStation;
+    const placedAtMs = order.timestamp;
+
+    if (!routeId || !fromStation || !mealStation) {
+        console.log("routeHistory: skipping, order missing routeId/fromStation/mealStation");
+        return;
+    }
+
+    if (!placedAtMs || typeof placedAtMs !== "number") {
+        console.log("routeHistory: skipping, order missing numeric timestamp");
+        return;
+    }
+
+    const totalElapsedMinutes = (Date.now() - placedAtMs) / 60000;
+
+    if (totalElapsedMinutes <= 0) {
+        console.log("routeHistory: skipping, non-positive elapsed time");
+        return;
+    }
+
+    const db = admin.firestore();
+
+    const routeDoc = await db
+        .collection("RailwaySystem")
+        .doc("main")
+        .collection("Routes")
+        .doc(routeId)
+        .get();
+
+    if (!routeDoc.exists) {
+        console.log("routeHistory: route not found", routeId);
+        return;
+    }
+
+    const routeStations = routeDoc.data().stations;
+
+    if (!Array.isArray(routeStations)) return;
+
+    // Same rule the Android map screen uses: walk the route from the start,
+    // stop once we reach the meal station (that's the stretch we actually
+    // have a measured duration for).
+    const orderedNames = [];
+
+    for (const s of routeStations) {
+
+        const name = s && s.name;
+
+        if (!name) continue;
+
+        orderedNames.push(name);
+
+        if (String(name).toLowerCase() === String(mealStation).toLowerCase()) {
+            break;
+        }
+    }
+
+    // Trim anything before the boarding station, in case the route document
+    // covers a longer line than this particular passenger's journey.
+    const boardIndex = orderedNames.findIndex(
+        (n) => n.toLowerCase() === String(fromStation).toLowerCase()
+    );
+
+    const relevantNames = boardIndex >= 0
+        ? orderedNames.slice(boardIndex)
+        : orderedNames;
+
+    if (relevantNames.length < 2) {
+        console.log("routeHistory: not enough stations between", fromStation, "and", mealStation);
+        return;
+    }
+
+    // Fetch lat/lng for each station in the stretch.
+    const stationDocs = await Promise.all(
+        relevantNames.map((name) =>
+            db.collection("RailwaySystem").doc("main")
+                .collection("Stations").doc(name).get()
+        )
+    );
+
+    const orderedStations = stationDocs.map((doc, i) => {
+
+        if (!doc.exists) return null;
+
+        const data = doc.data();
+
+        return {
+            name: relevantNames[i],
+            lat: data.lat,
+            lng: data.lng
+        };
+    }).filter(Boolean);
+
+    await routeHistoryHelper.recordRouteCompletion(orderedStations, totalElapsedMinutes);
+
+    console.log(
+        "routeHistory: saved", orderedStations.length,
+        "stations for", fromStation, "->", mealStation,
+        "(", totalElapsedMinutes.toFixed(1), "min )"
+    );
+}

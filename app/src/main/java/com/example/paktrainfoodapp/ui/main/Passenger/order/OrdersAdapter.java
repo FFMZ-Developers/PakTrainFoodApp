@@ -50,7 +50,7 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.ViewHolder
 
         if (m == null) return;
 
-        h.txtOrderId.setText("#" + m.getOrderId());
+        h.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(m.getOrderNumber(), m.getOrderId()));
         h.txtTotalPrice.setText("Total: Rs " + m.getTotalPrice());
 
         // RESET UI (VERY IMPORTANT)

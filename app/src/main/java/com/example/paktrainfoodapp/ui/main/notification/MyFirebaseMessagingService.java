@@ -55,6 +55,10 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         String status = remoteMessage.getData().get("status");
         String notificationType = remoteMessage.getData().get("notificationType");
         String deepLinkId = remoteMessage.getData().get("deepLinkId");
+        String orderNumber = remoteMessage.getData().get("orderNumber");
+        String notificationId = remoteMessage.getData().get("notificationId");
+        String chatType = remoteMessage.getData().get("chatType");
+        String senderName = remoteMessage.getData().get("senderName");
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra("orderId", orderId);
@@ -62,6 +66,12 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         intent.putExtra("status", status);
         intent.putExtra("notificationType", notificationType);
         intent.putExtra("deepLinkId", deepLinkId);
+        intent.putExtra("orderNumber", orderNumber);
+        intent.putExtra("notificationId", notificationId);
+        intent.putExtra("chatType", chatType);
+        intent.putExtra("senderName", senderName);
+        intent.putExtra("title", title);
+        intent.putExtra("body", body);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -103,9 +113,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
-        int notificationId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
+        int notifyid = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
 
         NotificationManagerCompat.from(this)
-                .notify(notificationId, builder.build());
+                .notify(notifyid, builder.build());
     }
     }

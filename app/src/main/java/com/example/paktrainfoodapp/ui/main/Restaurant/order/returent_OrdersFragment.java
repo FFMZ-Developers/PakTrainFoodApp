@@ -13,6 +13,7 @@ import com.google.android.material.tabs.TabLayout;
 public class returent_OrdersFragment extends Fragment {
 
     private TabLayout tabsOrders;
+    private final com.example.paktrainfoodapp.utils.OrderTabCounter tabCounter = new com.example.paktrainfoodapp.utils.OrderTabCounter();
     // Track active fragment to prevent redundant reloads
     private Fragment activeFragment = null;
 
@@ -30,6 +31,14 @@ public class returent_OrdersFragment extends Fragment {
         tabsOrders.addTab(tabsOrders.newTab().setText("Accepted"));
         tabsOrders.addTab(tabsOrders.newTab().setText("Delivered"));
         tabsOrders.addTab(tabsOrders.newTab().setText("Completed"));
+
+        // Live counts next to each tab label - see OrderTabCounter.
+        String counterUid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
+        if (counterUid != null) {
+            tabCounter.attachStatuses(tabsOrders, 0, "Active", "restaurantId", counterUid, "Active");
+            tabCounter.attachStatuses(tabsOrders, 1, "Accepted", "restaurantId", counterUid, "Accepted", "ready_for_delivery");
+            tabCounter.attachStatuses(tabsOrders, 2, "Delivered", "restaurantId", counterUid, "accepted_by_rider","arrive_rider_at_resturent","dropped","pick_up");
+        }
 
         // 🔹 Default Load
         loadTabFragment(0);
@@ -72,6 +81,12 @@ public class returent_OrdersFragment extends Fragment {
                 .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
                 .replace(R.id.orders_tab_container, fragment)
                 .commitAllowingStateLoss(); // Use this to avoid state loss crash
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        tabCounter.detachAll();
     }
 }
 

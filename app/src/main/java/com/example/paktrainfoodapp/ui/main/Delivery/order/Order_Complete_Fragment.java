@@ -81,8 +81,9 @@ public class Order_Complete_Fragment extends Fragment {
                         Double price = doc.getDouble("totalPrice");
 
                         // ONLY THESE STATUS FROM YOUR FLOW
-                        if (!"pick_up".equals(status) &&
-                                !"completed".equals(status)) {
+                        // Completed means finished - pick_up moved to the
+                        // Accept tab where the remaining work lives.
+                        if (!"completed".equals(status)) {
                             continue;
                         }
 
@@ -126,10 +127,39 @@ public class Order_Complete_Fragment extends Fragment {
 
             DeliveryBoyModel model = list.get(position);
 
-            h.txtOrderId.setText("Order #" + model.getOrderId());
+            h.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(model.getOrderNumber(), model.getOrderId()));
+
+            // Raw countdown removed - only the arrival estimate is shown.
+            if (h.txtTime != null) h.txtTime.setVisibility(View.GONE);
             h.txtPrice.setText("Rs " + model.getTotalPrice());
 h.timeRow.setVisibility(View.VISIBLE);
             String status = model.getStatus();
+
+            // ✅ FIX: cards here had no click handler, so once the rider
+            // picked the food up (which moves the order into this tab)
+            // they lost the tracking map entirely - exactly when they most
+            // need it, since that's the leg where they're driving to the
+            // station. Tracking stays available right up until the order
+            // is actually completed.
+            if (!"completed".equals(status)) {
+
+                h.itemView.setOnClickListener(v -> {
+
+                    if (!isAdded()) return;
+
+                    requireActivity().getSupportFragmentManager()
+                            .beginTransaction()
+                            .replace(R.id.main_container,
+                                    com.example.paktrainfoodapp.ui.main.Restaurant.order
+                                            .OrderDetailFragment.newInstance(model.getOrderId()))
+                            .addToBackStack(null)
+                            .commit();
+                });
+
+            } else {
+                // Finished - nothing left to track.
+                h.itemView.setOnClickListener(null);
+            }
 
             // RESET
             h.btnAction.setEnabled(true);
@@ -161,7 +191,7 @@ h.timeRow.setVisibility(View.VISIBLE);
 
             else if ("completed".equals(status)) {
 
-                h.btnAction.setText("Completed");
+                com.example.paktrainfoodapp.utils.StatusBadge.apply(h.btnAction, "completed");
                 h.btnAction.setEnabled(false);
                 h.btnAction.setAlpha(0.5f);
                 h.txtTime.setText("Arrive");

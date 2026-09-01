@@ -47,7 +47,7 @@ public class MyOrdersAdapter
 
         MyOrderModel order = list.get(position);
 
-        holder.txtOrderId.setText("#" + order.getOrderId());
+        holder.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(order.getOrderNumber(), order.getOrderId()));
 
         holder.txtTotalPrice.setText("Rs " + (int) order.getTotalPrice());
 
@@ -63,6 +63,19 @@ public class MyOrdersAdapter
             holder.txtStation.setText("Station: " + order.getMealStation());
         } else {
             holder.txtStation.setVisibility(View.GONE);
+        }
+
+        // Module 2 - "Estimated Arrival" (auto-updates whenever
+        // trainEtaEndTime changes in Firestore, since MyOrdersFragment
+        // listens with addSnapshotListener - no need to open order detail).
+        if (order.getTrainEtaEndTime() > 0) {
+            holder.txtEtaArrival.setVisibility(View.VISIBLE);
+            java.text.SimpleDateFormat fmt =
+                    new java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault());
+            holder.txtEtaArrival.setText(
+                    "Estimated Arrival: " + fmt.format(new java.util.Date(order.getTrainEtaEndTime())));
+        } else {
+            holder.txtEtaArrival.setVisibility(View.GONE);
         }
 
         if (order.getDateText() != null && !order.getDateText().isEmpty()) {
@@ -174,7 +187,7 @@ public class MyOrdersAdapter
     static class ViewHolder extends RecyclerView.ViewHolder {
 
         TextView txtOrderId, txtStatusBadge, txtRestaurant,
-                txtStation, txtOrderDate, txtTotalPrice;
+                txtStation, txtOrderDate, txtTotalPrice, txtEtaArrival;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -185,6 +198,7 @@ public class MyOrdersAdapter
             txtStation = itemView.findViewById(R.id.txtStation);
             txtOrderDate = itemView.findViewById(R.id.txtOrderDate);
             txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
+            txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
         }
     }
 }

@@ -206,6 +206,8 @@ public class ProfileFragment extends Fragment {
         // ==========================
 
         btnLogout.setOnClickListener(v -> {
+            // Guarded by a confirmation - see LogoutConfirm.
+            com.example.paktrainfoodapp.utils.LogoutConfirm.show(requireContext(), () -> {
 
             mAuth.signOut();
 
@@ -214,7 +216,7 @@ public class ProfileFragment extends Fragment {
 
             startActivity(intent);
             requireActivity().finish();
-
+            });
         });
 
     }

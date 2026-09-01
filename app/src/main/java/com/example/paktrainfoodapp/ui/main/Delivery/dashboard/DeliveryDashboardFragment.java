@@ -10,7 +10,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -60,12 +59,6 @@ public class DeliveryDashboardFragment extends Fragment {
 
     private DatabaseReference riderRef;
 
-    // ================= SWITCH =================
-
-    private Switch statusSwitch;
-    private TextView statusText;
-    private View statusDot;
-
     private String currentTag = "home";
 
     private TextView txtRiderBadge;
@@ -99,7 +92,25 @@ public class DeliveryDashboardFragment extends Fragment {
 
         if (uid != null) {
 
-            riderRef = FirebaseDatabase.getInstance()
+            // Module 7 - pause-status check (same pattern as the
+            // restaurant dashboard).
+            checkPauseStatus(uid);
+
+            // ✅ FIX: this used to call FirebaseDatabase.getInstance()
+            // with NO explicit database URL - relying on whatever
+            // "default" RTDB instance the SDK auto-resolves. The backend
+            // (Cloud Functions, admin.database()) explicitly resolves to
+            // "https://paktrainfoodservice-default-rtdb.firebaseio.com/"
+            // (confirmed in this project's own deploy logs), and
+            // LocationService.java already hardcodes that same URL for
+            // passenger location writes - but this rider dashboard never
+            // did, so there was a real risk of the rider's own
+            // online/location data landing in a DIFFERENT database
+            // instance than the one dispatchRider.js actually reads from
+            // when deciding who to notify. Explicitly pinning the same
+            // URL here removes that ambiguity entirely.
+            riderRef = FirebaseDatabase.getInstance(
+                            "https://paktrainfoodservice-default-rtdb.firebaseio.com/")
                     .getReference("DeliveryRiders")
                     .child(uid);
         }
@@ -146,56 +157,16 @@ public class DeliveryDashboardFragment extends Fragment {
         text_delivery_profile =
                 view.findViewById(R.id.text_delivery_profile);
 
-        // ================= STATUS SWITCH =================
-
-        statusSwitch = view.findViewById(R.id.status_switch);
-
-        statusText = view.findViewById(R.id.status_text);
-
-        statusDot = view.findViewById(R.id.status_dot);
-
-        // ================= DEFAULT OFFLINE =================
-
-        statusSwitch.setChecked(false);
-
-        statusText.setText("Offline");
-
-        statusDot.setBackgroundResource(
-                R.drawable.status_dot_red
-        );
-
-        updateOnlineStatus(false);
-
-        // ================= SWITCH LISTENER =================
-
-        statusSwitch.setOnCheckedChangeListener(
-                (buttonView, isChecked) -> {
-
-                    if (isChecked) {
-
-                        statusText.setText("Online");
-
-                        statusDot.setBackgroundResource(
-                                R.drawable.status_dot_green
-                        );
-
-                        updateOnlineStatus(true);
-
-                        startLocationUpdates();
-
-                    } else {
-
-                        statusText.setText("Offline");
-
-                        statusDot.setBackgroundResource(
-                                R.drawable.status_dot_red
-                        );
-
-                        updateOnlineStatus(false);
-
-                        stopLocationUpdates();
-                    }
-                });
+        // ✅ FIX: this fragment's own duplicate top header (with its own
+        // "Online" switch) was removed - see fragment_delivery_dashboard.xml.
+        // There is now exactly ONE toggle in the whole rider app - the one
+        // in fragment_delivery_home.xml's teal header, owned by
+        // DeliveryHomeFragment.java. That toggle calls setOnlineStatus()
+        // below (this fragment still owns fusedLocationClient/riderRef,
+        // so it's the right place for the actual RTDB write + location
+        // start/stop to live), instead of this fragment forcing its own
+        // separate (and previously buggy - always reset to false on every
+        // load) online state.
 
         // ================= DEFAULT FRAGMENT =================
 
@@ -260,15 +231,61 @@ public class DeliveryDashboardFragment extends Fragment {
 
     // ================= ONLINE STATUS =================
 
+    /**
+     * The single entry point for turning the rider online/offline now -
+     * called from DeliveryHomeFragment.java's switch (the only toggle in
+     * the app). Writes the real value to Realtime Database AND starts/
+     * stops GPS tracking together, so they can never drift out of sync
+     * (e.g. "online" in the database but no location updates actually
+     * being sent).
+     */
+    public void setOnlineStatus(boolean online) {
+
+        updateOnlineStatus(online);
+
+        if (online) {
+            startLocationUpdates();
+        } else {
+            stopLocationUpdates();
+        }
+    }
+
     private void updateOnlineStatus(boolean online) {
 
-        if (riderRef == null) return;
+        if (riderRef == null) {
+            android.widget.Toast.makeText(getContext(),
+                    "Couldn't update status - not signed in properly.",
+                    android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
 
         HashMap<String, Object> map = new HashMap<>();
 
         map.put("online", online);
 
-        riderRef.updateChildren(map);
+        // ✅ FIX: this write previously had NO success/failure handling
+        // at all - if it silently failed (e.g. Realtime Database security
+        // rules not actually deployed live, even though correct rules
+        // exist in database.rules.json locally - `firebase deploy` only
+        // pushes that file with `--only database`, a separate step from
+        // `--only functions`), the toggle would visually flip but the
+        // database would never actually change, and the rider would stay
+        // invisible to dispatchRider.js with zero indication anything was
+        // wrong. Now any failure shows a clear error instead of failing
+        // silently.
+        riderRef.updateChildren(map)
+                .addOnSuccessListener(unused -> {
+                    if (!isAdded()) return;
+                    android.widget.Toast.makeText(getContext(),
+                            online ? "You're online" : "You're offline",
+                            android.widget.Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    if (!isAdded()) return;
+                    android.widget.Toast.makeText(getContext(),
+                            "Status update failed: " + e.getMessage(),
+                            android.widget.Toast.LENGTH_LONG).show();
+                });
     }
 
     // ================= START LOCATION =================
@@ -350,7 +367,13 @@ public class DeliveryDashboardFragment extends Fragment {
         map.put("online", true);
         map.put("updatedAt", System.currentTimeMillis());
 
-        riderRef.updateChildren(map);
+        riderRef.updateChildren(map)
+                .addOnFailureListener(e -> {
+                    if (!isAdded()) return;
+                    android.widget.Toast.makeText(getContext(),
+                            "Location update failed: " + e.getMessage(),
+                            android.widget.Toast.LENGTH_LONG).show();
+                });
     }
 
     // ================= STOP LOCATION =================
@@ -572,6 +595,34 @@ public class DeliveryDashboardFragment extends Fragment {
         if (riderNotificationRepository != null) {
             riderNotificationRepository.removeListener();
         }
+    }
+
+    // Module 7 - pause-status check.
+    private void checkPauseStatus(String uid) {
+
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("Users").document("Delivery")
+                .collection("VerifiedRegister").document(uid)
+                .get()
+                .addOnSuccessListener(doc -> {
+
+                    if (!isAdded() || doc == null || !doc.exists()) return;
+
+                    Boolean isPaused = doc.getBoolean("isPaused");
+
+                    if (isPaused != null && isPaused) {
+
+                        String reason = doc.getString("pausedReason");
+
+                        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                                .setTitle("Account Paused")
+                                .setMessage((reason != null ? reason : "Your account has been paused due to repeated delivery issues.")
+                                        + "\n\nPlease contact support to resume accepting deliveries.")
+                                .setPositiveButton("OK", null)
+                                .setCancelable(true)
+                                .show();
+                    }
+                });
     }
 }
 

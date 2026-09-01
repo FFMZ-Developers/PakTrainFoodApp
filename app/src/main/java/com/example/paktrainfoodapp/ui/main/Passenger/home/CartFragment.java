@@ -248,10 +248,12 @@ public class CartFragment extends Fragment {
 
                                     if (!isAdded()) return;
 
+                                    // ✅ FIX: route-scoped (see StationValidationHelper.java).
                                     String currentStation =
                                             StationValidationHelper.getNearestStation(
                                                     location.getLatitude(),
-                                                    location.getLongitude());
+                                                    location.getLongitude(),
+                                                    route);
 
                                     CartResumeHelper.Result stationResult =
                                             CartResumeHelper.checkStation(cartItems, route, currentStation);

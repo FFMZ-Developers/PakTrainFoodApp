@@ -1,13 +1,5 @@
 const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 
-const admin = require("../../config/firebase");
-const { sendNotification } = require("../../utils/sendNotification");
-
-const {
-    ROLES,
-    ORDER_STATUS
-} = require("../../utils/constants");
-
 exports.onReadyForDelivery = onDocumentUpdated(
     "Orders/{orderId}",
     async (event) => {
@@ -16,96 +8,26 @@ exports.onReadyForDelivery = onDocumentUpdated(
         const after = event.data.after.data();
 
         if (
-
             before.orderStatus === "ready_for_delivery" ||
-
             after.orderStatus !== "ready_for_delivery"
-
         ) {
-
             return;
-
         }
 
-        const passengerUid = after.passengerUid;
-        const orderId = after.orderId;
-        const mealStation = after.mealStation;
+        // Module 8 - "ready for delivery" is NOT one of the fixed passenger
+        // milestones (order confirmed / preparing / on the way / delivered /
+        // cancelled-with-refund). The passenger already knows their order
+        // is "preparing" (from onRestaurantAccepted.js) and will next hear
+        // "on the way" once a rider actually has the food
+        // (onOrderDropped.js) - a separate "ready" ping in between would
+        // just be extra noise without a new milestone the passenger can
+        // act on.
+        //
+        // Module 5 - rider notifications are handled by
+        // dispatch/dispatchRider.js (expanding-radius search), which fires
+        // on this same orderStatus transition.
 
-        // ===============================
-        // Passenger Notification
-        // ===============================
-
-        if (passengerUid) {
-
-         await sendNotification({
-
-    uid: passengerUid,
-
-    role: ROLES.PASSENGER,
-
-    title: "📦 Order Ready",
-
-    body: "Your order has been prepared and is ready for delivery.",
-
-    data: {
-
-        orderId,
-
-        status: ORDER_STATUS.READY_FOR_DELIVERY
-
-    }
-
-});
-
-        }
-
-        // ===============================
-        // Find Riders
-        // ===============================
-
-        const riders = await admin.firestore()
-
-            .collection("Users")
-
-            .doc("Delivery")
-
-            .collection("VerifiedRegister")
-
-            .where("city", "==", mealStation)
-
-            .where("isVerified", "==", true)
-
-            .get();
-
-        // ===============================
-        // Notification To Riders
-        // ===============================
-
-        for (const rider of riders.docs) {
-
-            await sendNotification({
-
-    uid: rider.id,
-
-    role: ROLES.DELIVERY,
-
-    title: "🛵 New Delivery Order",
-
-    body: "A new delivery order is available near you.",
-
-    data: {
-
-        orderId,
-
-        status: ORDER_STATUS.READY_FOR_DELIVERY
-
-    }
-
-});
-
-        }
-
-        console.log("Ready For Delivery Notifications Sent");
+        console.log("Ready For Delivery - rider dispatch handed off to dispatchRider.js (no passenger notification - not one of the fixed milestones)");
 
     }
 );

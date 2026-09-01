@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/app_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/txtIssueTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Issue Title"
+            android:textStyle="bold"
+            android:textSize="24sp"
+            android:textColor="@color/text_primary"
+            android:paddingBottom="12dp"/>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#CCCCCC"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Description Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/surface"
+            android:elevation="3dp"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/txtIssueDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Description"
+                android:textSize="16sp"
+                android:textColor="#444444"
+                android:lineSpacingExtra="5dp"/>
+
+        </LinearLayout>
+
+        <!-- Contact Support Button -->
+        <Button
+            android:id="@+id/btnContactSupport"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Contact Support"
+            android:textAllCaps="false"
+            android:layout_marginTop="24dp"
+            android:backgroundTint="#4CAF50"
+            android:textColor="#FFFFFF"/>
+
+    </LinearLayout>
+
+</ScrollView>

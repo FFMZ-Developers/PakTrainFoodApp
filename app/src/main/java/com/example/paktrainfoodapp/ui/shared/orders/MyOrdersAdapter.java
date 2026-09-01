@@ -47,7 +47,7 @@ public class MyOrdersAdapter
 
         MyOrderModel order = list.get(position);
 
-        holder.txtOrderId.setText("#" + order.getOrderId());
+        holder.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(order.getOrderNumber(), order.getOrderId()));
 
         holder.txtTotalPrice.setText("Rs " + (int) order.getTotalPrice());
 

@@ -108,22 +108,34 @@ public class AcceptedOrdersFragment extends Fragment {
                         String status = doc.getString("orderStatus");
                         if (status == null) continue;
 
-                        // REMOVE ORDER WHEN RIDER ACCEPTS
-                        if ("accepted_by_rider".equals(status)) {
-                            continue;
-                        }
-                        // ONLY VALID STATUSES
+                        // ✅ FIX: "accepted_by_rider" and everything after
+                        // it belongs to the DELIVERY tab
+                        // (DeliveredOrdersFragment already lists exactly
+                        // those four statuses). A previous fix added them
+                        // here too, so from the moment a rider arrived the
+                        // same order appeared in BOTH tabs at once. This
+                        // tab now stops at the handover point: it covers
+                        // the restaurant's own work (accept -> cook ->
+                        // mark ready), and hands off to the Delivery tab
+                        // once a rider takes it.
                         if (!status.equals("Accepted") &&
                                 !status.equals("ready_for_delivery")) continue;
 
                         MenuItem item = new MenuItem();
                         item.setId(doc.getId());
+                        item.setOrderNumber(doc.getLong("orderNumber"));
                         item.setPassengerUid(doc.getString("passengerUid"));
                         item.setDocPath(doc.getReference().getPath());
                         item.setStatus(status);
 
                         Long eta = doc.getLong("etaEndTime");
                         item.setEtaEndTime(eta != null ? eta : 0L);
+
+                        // Module: show the same "Estimated Arrival" the
+                        // Active tab shows, instead of the prep-deadline
+                        // countdown that used to be here.
+                        Long trainEta = doc.getLong("trainEtaEndTime");
+                        item.setTrainEtaEndTime(trainEta != null ? trainEta : 0L);
 
                         Double price = doc.getDouble("totalPrice");
                         if (price != null) {
@@ -192,7 +204,7 @@ public class AcceptedOrdersFragment extends Fragment {
 
             MenuItem m = items.get(position);
 
-            h.txtOrderId.setText("#" + m.getId());
+            h.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(m.getOrderNumber(), m.getId()));
 
             double total = (m.getVariations() != null && !m.getVariations().isEmpty())
                     ? m.getVariations().values().iterator().next()
@@ -225,17 +237,32 @@ public class AcceptedOrdersFragment extends Fragment {
                     break;
 
                 case "ready_for_delivery":
-                    h.btnReady.setText("Waiting for Rider...");
+                    // Not an action - it's a state, so it reads as a badge
+                    // rather than a button nobody can press (see StatusBadge).
+                    com.example.paktrainfoodapp.utils.StatusBadge.apply(h.btnReady, status);
                     h.btnReady.setEnabled(false);
-                    h.btnReady.setAlpha(0.5f);
-                    break;
+                    h.btnReady.setAlpha(1f);
 
-                case "accepted_by_rider":
-                    h.itemView.setVisibility(View.GONE); // REMOVE FROM LIST UI
-                    return;
+                    // Module: restaurant can flag "no rider is coming"
+                    // once an order has been sitting unclaimed - the
+                    // report goes to admin review, same as a rider's.
+                    h.btnDelete.setVisibility(View.VISIBLE);
+                    h.btnDelete.setOnClickListener(v -> showRestaurantReportDialog(m, "no_rider"));
+                    break;
             }
 
-            updateTimer(h, m.getEtaEndTime());
+            // Module: replaced the prep-deadline countdown with the same
+            // "Estimated Arrival" the Active tab shows - a static clock
+            // time (auto-updates via the Firestore listener whenever
+            // trainEtaEndTime changes), not a per-second countdown.
+            // ✅ FIX: this bound the ETA to txtTimer, but the shared item
+            // layout ALSO contains txtEtaArrival with a hardcoded
+            // "Estimated Arrival: --" placeholder - so the card showed the
+            // estimate twice, once real and once as a dead "--" label.
+            // Every other screen uses txtEtaArrival, so this one now does
+            // too, and the unused txtTimer is hidden.
+            bindEtaArrival(h.txtEtaArrival, m.getTrainEtaEndTime());
+            h.txtTimer.setVisibility(View.GONE);
 
             // ================= READY CLICK =================
             h.btnReady.setOnClickListener(v -> {
@@ -304,23 +331,98 @@ public class AcceptedOrdersFragment extends Fragment {
             });
         }
 
-        // ================= TIMER =================
-        private void updateTimer(ViewHolder h, long etaEndTime) {
+        // ================= ESTIMATED ARRIVAL =================
+        //
+        // Module: same field/format as ActiveOrdersFragment's
+        // bindEtaArrival() - shows a clock time, e.g.
+        // "Estimated Arrival: 10:00 PM", auto-updating via the Firestore
+        // snapshot listener whenever trainEtaEndTime changes. Replaces the
+        // old per-second prep-deadline countdown.
+        /**
+         * Module: restaurant-side "report a problem". Two entry points:
+         *   - "no_rider"   : order has been ready but nobody picked it up
+         *   - "rider_late" : a rider accepted but is taking too long
+         *
+         * Both write the same delivery_failed status the rider's own
+         * report does, so onDeliveryFailed.js freezes the order for admin
+         * review with the full timeline attached - the admin then decides
+         * the three-way split. failureReportedBy records which side
+         * raised it, so the admin can see whose account it came from.
+         */
+        private void showRestaurantReportDialog(MenuItem m, String reportType) {
 
-            long remaining = etaEndTime - System.currentTimeMillis();
+            String title = "no_rider".equals(reportType)
+                    ? "No Rider Found?"
+                    : "Rider Taking Too Long?";
 
-            if (remaining > 0) {
+            String hint = "no_rider".equals(reportType)
+                    ? "e.g. Order ready 20 minutes ago, no rider has come"
+                    : "e.g. Rider accepted 15 minutes ago but hasn't arrived";
 
-                long mins = (remaining / 1000) / 60;
-                long secs = (remaining / 1000) % 60;
+            android.widget.EditText input = new android.widget.EditText(requireContext());
+            input.setHint(hint);
+            input.setMinLines(2);
+            int pad = (int) (16 * getResources().getDisplayMetrics().density);
+            input.setPadding(pad, pad, pad, pad);
 
-                h.txtTimer.setText(mins + "m " + secs + "s");
+            AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                    .setTitle(title)
+                    .setMessage("Wajah likhein - admin isay dekh kar faisla karega. Order cancel ho jayega aur review mein chala jayega.")
+                    .setView(input)
+                    .setPositiveButton("Submit Report", null)
+                    .setNegativeButton("Cancel", null)
+                    .create();
 
-                handler.postDelayed(() -> updateTimer(h, etaEndTime), 1000);
+            dialog.show();
 
-            } else {
-                h.txtTimer.setText("Arriving");
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+
+                String reason = input.getText() != null ? input.getText().toString().trim() : "";
+
+                if (reason.isEmpty()) {
+                    input.setError("Please describe what happened");
+                    return;
+                }
+
+                dialog.dismiss();
+
+                java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                updates.put("orderStatus", "delivery_failed");
+                updates.put("failureReason", reason);
+                updates.put("failureReportedAt", System.currentTimeMillis());
+                updates.put("failureReportedBy", "restaurant");
+                updates.put("failureReportType", reportType);
+
+                firestore.document(m.getDocPath())
+                        .update(updates)
+                        .addOnSuccessListener(unused -> {
+                            if (isAdded()) {
+                                Toast.makeText(requireContext(),
+                                        "Reported - admin will review this order.",
+                                        Toast.LENGTH_LONG).show();
+                            }
+                        })
+                        .addOnFailureListener(e -> {
+                            if (isAdded()) {
+                                Toast.makeText(requireContext(),
+                                        "Report failed: " + e.getMessage(),
+                                        Toast.LENGTH_LONG).show();
+                            }
+                        });
+            });
+        }
+
+        private void bindEtaArrival(TextView txtTimer, long trainEtaEndTimeMillis) {
+
+            if (trainEtaEndTimeMillis <= 0) {
+                txtTimer.setText("Estimated Arrival: Calculating...");
+                return;
             }
+
+            java.text.SimpleDateFormat fmt =
+                    new java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault());
+
+            txtTimer.setText("Estimated Arrival: " + fmt.format(new java.util.Date(trainEtaEndTimeMillis)));
         }
 
         @Override
@@ -330,7 +432,7 @@ public class AcceptedOrdersFragment extends Fragment {
 
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice, txtTimer;
+            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival;
             ImageView btnDelete, btnAccept;
             Button btnReady;
             LinearLayout timeRow;
@@ -341,6 +443,7 @@ public class AcceptedOrdersFragment extends Fragment {
                 txtOrderId = itemView.findViewById(R.id.txtOrderId);
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
                 txtTimer = itemView.findViewById(R.id.txtTimer);
+                txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
 
                 btnDelete = itemView.findViewById(R.id.btnDelete);
                 btnAccept = itemView.findViewById(R.id.btnAccept);

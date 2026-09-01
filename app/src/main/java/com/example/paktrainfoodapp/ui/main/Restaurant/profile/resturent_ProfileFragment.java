@@ -57,6 +57,11 @@ public class resturent_ProfileFragment extends Fragment {
         layoutWallet = view.findViewById(R.id.layout_wallet);
         layoutAccountInfo = view.findViewById(R.id.layout_account_info);
 
+        View layoutUpdateVerification = view.findViewById(R.id.layout_update_verification);
+        if (layoutUpdateVerification != null) {
+            layoutUpdateVerification.setOnClickListener(v -> launchVerificationUpdate());
+        }
+
         layoutWallet.setOnClickListener(v -> {
 
             getParentFragmentManager()
@@ -148,7 +153,10 @@ public class resturent_ProfileFragment extends Fragment {
         loadUserData();
 
         if (btnLogout != null) {
-            btnLogout.setOnClickListener(v -> performLogout());
+            btnLogout.setOnClickListener(v ->
+                    // Guarded by a confirmation - see LogoutConfirm.
+                    com.example.paktrainfoodapp.utils.LogoutConfirm.show(
+                            requireContext(), this::performLogout));
         }
     }
 
@@ -223,5 +231,41 @@ public class resturent_ProfileFragment extends Fragment {
                         .replace(R.id.fragment_holder, target)
                         .addToBackStack(null)
                         .commit());
+    }
+
+    /**
+     * Module: re-verification on sensitive-field edit. Launches the SAME
+     * wizard used for signup/resubmission-after-rejection, with
+     * EXTRA_RESUBMIT=true so it pre-fills the restaurant's current data
+     * (name, city, opening hours, existing CNIC/license, bank details -
+     * see VerificationWizardActivity.applyExistingDocument()). Submitting
+     * it (Step4SelfieFragment) always sets verificationStatus back to
+     * "pending" - so if the restaurant changes CNIC or license here, their
+     * account goes back into the admin review queue automatically, using
+     * infrastructure that already existed rather than a new mechanism.
+     *
+     * Non-sensitive fields (name, phone, opening hours, bank details) have
+     * their own direct-update screens (PersonalInfoFragment, Wallet) that
+     * do NOT touch verificationStatus - editing those never requires
+     * re-verification.
+     */
+    private void launchVerificationUpdate() {
+
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+
+        if (auth.getCurrentUser() == null || !isAdded()) return;
+
+        String uid = auth.getCurrentUser().getUid();
+        String email = auth.getCurrentUser().getEmail();
+
+        Intent intent = new Intent(requireContext(),
+                com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.class);
+
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_ROLE, "RESTAURANT");
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_UID, uid);
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_EMAIL, email);
+        intent.putExtra(com.example.paktrainfoodapp.ui.shared.verification.VerificationWizardActivity.EXTRA_RESUBMIT, true);
+
+        startActivity(intent);
     }
 }

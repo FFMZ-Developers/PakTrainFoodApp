@@ -201,8 +201,10 @@ public class MyOrdersFragment extends Fragment {
                                     .format(new Date(timestamp));
                         }
 
-                        allOrders.add(new MyOrderModel(
-                                orderId, status, restaurant, station, dateText, total));
+                        MyOrderModel mo = new MyOrderModel(
+                                orderId, status, restaurant, station, dateText, total);
+                        mo.setOrderNumber(doc.getLong("orderNumber"));
+                        allOrders.add(mo);
                     }
 
                     // Newest first

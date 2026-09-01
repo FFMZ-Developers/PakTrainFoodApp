@@ -24,6 +24,13 @@ public class MenuItem {
     // MenuItem class mein ye add kar dein:
     private long etaEndTime;
 
+    // Module 2 - separate field for the LIVE TRAIN ETA (time the train is
+    // expected to reach the meal station). Deliberately a different field
+    // from `etaEndTime` above, which is already used elsewhere (Accepted
+    // tab's "Ready for Delivery" prep-deadline countdown) - reusing the same
+    // field would have overwritten that timer with the train's ETA instead.
+    private long trainEtaEndTime;
+
     /**
      * Whether passengers can currently order this item. Defaults to true so
      * every item created before this field existed stays orderable.
@@ -102,10 +109,18 @@ public class MenuItem {
     public long getEtaEndTime() { return etaEndTime; }
     public void setEtaEndTime(long etaEndTime) { this.etaEndTime = etaEndTime; }
 
+    public long getTrainEtaEndTime() { return trainEtaEndTime; }
+    public void setTrainEtaEndTime(long trainEtaEndTime) { this.trainEtaEndTime = trainEtaEndTime; }
+
 
     public boolean isAvailable() { return available; }
 
     public void setAvailable(boolean available) { this.available = available; }
+
+    // Module: human-readable sequential order number (see OrderNumberUtils).
+    private Long orderNumber;
+    public Long getOrderNumber() { return orderNumber; }
+    public void setOrderNumber(Long orderNumber) { this.orderNumber = orderNumber; }
 }
 
 

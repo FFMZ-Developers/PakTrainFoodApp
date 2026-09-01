@@ -280,17 +280,6 @@ public class RegisterFragment extends Fragment {
                                                 // to read.
                                                 Runnable continueAfterDialog = () -> {
 
-<<<<<<< HEAD
-                                                // 🔥 Sirf Restaurant aur Delivery (Rider) ke liye
-                                                // Stripe Connected Account banayenge.
-                                                // Passenger ko iski zaroorat nahi (refund original
-                                                // payment method pe seedha wapas jata hai).
-                                                if (userRole.equals("RESTAURANT") || userRole.equals("DELIVERY")) {
-                                                    createStripeConnectedAccount(uid, email, userRole);
-                                                } else {
-                                                    mAuth.signOut();
-                                                    goToLogin();
-=======
                                                     if (!isAdded()) return;
 
                                                     // 🔥 Sirf Restaurant aur Delivery (Rider) ke liye
@@ -313,7 +302,6 @@ public class RegisterFragment extends Fragment {
 
                                                 } else {
                                                     continueAfterDialog.run();
->>>>>>> origin/Fahad
                                                 }
                                             })
                                             .addOnFailureListener(e -> {

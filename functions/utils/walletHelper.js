@@ -95,6 +95,30 @@ async function refundToPassenger(uid, amount, orderId) {
     });
 }
 
+/**
+ * Module 6 (Failure 3) - generic direct credit into any role's available
+ * balance, with a caller-supplied history type (e.g. "Payout",
+ * "Attempted Delivery Fee"). Distinct from addPendingBalance/
+ * movePendingToAvailable's two-step flow - this is for one-shot credits
+ * that don't need a pending stage.
+ */
+async function creditAvailableBalance(role, uid, amount, orderId, historyType) {
+
+    if (!uid || !amount || amount <= 0) return;
+
+    await walletRef(role, uid).set({
+
+        availableBalance: admin.firestore.FieldValue.increment(amount)
+
+    }, { merge: true });
+
+    await addHistory(role, uid, {
+        type: historyType || "Payout",
+        amount,
+        orderId
+    });
+}
+
 async function addAdminBalance(amount, orderId) {
 
     await adminWalletRef().set({
@@ -118,5 +142,6 @@ module.exports = {
     addPendingBalance,
     movePendingToAvailable,
     refundToPassenger,
+    creditAvailableBalance,
     addAdminBalance
 };

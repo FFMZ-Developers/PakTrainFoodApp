@@ -46,6 +46,12 @@ public class resturent_DashboardFragment extends Fragment {
         btnDelivery.setOnClickListener(v -> navigateTo("delivery"));
         btnProfile.setOnClickListener(v -> navigateTo("profile"));
 
+        // Module 7 - warn the restaurant if their account has been
+        // auto-paused for repeated reliability strikes (see
+        // reliabilityHelper.js). Plain-language reason, same pattern as
+        // Module 1's rejection flow.
+        checkPauseStatus();
+
         // Stat cards open the screen they summarise
         if (tvOrdersCount != null) {
             ((View) tvOrdersCount.getParent()).setOnClickListener(v -> navigateTo("order"));
@@ -84,6 +90,40 @@ public class resturent_DashboardFragment extends Fragment {
         if (getParentFragment() instanceof restaurant_LoadFragment) {
             ((restaurant_LoadFragment) getParentFragment()).navigateFromDashboard(target);
         }
+    }
+
+    // Module 7 - pause-status check.
+    private void checkPauseStatus() {
+
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+
+        if (auth.getCurrentUser() == null) return;
+
+        String uid = auth.getCurrentUser().getUid();
+
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("Users").document("Restaurant")
+                .collection("VerifiedRegister").document(uid)
+                .get()
+                .addOnSuccessListener(doc -> {
+
+                    if (!isAdded() || doc == null || !doc.exists()) return;
+
+                    Boolean isPaused = doc.getBoolean("isPaused");
+
+                    if (isPaused != null && isPaused) {
+
+                        String reason = doc.getString("pausedReason");
+
+                        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                                .setTitle("Account Paused")
+                                .setMessage((reason != null ? reason : "Your account has been paused due to repeated order issues.")
+                                        + "\n\nPlease contact support to resume taking orders.")
+                                .setPositiveButton("OK", null)
+                                .setCancelable(true)
+                                .show();
+                    }
+                });
     }
 }
 

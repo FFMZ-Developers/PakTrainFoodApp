@@ -10,6 +10,11 @@ public class Restaurant_list_Model {
     private String imageUrl;
     private boolean favorite;
 
+    // Module 7 - reliability, used to rank the list (higher first) and to
+    // skip restaurants that have been auto-paused for repeated strikes.
+    private int reliabilityScore = 100;
+    private boolean paused = false;
+
     // Required empty constructor for Firebase Firestore parsing layers
     public Restaurant_list_Model() { }
 
@@ -75,6 +80,22 @@ public class Restaurant_list_Model {
 
     public void setFavorite(boolean favorite) {
         this.favorite = favorite;
+    }
+
+    public int getReliabilityScore() {
+        return reliabilityScore;
+    }
+
+    public void setReliabilityScore(int reliabilityScore) {
+        this.reliabilityScore = reliabilityScore;
+    }
+
+    public boolean isPaused() {
+        return paused;
+    }
+
+    public void setPaused(boolean paused) {
+        this.paused = paused;
     }
 }
 

@@ -34,33 +34,56 @@ public class StationValidationHelper {
             double currentLat,
             double currentLng){
 
+        return getNearestStation(currentLat, currentLng, stationMap.keySet());
+    }
+
+    /**
+     * ✅ FIX: the version above searches EVERY station in the whole
+     * railway system - fine for trains with several stops along a route,
+     * but for a DIRECT/express train (e.g. Rawalpindi -> Lahore with no
+     * intermediate stops), a passenger physically mid-journey (nowhere
+     * near either endpoint) would resolve to whichever RANDOM station
+     * elsewhere in the country happens to be geographically closest -
+     * which isn't even on this route. canOrder() then couldn't find that
+     * station in the route list, treated it as "already crossed", and
+     * blocked ordering with a false "you've crossed the meal station"
+     * toast - even mid-journey, nowhere near arriving.
+     *
+     * This overload only searches among the given route's OWN stations,
+     * so it always resolves to a station that's actually on this train's
+     * route - correctly picking the nearer of the two endpoints for a
+     * direct/express train, instead of an unrelated station elsewhere.
+     */
+    public static String getNearestStation(
+            double currentLat,
+            double currentLng,
+            java.util.Collection<String> allowedStations){
+
         String nearest = null;
 
         float minDistance = Float.MAX_VALUE;
 
-        for(Map.Entry<String,LatLng> entry : stationMap.entrySet()){
+        for (String stationName : allowedStations) {
 
-            LatLng point = entry.getValue();
+            LatLng point = stationMap.get(stationName);
+
+            if (point == null) continue;
 
             float[] result = new float[1];
 
             Location.distanceBetween(
-
                     currentLat,
                     currentLng,
-
                     point.latitude,
                     point.longitude,
-
                     result
-
             );
 
-            if(result[0] < minDistance){
+            if (result[0] < minDistance) {
 
                 minDistance = result[0];
 
-                nearest = entry.getKey();
+                nearest = stationName;
 
             }
 

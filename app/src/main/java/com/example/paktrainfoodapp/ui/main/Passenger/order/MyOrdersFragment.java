@@ -149,14 +149,19 @@ public class MyOrdersFragment extends Fragment {
 
                         Long timestamp = doc.getLong("timestamp");
 
+                        Long trainEta = doc.getLong("trainEtaEndTime");
+                        long trainEtaEndTime = trainEta != null ? trainEta : 0L;
+
                         String dateText = "";
                         if (timestamp != null && timestamp > 0) {
                             dateText = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
                                     .format(new Date(timestamp));
                         }
 
-                        allOrders.add(new MyOrderModel(
-                                orderId, status, restaurant, station, dateText, total));
+                        MyOrderModel mo = new MyOrderModel(
+                                orderId, status, restaurant, station, dateText, total, trainEtaEndTime);
+                        mo.setOrderNumber(doc.getLong("orderNumber"));
+                        allOrders.add(mo);
                     }
 
                     // Newest first

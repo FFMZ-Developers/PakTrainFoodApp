@@ -30,8 +30,10 @@ import androidx.fragment.app.DialogFragment;
 import com.bumptech.glide.Glide;
 import com.example.paktrainfoodapp.CartManager;
 import com.example.paktrainfoodapp.R;
+import com.example.paktrainfoodapp.data.AppConfig;
 import com.example.paktrainfoodapp.ui.main.Passenger.LocationService;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.functions.FirebaseFunctions;
 import com.stripe.android.paymentsheet.PaymentSheet;
@@ -56,6 +58,11 @@ public class OrderNowFragment extends DialogFragment {
     private double deliveryFeeVal = 0;
     private double adminFeeVal = 0;
     private double totalAmount = 0;
+
+    // Module 3 - authorize now, capture later. Saved onto the order so the
+    // backend knows which Stripe hold to capture (on Accept) or release
+    // (on Reject/Cancel).
+    private String paymentIntentId;
 
     private static final String ARG_NAME = "itemName";
     private static final String ARG_PRICE = "itemPrice";
@@ -236,19 +243,32 @@ public class OrderNowFragment extends DialogFragment {
 
                 return;
             }
-//            if (!hasLocationPermission() || !isLocationEnabled()) {
-//                Toast.makeText(getContext(), "Permission/Location Error", Toast.LENGTH_SHORT).show();
-//                return;
-//            }
-//
-//            startPaymentFlow();
+
+            // Module: order-date warning. There's no separate "journey
+            // date" field captured anywhere in this flow (only train/
+            // route/station), so this can't be a strict date check - it's
+            // a clear warning shown every time before payment, since
+            // ordering on the wrong day means the order will never reach
+            // the restaurant in time (train's nowhere near) while the
+            // passenger's card still gets charged for it.
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("⚠️ Please Confirm")
+                    .setMessage("Order sirf usi din karein jis din aap safar kar rahe hain. Agar order kisi aur din kiya gaya to wo restaurant tak nahi pahonchega aur aapka payment phir bhi charge ho jayega.\n\nKya aap aaj hi safar kar rahe hain?")
+                    .setPositiveButton("Haan, Aaj Safar Kar Raha/Rahi Hoon", (d, w) -> proceedToLocationChecks())
+                    .setNegativeButton("Cancel", null)
+                    .setCancelable(false)
+                    .show();
+        });
+    }
+
+    private void proceedToLocationChecks() {
+
             if (!hasLocationPermission()) {
                 foregroundLocationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
                 return;
             }
 
             continueAfterForegroundPermission();
-        });
     }
 
     private void continueAfterForegroundPermission() {
@@ -348,6 +368,11 @@ public class OrderNowFragment extends DialogFragment {
                     Map<String, Object> response = (Map<String, Object>) result.getData();
                     clientSecret = (String) response.get("clientSecret");
 
+                    // Module 3 - remember which PaymentIntent this hold is,
+                    // so it can be saved onto the order once payment
+                    // confirms, and captured/released later by the backend.
+                    paymentIntentId = (String) response.get("paymentIntentId");
+
                     if (clientSecret != null) {
 
                         PaymentSheet.Configuration config =
@@ -420,6 +445,19 @@ public class OrderNowFragment extends DialogFragment {
         orderData.put("seatNumber", seatNumber);
         orderData.put("phone", phone);
         orderData.put("trainId", trainNumber);
+
+        // Module: the rider needs a name to address the passenger by in
+        // chat, and the admin needs one when reviewing a dispute - the
+        // order only carried a phone number before.
+        if (com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null) {
+
+            String displayName = com.google.firebase.auth.FirebaseAuth.getInstance()
+                    .getCurrentUser().getDisplayName();
+
+            orderData.put("passengerName",
+                    (displayName != null && !displayName.trim().isEmpty())
+                            ? displayName : "Passenger");
+        }
 
         // Restaurant
 
@@ -510,6 +548,25 @@ public class OrderNowFragment extends DialogFragment {
         orderData.put("adminFee", adminFeeVal);
         orderData.put("totalPrice", totalAmount);
 
+        // Module 3 - authorize now, capture later. The card was only put
+        // on HOLD when PaymentSheet confirmed (capture_method: "manual" on
+        // the backend) - paymentCaptured stays false until the restaurant
+        // actually accepts the order (captureOrderPayment.js), at which
+        // point money really moves. If the restaurant rejects instead,
+        // onOrderPaymentReversal.js releases this same hold - the
+        // passenger's card is never charged for an order that never
+        // happened.
+        orderData.put("paymentIntentId", paymentIntentId);
+        orderData.put("paymentCaptured", false);
+        orderData.put("paymentStatus", "authorized");
+
+        // Module 4 - hidden from the restaurant's order list until the
+        // train's ETA falls within the admin-configured dispatch threshold
+        // (onOrderEtaThresholdReached.js flips this once trainEtaEndTime
+        // is close enough). Showing an order hours before the train is
+        // anywhere near would just leave food waiting and going cold.
+        orderData.put("visibleToRestaurant", false);
+
         // Save Order
 
         db.collection("Orders")
@@ -541,6 +598,15 @@ public class OrderNowFragment extends DialogFragment {
 
                     CartManager.clear();
 
+                    // Module 2 - initial "estimated arrival" figure, so the
+                    // restaurant/passenger see something right away instead
+                    // of waiting for live GPS. Uses whatever fromStation /
+                    // mealStation were just written onto this same order.
+                    saveInitialTrainEtaEstimate(
+                            (String) orderData.get("fromStation"),
+                            (String) orderData.get("mealStation"),
+                            orderId);
+
                     Toast.makeText(
                             getActivity(),
                             "Order Placed Successfully",
@@ -557,6 +623,68 @@ public class OrderNowFragment extends DialogFragment {
                             Toast.LENGTH_LONG
                     ).show();
                 });
+    }
+
+    /**
+     * Module 2 - fetches the boarding station's and meal station's
+     * coordinates and writes a rough initial "trainEtaEndTime" estimate
+     * (straight-line distance / admin-configured fallback speed) onto the
+     * just-created order, so the restaurant's order list (and the
+     * passenger's own order-status screen) have something meaningful to
+     * show right away, before any live GPS data exists. The live-tracking
+     * screen and the backend location trigger both refine this further as
+     * the journey goes on.
+     */
+    private void saveInitialTrainEtaEstimate(String fromStation, String mealStationName, String orderIdToUpdate) {
+
+        if (orderIdToUpdate == null || orderIdToUpdate.isEmpty()
+                || fromStation == null || fromStation.isEmpty()
+                || mealStationName == null || mealStationName.isEmpty()) {
+            return;
+        }
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        DocumentReference fromRef = db.collection("RailwaySystem").document("main")
+                .collection("Stations").document(fromStation);
+
+        DocumentReference mealRef = db.collection("RailwaySystem").document("main")
+                .collection("Stations").document(mealStationName);
+
+        fromRef.get().addOnSuccessListener(fromDoc -> {
+
+            if (!fromDoc.exists()) return;
+
+            Double fromLat = fromDoc.getDouble("lat");
+            Double fromLng = fromDoc.getDouble("lng");
+
+            if (fromLat == null || fromLng == null) return;
+
+            mealRef.get().addOnSuccessListener(mealDoc -> {
+
+                if (!mealDoc.exists()) return;
+
+                Double mealLat = mealDoc.getDouble("lat");
+                Double mealLng = mealDoc.getDouble("lng");
+
+                if (mealLat == null || mealLng == null) return;
+
+                float[] distanceMeters = new float[1];
+                android.location.Location.distanceBetween(
+                        fromLat, fromLng, mealLat, mealLng, distanceMeters);
+
+                double distanceKm = distanceMeters[0] / 1000.0;
+                double speedKmph = AppConfig.get().getFallbackTrainSpeedKmph();
+
+                if (speedKmph <= 0) return;
+
+                double minutes = (distanceKm / speedKmph) * 60.0;
+                long trainEtaEndTime = System.currentTimeMillis() + Math.round(minutes) * 60_000L;
+
+                db.collection("Orders").document(orderIdToUpdate)
+                        .update("trainEtaEndTime", trainEtaEndTime);
+            });
+        });
     }
 
     private void showSuccessDialog() {

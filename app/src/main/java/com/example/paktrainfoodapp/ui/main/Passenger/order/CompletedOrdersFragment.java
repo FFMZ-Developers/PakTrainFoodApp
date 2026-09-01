@@ -86,8 +86,12 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
                 String status = doc.getString("orderStatus");
 
                 // ONLY THESE STATUSES
-                if (!"pick_up".equalsIgnoreCase(status)
-                        && !"completed".equalsIgnoreCase(status)) {
+                // ✅ FIX: pick_up (food is with the rider, on its way)
+                // was landing in "Completed" - so an order still in transit
+                // showed up as finished, while the Delivered tab that
+                // should have held it sat empty. Completed now means
+                // exactly one thing: the order is done.
+                if (!"completed".equalsIgnoreCase(status)) {
                     continue;
                 }
 
@@ -96,7 +100,9 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
                 Double totalPrice = doc.getDouble("totalPrice");
                 double price = totalPrice != null ? totalPrice : 0;
 
-                orderList.add(new OrderModel(orderId, price, status));
+                OrderModel model = new OrderModel(orderId, price, status);
+                model.setOrderNumber(doc.getLong("orderNumber"));
+                orderList.add(model);
             }
 
             adapter.notifyDataSetChanged();
@@ -118,7 +124,7 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
     }
 
     // ================= ADAPTER =================
-    private static class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.VH> {
+    private class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.VH> {
 
         private final ArrayList<OrderModel> items;
 
@@ -141,7 +147,10 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
 
             OrderModel order = items.get(position);
 
-            holder.txtOrderId.setText("#" + order.getOrderId());
+            holder.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(order.getOrderNumber(), order.getOrderId()));
+
+            // Raw countdown removed - only the arrival estimate is shown.
+            if (holder.txtTimer != null) holder.txtTimer.setVisibility(View.GONE);
             holder.txtTotalPrice.setText("Total: Rs " + order.getTotalPrice());
 
             holder.timeRow.setVisibility(View.VISIBLE);
@@ -159,11 +168,29 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
             }
 
             // CLICK → TOAST ONLY
-            holder.itemView.setOnClickListener(v ->
-                    Toast.makeText(v.getContext(),
-                            "Order: " + order.getOrderId(),
-                            Toast.LENGTH_SHORT).show()
-            );
+            // ✅ FIX: this only ever popped a Toast with the raw order id -
+            // that black pill in the middle of the screen. The passenger
+            // had no way to open their own order at all once it left the
+            // Active tab: no details, no live map, no rider tracking.
+            // Now it opens the same detail screen the Active tab does,
+            // which itself offers "Track Live on Map" once a rider is
+            // assigned.
+            holder.itemView.setOnClickListener(v -> {
+
+                if (!isAdded()) return;
+
+                passanger_orderDetailFragment detail = new passanger_orderDetailFragment();
+
+                Bundle args = new Bundle();
+                args.putString("orderId", order.getOrderId());
+                detail.setArguments(args);
+
+                requireActivity().getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.main_container, detail)
+                        .addToBackStack(null)
+                        .commit();
+            });
         }
 
         @Override
@@ -171,9 +198,9 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
             return items.size();
         }
 
-        static class VH extends RecyclerView.ViewHolder {
+         class VH extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice;
+            TextView txtOrderId, txtTotalPrice, txtTimer;
             LinearLayout timeRow;
             Button btnReady;
 
@@ -181,6 +208,7 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
                 super(itemView);
 
                 txtOrderId = itemView.findViewById(R.id.txtOrderId);
+            txtTimer = itemView.findViewById(R.id.txtTimer);
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
 
                 timeRow = itemView.findViewById(R.id.timeRow);

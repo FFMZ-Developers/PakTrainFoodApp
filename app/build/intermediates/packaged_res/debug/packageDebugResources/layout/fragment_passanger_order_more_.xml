@@ -1,0 +1,135 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:background="@color/surface"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- 🔹 Top Image (20% height) -->
+    <ImageView
+        android:id="@+id/imgFood"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.45"
+        android:scaleType="centerCrop"
+        android:adjustViewBounds="true"
+        android:src="@drawable/station3" />
+
+    <!-- 🔹 Scrollable Content (80% height) -->
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.8"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- Food Name -->
+            <TextView
+                android:id="@+id/txtFoodName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Chicken Biryani"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginTop="12dp"/>
+
+            <!-- Price -->
+            <TextView
+                android:id="@+id/txtPrice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Rs. 400.00"
+                android:textSize="16sp"
+                android:textColor="#444"
+                android:layout_marginTop="4dp"/>
+
+            <!-- Description -->
+            <TextView
+                android:id="@+id/txtDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Delicious spicy biryani with special ingredients."
+                android:textSize="14sp"
+                android:layout_marginTop="8dp"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Bottom Quantity & Order (fixed at bottom) -->
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical">
+
+        <!-- Quantity Controls -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/btnMinus"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:gravity="center"
+                android:text="-"
+                android:textSize="20sp"
+                android:background="@drawable/selected_circle_bg"
+                android:textColor="@android:color/black"/>
+
+            <TextView
+                android:id="@+id/txtQuantity"
+                android:layout_width="40dp"
+                android:layout_height="36dp"
+                android:gravity="center"
+                android:text="1"
+                android:textSize="16sp"
+                android:layout_marginHorizontal="8dp"
+                android:background="@android:color/darker_gray"
+                android:textColor="@android:color/white"/>
+
+            <TextView
+                android:id="@+id/btnPlus"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:gravity="center"
+                android:text="+"
+                android:textSize="20sp"
+                android:background="@drawable/selected_circle_bg"
+                android:textColor="@android:color/black"/>
+        </LinearLayout>
+
+        <!-- Spacer -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+
+        <!-- Order Button -->
+        <TextView
+            android:id="@+id/btnOrder"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:paddingHorizontal="20dp"
+            android:gravity="center"
+            android:text="Order"
+            android:textSize="16sp"
+            android:textColor="@android:color/black"
+            android:background="@drawable/bg_order_normal"/>
+    </LinearLayout>
+
+</LinearLayout>
+
+<!---->
+
+
+

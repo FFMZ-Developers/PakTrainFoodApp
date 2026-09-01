@@ -107,9 +107,12 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
                                     ? doc.getDouble("totalPrice")
                                     : 0;
 
-                    orderList.add(
-                            new OrderModel(orderId, totalPrice, status)
-                    );
+                    Long trainEta = doc.getLong("trainEtaEndTime");
+                    long trainEtaEndTime = trainEta != null ? trainEta : 0L;
+
+                    OrderModel model = new OrderModel(orderId, totalPrice, status, trainEtaEndTime);
+                    model.setOrderNumber(doc.getLong("orderNumber"));
+                    orderList.add(model);
                 }
             }
 
@@ -207,7 +210,7 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
                 holder.itemView.setBackgroundColor(Color.WHITE);
 
                 holder.txtOrderId.setText(
-                        "#" + order.getOrderId()
+                        com.example.paktrainfoodapp.utils.OrderNumberUtils.format(order.getOrderNumber(), order.getOrderId())
                 );
 
                 holder.txtOrderId.setTextColor(Color.BLACK);
@@ -218,6 +221,18 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
             holder.txtTotalPrice.setText(
                     "Total: Rs " + order.getTotalPrice()
             );
+
+            // Module: bind "Estimated Arrival" - the layout already has
+            // this label, it just was never populated with data before.
+            if (isCancelled || order.getTrainEtaEndTime() <= 0) {
+                holder.txtEtaArrival.setVisibility(View.GONE);
+            } else {
+                holder.txtEtaArrival.setVisibility(View.VISIBLE);
+                java.text.SimpleDateFormat fmt =
+                        new java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault());
+                holder.txtEtaArrival.setText(
+                        "Estimated Arrival: " + fmt.format(new java.util.Date(order.getTrainEtaEndTime())));
+            }
 
             // ================= OPEN DETAIL =================
 
@@ -311,7 +326,7 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
         static class OrderViewHolder
                 extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice;
+            TextView txtOrderId, txtTotalPrice, txtEtaArrival;
 
             android.widget.ImageView btnDelete;
 
@@ -324,6 +339,9 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
 
                 txtTotalPrice =
                         itemView.findViewById(R.id.txtTotalPrice);
+
+                txtEtaArrival =
+                        itemView.findViewById(R.id.txtEtaArrival);
 
                 btnDelete =
                         itemView.findViewById(R.id.btnDelete);

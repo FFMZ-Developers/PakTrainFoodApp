@@ -108,10 +108,20 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
         if (selectedCity == null) selectedCity = "Unknown";
 
         // ================= CLEAN CITY NAME =================
-        String fetchCity = cleanCityName(selectedCity);
-        tvTopTitle.setText("Restaurants in " + fetchCity);
+        //
+        // ✅ FIX: switched from a fragile .replace("Jn","").replace("Cantt","")
+        // string edit to CityNameUtils.normalize() (word-boundary regex,
+        // case-insensitive, whitespace-collapsed) - the old version broke
+        // silently for some cities (reported: Mandi Bahauddin) whenever the
+        // station name's suffix wasn't an EXACT case/spacing match, since
+        // Firestore's whereEqualTo needs an exact string. Restaurant
+        // registration now saves the SAME normalized value as
+        // "cityNormalized" (see Step4SelfieFragment.java) - both sides are
+        // guaranteed to agree now.
+        String fetchCity = com.example.paktrainfoodapp.utils.CityNameUtils.normalize(selectedCity);
+        tvTopTitle.setText("Restaurants in " + cleanCityName(selectedCity));
 
-        Log.d("CITY_DEBUG", "Original = " + selectedCity + " | Fetch = " + fetchCity);
+        Log.d("CITY_DEBUG", "Original = " + selectedCity + " | Fetch (normalized) = " + fetchCity);
 
         // ================= LOAD RESTAURANTS =================
         loadRestaurants(fetchCity);
@@ -198,37 +208,83 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
                 .trim();
     }
 
-    private void loadRestaurants(String city) {
+    private void loadRestaurants(String normalizedCity) {
         progressBar.setVisibility(View.VISIBLE);
 
         db.collection("Users")
                 .document("Restaurant")
                 .collection("VerifiedRegister")
-                .whereEqualTo("city", city)
+                .whereEqualTo("cityNormalized", normalizedCity)
                 .get()
                 .addOnCompleteListener(task -> {
                     if (!isAdded() || getContext() == null) return;
 
-                    progressBar.setVisibility(View.GONE);
-                    if (!task.isSuccessful() || task.getResult() == null) {
-                        Toast.makeText(getContext(), "Error loading restaurants", Toast.LENGTH_SHORT).show();
+                    if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
+                        bindRestaurantResults(task.getResult());
                         return;
                     }
 
-                    if (task.getResult().isEmpty()) {
-                        Toast.makeText(getContext(), "No restaurants found in " + city, Toast.LENGTH_SHORT).show();
-                        return;
-                    }
+                    // ✅ Backward-compat fallback: restaurants registered
+                    // BEFORE this fix don't have "cityNormalized" yet (it's
+                    // a new field). Rather than making them invisible until
+                    // every restaurant happens to re-save their profile,
+                    // fall back to the legacy exact-match "city" query for
+                    // anyone the normalized query didn't find.
+                    db.collection("Users")
+                            .document("Restaurant")
+                            .collection("VerifiedRegister")
+                            .whereEqualTo("city", cleanCityName(selectedCity))
+                            .get()
+                            .addOnCompleteListener(legacyTask -> {
+
+                                if (!isAdded() || getContext() == null) return;
+
+                                progressBar.setVisibility(View.GONE);
+
+                                if (!legacyTask.isSuccessful() || legacyTask.getResult() == null) {
+                                    Toast.makeText(getContext(), "Error loading restaurants", Toast.LENGTH_SHORT).show();
+                                    return;
+                                }
+
+                                if (legacyTask.getResult().isEmpty()) {
+                                    Toast.makeText(getContext(), "No restaurants found in " + normalizedCity, Toast.LENGTH_SHORT).show();
+                                    list.clear();
+                                    allRestaurants.clear();
+                                    adapter.notifyDataSetChanged();
+                                    return;
+                                }
+
+                                bindRestaurantResults(legacyTask.getResult());
+                            });
+                });
+    }
+
+    private void bindRestaurantResults(com.google.firebase.firestore.QuerySnapshot result) {
+
+                    progressBar.setVisibility(View.GONE);
 
                     list.clear();
                     allRestaurants.clear();
-                    int totalDocs = task.getResult().size();
+                    int totalDocs = result.size();
                     final int[] loadedCount = {0};
 
-                    for (DocumentSnapshot doc : task.getResult()) {
+                    for (DocumentSnapshot doc : result) {
                         String uid = doc.getId();
                         String restaurantName = doc.getString("restaurantName");
                         String cityName = doc.getString("city");
+
+                        // Module 7 - skip auto-paused restaurants entirely
+                        // (repeated reliability strikes - reliabilityHelper.js).
+                        Boolean isPaused = doc.getBoolean("isPaused");
+                        if (isPaused != null && isPaused) {
+                            loadedCount[0]++;
+                            if (loadedCount[0] == totalDocs) applyFilter();
+                            continue;
+                        }
+
+                        Long reliabilityScoreLong = doc.getLong("reliabilityScore");
+                        int reliabilityScore = reliabilityScoreLong != null
+                                ? reliabilityScoreLong.intValue() : 100;
 
                         db.collection("Users")
                                 .document("Restaurant")
@@ -246,6 +302,7 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
                                                 new Restaurant_list_Model(uid, restaurantName, cityName, imageUrl);
 
                                         model.setFavorite(favoritesManager.isFavorite(uid));
+                                        model.setReliabilityScore(reliabilityScore);
 
                                         allRestaurants.add(model);
                                         if (loadedCount[0] == totalDocs) applyFilter();
@@ -256,7 +313,6 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
                                     if (loadedCount[0] == totalDocs) applyFilter();
                                 });
                     }
-                });
     }
 
     /**
@@ -286,6 +342,9 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
 
             list.add(m);
         }
+
+        // Module 7 - higher-reliability restaurants shown first.
+        list.sort((a, b) -> Integer.compare(b.getReliabilityScore(), a.getReliabilityScore()));
 
         adapter.notifyDataSetChanged();
     }

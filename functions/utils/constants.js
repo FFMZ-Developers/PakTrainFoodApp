@@ -32,7 +32,22 @@ const ORDER_STATUS = {
 
     PICK_UP: "pick_up",
 
-    COMPLETED: "completed"
+    COMPLETED: "completed",
+
+    // Module 3 - needed so a pending order can be declined before capture,
+    // and so a captured order that still fails later has a status to land
+    // on for the refund path.
+    REJECTED: "Rejected",
+
+    CANCELLED: "Cancelled",
+
+    // Module 6 (Failure 3) - rider reports they couldn't complete an
+    // in-progress delivery.
+    DELIVERY_FAILED: "delivery_failed",
+
+    // Module - frozen, awaiting admin's manual three-way split decision
+    // (see onDeliveryFailed.js + the admin panel's Disputes tab).
+    DISPUTED: "disputed"
 
 };
 

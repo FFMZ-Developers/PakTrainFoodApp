@@ -150,12 +150,6 @@ public class HomeFragment extends Fragment {
 
                             currentLocation = location;
 
-                            String currentStation =
-                                    StationValidationHelper.getNearestStation(
-                                            location.getLatitude(),
-                                            location.getLongitude()
-                                    );
-
                             List<String> route =
                                     trainRoutes.get(train);
 
@@ -169,6 +163,19 @@ public class HomeFragment extends Fragment {
 
                                 return;
                             }
+
+                            // ✅ FIX: search only among THIS route's own
+                            // stations, not the whole railway system - see
+                            // StationValidationHelper.java for why (direct/
+                            // express trains with few stops were falsely
+                            // blocked mid-journey otherwise).
+                            String currentStation =
+                                    StationValidationHelper.getNearestStation(
+                                            location.getLatitude(),
+                                            location.getLongitude(),
+                                            route
+                                    );
+
                             boolean canOrder =
                                     StationValidationHelper.canOrder(
                                             route,

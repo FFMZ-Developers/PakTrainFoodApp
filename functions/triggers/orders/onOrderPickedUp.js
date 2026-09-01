@@ -22,37 +22,14 @@ exports.onOrderPickedUp = onDocumentUpdated(
         }
 
         const riderId = after.acceptedBy;
-        const passengerUid = after.passengerUid;
         const restaurantId = after.restaurantId;
         const orderId = after.orderId;
 
-        // =========================
-        // Passenger Notification
-        // =========================
-
-        if (passengerUid) {
-
-           await sendNotification({
-
-    uid: passengerUid,
-
-    role: ROLES.PASSENGER,
-
-    title: "🛵 Order Picked Up",
-
-    body: "Your order has been picked up and is on the way.",
-
-    data: {
-
-        orderId,
-
-        status: ORDER_STATUS.PICK_UP
-
-    }
-
-});
-
-        }
+        // Module 8 - no passenger notification here. From the passenger's
+        // point of view, "picked up" is the same moment as "on the way",
+        // which they already heard about in onOrderDropped.js (the food
+        // leaving the restaurant with the rider). A second ping for what's
+        // really an internal rider-app step is unnecessary noise.
 
         // =========================
         // Restaurant Notification
@@ -60,26 +37,25 @@ exports.onOrderPickedUp = onDocumentUpdated(
 
         if (restaurantId) {
 
-           await sendNotification({
+            await sendNotification({
 
-    uid: restaurantId,
+                uid: restaurantId,
 
-    role: ROLES.RESTAURANT,
+                role: ROLES.RESTAURANT,
 
-    title: "🍽️ New Order",
+                title: "📦 Order Picked Up",
 
-    body: "You have received a new order.",
+                body: "The rider has picked up the order and is delivering it.",
 
-    data: {
+                data: {
 
-        orderId,
+                    orderId,
 
-        status: ORDER_STATUS.ACTIVE
+                    status: ORDER_STATUS.PICK_UP
 
-    }
+                }
 
-});
-
+            });
         }
 
         // =========================
@@ -88,150 +64,28 @@ exports.onOrderPickedUp = onDocumentUpdated(
 
         if (riderId) {
 
-           await sendNotification({
+            await sendNotification({
 
-    uid: riderId,
+                uid: riderId,
 
-    role: ROLES.DELIVERY,
+                role: ROLES.DELIVERY,
 
-    title: "🚚 Delivery Started",
+                title: "🚚 Delivery Started",
 
-    body: "You have picked up the order. Deliver it to the passenger.",
+                body: "You have picked up the order. Deliver it to the passenger.",
 
-    data: {
+                data: {
 
-        orderId,
+                    orderId,
 
-        status: ORDER_STATUS.PICK_UP
+                    status: ORDER_STATUS.PICK_UP
 
-    }
+                }
 
-});
-
+            });
         }
 
         console.log("Pick Up Notifications Sent");
 
     }
 );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
-
-// const { sendNotification } = require("../../utils/sendNotification");
-
-// exports.onOrderPickedUp = onDocumentUpdated(
-//     "Orders/{orderId}",
-//     async (event) => {
-
-//         const before = event.data.before.data();
-//         const after = event.data.after.data();
-
-//         if (
-//             before.orderStatus === "pick_up" ||
-//             after.orderStatus !== "pick_up"
-//         ) {
-//             return;
-//         }
-
-//         const riderId = after.acceptedBy;
-//         const passengerUid = after.passengerUid;
-//         const restaurantId = after.restaurantId;
-//         const orderId = after.orderId;
-
-//         // =========================
-//         // Passenger Notification
-//         // =========================
-
-//         if (passengerUid) {
-
-//             await sendNotification(
-
-//                 passengerUid,
-
-//                 "🛵 Order Picked Up",
-
-//                 "Your order has been picked up and is on the way.",
-
-//                 {
-
-//                     orderId,
-
-//                     status: "pick_up"
-
-//                 }
-
-//             );
-
-//         }
-
-//         // =========================
-//         // Restaurant Notification
-//         // =========================
-
-//         if (restaurantId) {
-
-//             await sendNotification(
-
-//                 restaurantId,
-
-//                 "📦 Order Picked Up",
-
-//                 "The rider has picked up the order and is delivering it.",
-
-//                 {
-
-//                     orderId,
-
-//                     status: "pick_up"
-
-//                 }
-
-//             );
-
-//         }
-
-//         // =========================
-//         // Rider Notification
-//         // =========================
-
-//         if (riderId) {
-
-//             await sendNotification(
-
-//                 riderId,
-
-//                 "🚚 Delivery Started",
-
-//                 "You have picked up the order. Deliver it to the passenger.",
-
-//                 {
-
-//                     orderId,
-
-//                     status: "pick_up"
-
-//                 }
-
-//             );
-
-//         }
-
-//         console.log("Pick Up Notifications Sent");
-
-//     }
-// );

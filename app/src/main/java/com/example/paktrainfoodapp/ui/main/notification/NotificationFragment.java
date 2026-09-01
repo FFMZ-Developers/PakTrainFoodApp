@@ -91,7 +91,7 @@ public class NotificationFragment extends Fragment {
                     @Override
                     public void onOrderClick(NotificationModel model) {
 
-                        openOrder(model);
+                        openNotificationDetail(model);
 
                     }
 
@@ -245,6 +245,24 @@ public class NotificationFragment extends Fragment {
                 };
 
         new ItemTouchHelper(callback).attachToRecyclerView(recyclerNotifications);
+    }
+
+    // ✅ FIX: this used to jump straight to the order (openOrder()) - no
+    // way to actually read the message first, and every notification
+    // behaved the same regardless of type. Now every tap - from this
+    // in-app list or from the system tray - opens the same expanded
+    // detail screen (NotificationDetailFragment), which then offers
+    // whatever action button actually fits the message.
+    private void openNotificationDetail(NotificationModel model) {
+
+        if (!isAdded() || model.getDocumentId() == null) return;
+
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.main_container,
+                        NotificationDetailFragment.newInstanceFromId(model.getDocumentId()))
+                .addToBackStack("notification_detail")
+                .commit();
     }
 
     private void openOrder(NotificationModel model) {

@@ -253,12 +253,6 @@ public class LocationService extends Service {
         LocationRequest locationRequest =
                 new LocationRequest.Builder(
                         Priority.PRIORITY_HIGH_ACCURACY,
-<<<<<<< HEAD
-                        10000 // 10 seconds
-                )
-                        .setMinUpdateIntervalMillis(00000)
-                        .setMinUpdateDistanceMeters(5)
-=======
                         LOCATION_UPDATE_INTERVAL_MS
                 )
                         .setMinUpdateIntervalMillis(LOCATION_UPDATE_INTERVAL_MS)
@@ -267,7 +261,6 @@ public class LocationService extends Service {
                         // For production, raise this back to ~5-10m so a
                         // parked/stationary phone doesn't spam writes.
                         .setMinUpdateDistanceMeters(0)
->>>>>>> origin/Fahad
                         .build();
 
         locationCallback = new LocationCallback() {

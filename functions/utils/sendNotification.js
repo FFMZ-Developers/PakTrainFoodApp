@@ -1,21 +1,27 @@
 const admin = require("../config/firebase");
 
 const {
-
     ROLES,
-
     NOTIFICATION_TYPES,
-
     SCREENS
-
 } = require("./constants");
 
+/**
+ * @param persist   Set to false for chat messages - a chat notification
+ *                  shouldn't leave a permanent record in the Alerts list
+ *                  (the chat thread itself IS the permanent record). When
+ *                  false, this only sends the FCM push - no Firestore
+ *                  Notifications document is created at all, so there's
+ *                  nothing to "delete after reading" because nothing was
+ *                  ever saved.
+ */
 async function sendNotification({
     uid,
     role,
     title,
     body,
-    data = {}
+    data = {},
+    persist = true
 }) {
 
     try {
@@ -73,49 +79,99 @@ async function sendNotification({
         }
 
         // ==========================
-        // Save Notification
+        // Module: mention the order number in the body.
+        //
+        // Every order-lifecycle AND payment notification already carries
+        // data.orderId (payment templates included - Held/Sent/Refund*
+        // all pass it). Rather than editing every single call site across
+        // a dozen trigger files to add "Order #0001" text, this looks it
+        // up ONCE here and prefixes it automatically - so it's guaranteed
+        // consistent everywhere, including any future notification nobody
+        // remembers to update by hand.
         // ==========================
 
-        const notificationRef =
-userRef.collection("Notifications").doc();
+        let finalBody = body;
+        let orderNumberForData = data.orderNumber || "";
 
-await notificationRef.set({
+        if (data.orderId && !orderNumberForData) {
 
-    notificationId: notificationRef.id,
+            try {
 
-    title: title,
+                const orderSnap = await admin.firestore()
+                    .collection("Orders").doc(data.orderId).get();
 
-    body: body,
+                if (orderSnap.exists) {
 
-    image: "",
+                    const num = orderSnap.data().orderNumber;
 
-    type: NOTIFICATION_TYPES.ORDER,
+                    if (typeof num === "number" && num > 0) {
+                        orderNumberForData = String(num).padStart(4, "0");
+                    }
+                }
 
-    screen: SCREENS.ORDERS,
+            } catch (e) {
+                // Non-fatal - the notification still sends, just without
+                // the order number prefix.
+            }
+        }
 
-    priority: "normal",
+        if (orderNumberForData) {
+            finalBody = `[Order #${orderNumberForData}] ${body}`;
+        }
 
-    orderId: data.orderId || "",
+        // ==========================
+        // Save Notification (skipped entirely for persist: false)
+        // ==========================
 
-    deepLinkId: data.orderId || "",
+        let notificationId = null;
 
-    status: data.status || "",
+        if (persist) {
 
-    receiverUid: uid,
+            const notificationRef = userRef.collection("Notifications").doc();
+            notificationId = notificationRef.id;
 
-    receiverRole: role,
+            await notificationRef.set({
 
-    isRead: false,
+                notificationId: notificationRef.id,
 
-    clickedAt: null,
+                title: title,
 
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                body: finalBody,
 
-    updatedAt: null,
+                image: "",
 
-    version: 1
+                type: NOTIFICATION_TYPES.ORDER,
 
-});
+                // Respects whatever the caller passed - see the history of
+                // this file for why that matters (it used to be hardcoded).
+                screen: data.screen || SCREENS.ORDERS,
+
+                priority: "normal",
+
+                orderId: data.orderId || "",
+
+                orderNumber: orderNumberForData,
+
+                deepLinkId: data.orderId || "",
+
+                status: data.status || "",
+
+                receiverUid: uid,
+
+                receiverRole: role,
+
+                isRead: false,
+
+                clickedAt: null,
+
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+
+                updatedAt: null,
+
+                version: 1
+
+            });
+        }
 
         // ==========================
         // Get FCM Token
@@ -172,21 +228,29 @@ await notificationRef.set({
 
                 title,
 
-                body,
+                body: finalBody,
 
-                screen: SCREENS.ORDERS,
+                screen: data.screen || SCREENS.ORDERS,
 
-                 deepLinkId: data.orderId || "",
+                deepLinkId: data.orderId || "",
 
-                  notificationType: NOTIFICATION_TYPES.ORDER,
+                notificationType: NOTIFICATION_TYPES.ORDER,
 
-                 priority: "normal"
+                priority: "normal",
+
+                orderNumber: orderNumberForData,
+
+                // Lets the app open/mark-read the EXACT Firestore document
+                // that was just written above, instead of guessing.
+                notificationId: notificationId || "",
+
+                persisted: persist ? "true" : "false"
 
             }
 
         });
 
-        console.log("Notification Sent Successfully");
+        console.log("Notification Sent Successfully" + (persist ? "" : " (not persisted - chat)"));
 
     }
     catch (e) {
@@ -202,78 +266,3 @@ module.exports = {
     sendNotification
 
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// 
-// const admin = require("../config/firebase");
-
-// async function sendNotification(uid, title, body, data = {}) {
-
-//     try {
-
-//         const tokenDoc = await admin.firestore()
-//             .collection("Users")
-//             .doc("Notification")
-//             .collection("FCMTokens")
-//             .doc(uid)
-//             .get();
-
-//         if (!tokenDoc.exists) {
-
-//             console.log("FCM Token not found:", uid);
-//             return;
-
-//         }
-
-//         const token = tokenDoc.data().fcmToken;
-
-//         if (!token) {
-
-//             console.log("Token is empty");
-//             return;
-
-//         }
-
-//         await admin.messaging().send({
-
-//             token: token,
-
-//             notification: {
-//                 title: title,
-//                 body: body
-//             },
-
-//             data: data
-
-//         });
-
-//         console.log("Notification Sent");
-
-//     }
-//     catch (e) {
-
-//         console.error(e);
-
-//     }
-
-// }
-
-// module.exports = {
-//     sendNotification
-// };

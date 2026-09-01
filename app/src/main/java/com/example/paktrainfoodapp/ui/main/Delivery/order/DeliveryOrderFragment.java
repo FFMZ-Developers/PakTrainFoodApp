@@ -17,6 +17,7 @@ import com.google.android.material.tabs.TabLayout;
 public class DeliveryOrderFragment extends Fragment {
 
     private TabLayout tabsOrders;
+    private final com.example.paktrainfoodapp.utils.OrderTabCounter tabCounter = new com.example.paktrainfoodapp.utils.OrderTabCounter();
     private ImageView headerImage;
 
     @Nullable
@@ -32,6 +33,12 @@ public class DeliveryOrderFragment extends Fragment {
         tabsOrders.addTab(tabsOrders.newTab().setText("New"));
         tabsOrders.addTab(tabsOrders.newTab().setText("Accept"));
         tabsOrders.addTab(tabsOrders.newTab().setText("Completed"));
+
+        // Live counts next to each tab label - see OrderTabCounter.
+        String counterUid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
+        if (counterUid != null) {
+            tabCounter.attachStatuses(tabsOrders, 1, "Accept", "acceptedBy", counterUid, "accepted_by_rider","arrive_rider_at_resturent","dropped","pick_up");
+        }
 
         // Default: Active
         replaceChildFragment(new Order_New_Fragment());
@@ -65,6 +72,12 @@ public class DeliveryOrderFragment extends Fragment {
         FragmentTransaction ft = getChildFragmentManager().beginTransaction();
         ft.replace(R.id.delivery_orders_tab_container, fragment);
         ft.commit();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        tabCounter.detachAll();
     }
 }
 //

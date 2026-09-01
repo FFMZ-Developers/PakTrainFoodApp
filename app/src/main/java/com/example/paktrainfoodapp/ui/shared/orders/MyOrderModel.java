@@ -32,4 +32,9 @@ public class MyOrderModel {
     public String getMealStation() { return mealStation; }
     public String getDateText() { return dateText; }
     public double getTotalPrice() { return totalPrice; }
+
+    // Module: human-readable sequential order number.
+    private Long orderNumber;
+    public Long getOrderNumber() { return orderNumber; }
+    public void setOrderNumber(Long orderNumber) { this.orderNumber = orderNumber; }
 }

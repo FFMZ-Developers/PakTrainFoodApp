@@ -96,7 +96,9 @@ public class AcceptedOrdersFragment extends Fragment implements Refreshable {
                 Double totalPrice = doc.getDouble("totalPrice");
                 double price = totalPrice != null ? totalPrice : 0;
 
-                orderList.add(new OrderModel(orderId, price, status));
+                OrderModel model = new OrderModel(orderId, price, status);
+                model.setOrderNumber(doc.getLong("orderNumber"));
+                orderList.add(model);
             }
 
             adapter.notifyDataSetChanged();
@@ -117,7 +119,7 @@ public class AcceptedOrdersFragment extends Fragment implements Refreshable {
     }
 
     // ================= ADAPTER =================
-    private static class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewHolder> {
+    private  class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewHolder> {
 
         private final ArrayList<OrderModel> items;
         private final Fragment fragment;
@@ -146,7 +148,10 @@ public class AcceptedOrdersFragment extends Fragment implements Refreshable {
 
             OrderModel order = items.get(position);
 
-            holder.txtOrderId.setText("#" + order.getOrderId());
+            holder.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(order.getOrderNumber(), order.getOrderId()));
+
+            // Raw countdown removed - only the arrival estimate is shown.
+            if (holder.txtTimer != null) holder.txtTimer.setVisibility(View.GONE);
             holder.txtTotalPrice.setText("Total: Rs " + order.getTotalPrice());
 
             // SHOW TIME ROW ALWAYS
@@ -166,14 +171,25 @@ public class AcceptedOrdersFragment extends Fragment implements Refreshable {
             }
 
             // CLICK ITEM -> ONLY TOAST
+            // ✅ FIX: this only popped a Toast with the order number - the
+            // passenger couldn't actually open their order from this tab.
+            // Now it opens the full detail screen (which offers live
+            // tracking once a rider is assigned).
             holder.itemView.setOnClickListener(v -> {
 
-                int pos = holder.getAdapterPosition();
-                if (pos == RecyclerView.NO_POSITION) return;
+                if (!isAdded()) return;
 
-                Toast.makeText(v.getContext(),
-                        "Order ID: " + order.getOrderId(),
-                        Toast.LENGTH_SHORT).show();
+                passanger_orderDetailFragment detail = new passanger_orderDetailFragment();
+
+                Bundle args = new Bundle();
+                args.putString("orderId", order.getOrderId());
+                detail.setArguments(args);
+
+                requireActivity().getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.main_container, detail)
+                        .addToBackStack(null)
+                        .commit();
             });
         }
 
@@ -182,9 +198,10 @@ public class AcceptedOrdersFragment extends Fragment implements Refreshable {
             return items.size();
         }
 
-        static class OrderViewHolder extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice;
+         class OrderViewHolder extends RecyclerView.ViewHolder {
+
+            TextView txtOrderId, txtTotalPrice, txtTimer;
             LinearLayout timeRow;
             Button btnReady;
 
@@ -192,6 +209,7 @@ public class AcceptedOrdersFragment extends Fragment implements Refreshable {
                 super(itemView);
 
                 txtOrderId = itemView.findViewById(R.id.txtOrderId);
+            txtTimer = itemView.findViewById(R.id.txtTimer);
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
 
                 timeRow = itemView.findViewById(R.id.timeRow);

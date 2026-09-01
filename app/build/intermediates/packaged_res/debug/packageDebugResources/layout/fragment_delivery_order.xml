@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/app_background">
+
+    <!-- Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/Toolbar_Delivery_Orders"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:title="Orders"
+        app:titleTextColor="@color/black"
+        app:titleTextAppearance="@style/Toolbar.Title" />
+
+    <!-- Tabs -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabs_delivery_Orders"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface"
+        app:tabMode="fixed"
+        app:tabGravity="fill"
+        app:tabIndicatorColor="@color/purple_light"
+        app:tabIndicatorHeight="3dp"
+        app:tabSelectedTextColor="@color/purple_light"
+        app:tabTextColor="#7F8C8D" />
+
+    <!-- Container for Tab Fragments -->
+    <FrameLayout
+        android:id="@+id/delivery_orders_tab_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="11dp" />
+
+</LinearLayout>
+
+
+
+<!---->
+
+
+
+

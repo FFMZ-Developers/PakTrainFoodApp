@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dashboard_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface">
+
+    <!-- Fragment Container -->
+    <FrameLayout
+        android:id="@+id/fragment_holder"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/bottom_nav" />
+
+    <!-- Bottom Navigation -->
+    <LinearLayout
+        android:id="@+id/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@color/surface"
+        android:padding="4dp">
+
+        <!-- HOme Button -->
+        <LinearLayout
+            android:id="@+id/btn_menu"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:padding="4dp">
+            <ImageView
+                android:id="@+id/icon_menu"
+                android:src="@drawable/ic_browse_menu"
+                android:layout_width="28dp"
+                android:layout_height="28dp"/>
+            <TextView
+                android:id="@+id/text_menu"
+                android:text="Menu"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/gray"/>
+        </LinearLayout>
+
+        <!-- Orders -->
+        <LinearLayout
+            android:id="@+id/btn_order"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:padding="4dp">
+            <ImageView
+                android:id="@+id/icon_order"
+                android:src="@drawable/ic_order"
+                android:layout_width="28dp"
+                android:layout_height="28dp"/>
+            <TextView
+                android:id="@+id/text_order"
+                android:text="Orders"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/gray"/>
+        </LinearLayout>
+
+        <!-- Dashboard -->
+        <LinearLayout
+            android:id="@+id/btn_dashboard"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:padding="4dp">
+            <ImageView
+                android:id="@+id/icon_dashboard"
+                android:src="@drawable/ic_dashboard"
+                android:layout_width="36dp"
+                android:layout_height="36dp"/>
+            <TextView
+                android:id="@+id/text_dashboard"
+                android:text="Dashboard"
+                android:textSize="14sp"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:textColor="@color/green"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- Notifications -->
+        <LinearLayout
+            android:id="@+id/btn_delivery"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:padding="4dp">
+
+            <FrameLayout
+                android:layout_width="34dp"
+                android:layout_height="30dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <ImageView
+                    android:id="@+id/icon_delivery"
+                    android:src="@drawable/ic_notification"
+                    android:layout_gravity="center"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"/>
+
+                <TextView
+                    android:id="@+id/txtRestaurantBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:minWidth="18dp"
+                    android:minHeight="18dp"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingTop="1dp"
+                    android:paddingBottom="1dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text="0"
+                    android:textColor="#FFFFFF"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    android:background="@drawable/bg_notification_badge"/>
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/text_delivery"
+                android:text="Alerts"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/gray"/>
+        </LinearLayout>
+
+
+        <LinearLayout
+            android:id="@+id/btn_profile"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:padding="4dp">
+            <ImageView
+                android:id="@+id/icon_profile"
+                android:src="@drawable/ic_profile"
+                android:layout_width="28dp"
+                android:layout_height="28dp"/>
+            <TextView
+                android:id="@+id/text_profile"
+                android:text="Profile"
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/gray"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</RelativeLayout>

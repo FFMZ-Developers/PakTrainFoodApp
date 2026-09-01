@@ -87,13 +87,15 @@ public class CompletedOrdersFragment extends Fragment {
                         if (status == null) continue;
 
                         // ONLY pick_up + completed
-                        if (!status.equals("pick_up") &&
-                                !status.equals("completed")) {
+                        // Completed means finished. "pick_up" is still in
+                        // progress, so it stays in the Delivery tab.
+                        if (!status.equals("completed")) {
                             continue;
                         }
 
                         MenuItem item = new MenuItem();
                         item.setId(doc.getId());
+                        item.setOrderNumber(doc.getLong("orderNumber"));
                         item.setStatus(status);
 
                         Long time = doc.getLong("etaEndTime");
@@ -139,7 +141,7 @@ public class CompletedOrdersFragment extends Fragment {
 
             MenuItem m = items.get(position);
 
-            h.txtOrderId.setText("#" + m.getId());
+            h.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(m.getOrderNumber(), m.getId()));
 
             double total = (m.getVariations() != null && !m.getVariations().isEmpty())
                     ? m.getVariations().values().iterator().next()
@@ -158,21 +160,14 @@ public class CompletedOrdersFragment extends Fragment {
 
 
             // ================= STATUS UI =================
-            switch (status) {
+            // Nothing on this tab is actionable - every row is history, so
+            // all of it reads as a status badge rather than a button.
+            com.example.paktrainfoodapp.utils.StatusBadge.apply(h.btnReady, status);
+            h.btnReady.setEnabled(false);
+            h.btnReady.setAlpha(1f);
 
-                case "pick_up":
-                    h.btnReady.setText("Order Delivered to Rider");
-                    break;
-
-                case "completed":
-                    h.btnReady.setText("Completed");
-                    h.txtTimer.setText("Arrived");
-                    break;
-
-                default:
-                    h.btnReady.setText(status);
-                    break;
-            }
+            // txtTimer stays hidden - the arrival estimate above already
+            // says everything this row needs to.
         }
 
         @Override
@@ -182,7 +177,7 @@ public class CompletedOrdersFragment extends Fragment {
 
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice, txtTimer;
+            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival;
             Button btnReady;
 LinearLayout timeRow;
             ViewHolder(@NonNull View itemView) {
@@ -191,9 +186,24 @@ LinearLayout timeRow;
                 txtOrderId = itemView.findViewById(R.id.txtOrderId);
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
                 txtTimer = itemView.findViewById(R.id.txtTimer);
+                txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
                 btnReady = itemView.findViewById(R.id.btnReady);
                 timeRow = itemView.findViewById(R.id.timeRow);
             }
         }
+    }
+
+    private void bindEtaArrival(TextView view, long trainEtaEndTimeMillis) {
+
+        if (view == null) return;
+
+        if (trainEtaEndTimeMillis <= 0) {
+            view.setText("Estimated Arrival: Calculating...");
+            return;
+        }
+
+        view.setText("Estimated Arrival: " + new java.text.SimpleDateFormat(
+                "hh:mm a", java.util.Locale.getDefault())
+                .format(new java.util.Date(trainEtaEndTimeMillis)));
     }
 }
