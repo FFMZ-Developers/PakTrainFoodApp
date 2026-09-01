@@ -25,10 +25,21 @@ public class DeliveryBoyModel {
     public void setDocPath(String docPath) { this.docPath = docPath; }
 
     public String getStatus() { return status; }
+
+    // Live train ETA (millis) - same field the restaurant/passenger
+    // screens show, so the rider knows how long they actually have.
+    private long trainEtaEndTime;
+    public long getTrainEtaEndTime() { return trainEtaEndTime; }
+    public void setTrainEtaEndTime(long trainEtaEndTime) { this.trainEtaEndTime = trainEtaEndTime; }
     public void setStatus(String status) { this.status = status; }
 
     public String getPassengerUid() { return passengerUid; }
     public void setPassengerUid(String passengerUid) { this.passengerUid = passengerUid; }
+
+    // Module: human-readable sequential order number (see OrderNumberUtils).
+    private Long orderNumber;
+    public Long getOrderNumber() { return orderNumber; }
+    public void setOrderNumber(Long orderNumber) { this.orderNumber = orderNumber; }
 }
 
 

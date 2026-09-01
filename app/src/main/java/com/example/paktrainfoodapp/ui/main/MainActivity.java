@@ -3,6 +3,10 @@ package com.example.paktrainfoodapp.ui.main;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
+<<<<<<< HEAD
+=======
+import android.text.TextUtils;
+>>>>>>> origin/Fahad
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -17,6 +21,10 @@ import com.example.paktrainfoodapp.ui.main.Delivery.dashboard.DeliveryDashboardF
 import com.example.paktrainfoodapp.ui.main.Passenger.Passenger_Fragment_Loader;
 import com.example.paktrainfoodapp.ui.main.Restaurant.restaurant_LoadFragment;
 import com.example.paktrainfoodapp.utils.PrefManager;
+<<<<<<< HEAD
+=======
+import com.example.paktrainfoodapp.utils.LocationEnforcementWatcher;
+>>>>>>> origin/Fahad
 import com.google.firebase.appcheck.FirebaseAppCheck;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -41,6 +49,13 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private FirebaseFirestore db;
     private Passenger_Fragment_Loader passengerLoader;
+<<<<<<< HEAD
+=======
+
+    // Module 2 - checks every 5s (while app is foregrounded) that device
+    // location is on and that background order-tracking is actually alive.
+    private LocationEnforcementWatcher locationEnforcementWatcher;
+>>>>>>> origin/Fahad
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -72,6 +87,10 @@ public class MainActivity extends AppCompatActivity {
         prefManager = new PrefManager(this);
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
+
+        // Module 2 - app-open watchdog (location-off popup + tracking
+        // service self-heal). Started/stopped in onResume/onPause below.
+        locationEnforcementWatcher = new LocationEnforcementWatcher(this);
 
         // 🔹 100% FIXED BACK PRESS HANDLING FOR INNER FRAGMENTS
         // 🔹 100% PERFECT UNIVERSAL BACK PRESS HANDLING
@@ -168,6 +187,16 @@ public class MainActivity extends AppCompatActivity {
                 });
 
 
+<<<<<<< HEAD
+=======
+        // Module: restriction check - runs regardless of which path below
+        // loads the role's screen (some take a fast-path using cached
+        // local prefs that skip a fresh Firestore read entirely), so a
+        // restriction set by admin after this device's last full sign-in
+        // still gets caught the next time the app opens.
+        checkAccountRestriction(userRole, uid);
+
+>>>>>>> origin/Fahad
         switch (userRole) {
             case "RESTAURANT":
                 handleRestaurantRole(uid);
@@ -199,6 +228,55 @@ public class MainActivity extends AppCompatActivity {
         handleNotificationIntent(getIntent());
     }
 
+<<<<<<< HEAD
+=======
+    /**
+     * Shows a dismissible warning if an admin has restricted this account -
+     * they can still browse/view existing orders and their wallet, but
+     * key action screens (placing an order, accepting an order) check this
+     * same flag themselves before allowing it. A restricted account is
+     * NOT signed out or blocked from opening the app at all - that's what
+     * a full "disable" (a real Firebase Auth disable, enforced by Firebase
+     * itself at sign-in) is for.
+     */
+    private void checkAccountRestriction(String role, String uid) {
+
+        com.google.firebase.firestore.DocumentReference ref;
+
+        switch (role) {
+            case "RESTAURANT":
+                ref = db.collection("Users").document("Restaurant").collection("VerifiedRegister").document(uid);
+                break;
+            case "DELIVERY":
+                ref = db.collection("Users").document("Delivery").collection("VerifiedRegister").document(uid);
+                break;
+            default:
+                ref = db.collection("Users").document("Passenger").collection("Register").document(uid);
+                break;
+        }
+
+        ref.get().addOnSuccessListener(doc -> {
+
+            if (doc == null || !doc.exists()) return;
+
+            Boolean restricted = doc.getBoolean("isRestricted");
+
+            if (restricted != null && restricted) {
+
+                String reason = doc.getString("restrictionReason");
+
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Account Restricted")
+                        .setMessage("Your account has a restriction from PakTrainFood"
+                                + (reason != null && !reason.isEmpty() ? ":\n\n" + reason : ".")
+                                + "\n\nYou can still view your existing orders and wallet, but can't place or accept new orders until this is resolved.")
+                        .setPositiveButton("OK", null)
+                        .show();
+            }
+        });
+    }
+
+>>>>>>> origin/Fahad
     //jab app open ho then notificaton pr clik krny pr call hoga
     @Override
     protected void onNewIntent(Intent intent) {
@@ -217,6 +295,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (screen == null) return;
 
+<<<<<<< HEAD
         if ("orders".equals(screen)) {
 
             String status = intent.getStringExtra("status");
@@ -249,6 +328,145 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
+=======
+        // Module: auto-payout receipt notifications deep-link here -
+        // works for any role since it replaces the top-level container
+        // directly (same pattern OrderDetailFragment uses), rather than
+        // needing each role's own nested navigation system to know about it.
+        // Module: chat deep-link - tapping a chat notification opens that
+        // exact conversation, WhatsApp-style, rather than dumping the user
+        // on a generic screen and making them navigate back to it.
+        if ("chat".equals(screen)) {
+
+            String chatOrderId = intent.getStringExtra("orderId");
+            String chatType = intent.getStringExtra("chatType");
+            String senderName = intent.getStringExtra("senderName");
+
+            if (chatOrderId != null && chatType != null) {
+
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.main_container,
+                                com.example.paktrainfoodapp.ui.shared.chat.OrderChatFragment
+                                        .newInstance(chatOrderId, chatType,
+                                                senderName != null ? senderName : "Chat", null))
+                        .addToBackStack("chat")
+                        .commit();
+            }
+
+            return;
+        }
+
+        // ✅ FIX: every notification OTHER than chat used to navigate
+        // straight to its target screen the instant it was tapped - no
+        // way to actually read the message first, and every message type
+        // behaved identically regardless of what it was about. Now they
+        // all open NotificationDetailFragment - the message shown in
+        // full, with whatever action button actually fits (View Wallet
+        // for a payment message, View Order for an order-lifecycle one,
+        // Browse Restaurants for a rejected-order one) - and THAT button
+        // is what performs the navigation, via navigateToNotificationTarget()
+        // below (which is the exact same logic this used to run directly).
+        String notificationId = intent.getStringExtra("notificationId");
+        String title = intent.getStringExtra("title");
+        String body = intent.getStringExtra("body");
+        String orderId = intent.getStringExtra("orderId");
+        String orderNumber = intent.getStringExtra("orderNumber");
+
+        if (screen == null && notificationId == null) return;
+
+        com.example.paktrainfoodapp.ui.main.notification.NotificationDetailFragment detail =
+                !TextUtils.isEmpty(notificationId)
+                        ? com.example.paktrainfoodapp.ui.main.notification.NotificationDetailFragment
+                                .newInstanceFromId(notificationId)
+                        : com.example.paktrainfoodapp.ui.main.notification.NotificationDetailFragment
+                                .newInstanceFromExtras(title, body, screen, orderId, orderNumber);
+
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.main_container, detail)
+                .addToBackStack("notification_detail")
+                .commit();
+    }
+
+    /**
+     * The actual navigation for a notification's action button -
+     * unchanged from what handleNotificationIntent() used to do directly;
+     * it just runs a step later now, after the user has seen the message
+     * and deliberately tapped through.
+     */
+    public void navigateToNotificationTarget(String screen, String orderId) {
+
+        if ("wallet".equals(screen)) {
+
+            String uiRole;
+
+            switch (prefManager.getUserRole() != null ? prefManager.getUserRole() : "") {
+                case "RESTAURANT": uiRole = com.example.paktrainfoodapp.ui.shared.wallet.WalletFragment.ROLE_RESTAURANT; break;
+                case "DELIVERY":   uiRole = com.example.paktrainfoodapp.ui.shared.wallet.WalletFragment.ROLE_DELIVERY; break;
+                default:           uiRole = com.example.paktrainfoodapp.ui.shared.wallet.WalletFragment.ROLE_PASSENGER; break;
+            }
+
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.main_container,
+                            com.example.paktrainfoodapp.ui.shared.wallet.WalletFragment.newInstance(uiRole))
+                    .addToBackStack("wallet")
+                    .commit();
+
+            return;
+        }
+
+        // A rejected order is over - send the passenger straight back to
+        // picking a journey/restaurant rather than to a dead order.
+        if ("home".equals(screen)) {
+
+            if (passengerLoader != null) passengerLoader.navigateToHome();
+
+            return;
+        }
+
+        if ("orders".equals(screen)) {
+
+            // If we know exactly which order this is about, go straight to
+            // its own detail/live-tracking screen (works for all 3 roles) -
+            // far more useful than just switching to a generic tab.
+            if (!TextUtils.isEmpty(orderId)) {
+
+                String role = prefManager.getUserRole();
+
+                Fragment target = "PASSENGER".equalsIgnoreCase(role)
+                        ? buildPassengerDetail(orderId)
+                        : com.example.paktrainfoodapp.ui.main.Restaurant.order.OrderDetailFragment
+                                .newInstance(orderId);
+
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.main_container, target)
+                        .addToBackStack("order_detail")
+                        .commit();
+
+                return;
+            }
+
+            if (passengerLoader != null) {
+                passengerLoader.navigateToOrders(0);
+            }
+        }
+    }
+
+    private Fragment buildPassengerDetail(String orderId) {
+
+        com.example.paktrainfoodapp.ui.main.Passenger.order.passanger_orderDetailFragment f =
+                new com.example.paktrainfoodapp.ui.main.Passenger.order.passanger_orderDetailFragment();
+
+        Bundle args = new Bundle();
+        args.putString("orderId", orderId);
+        f.setArguments(args);
+
+        return f;
+    }
+>>>>>>> origin/Fahad
     private void handleRestaurantRole(String uid) {
         if (prefManager.isRegistered() && prefManager.isRestaurantVerified()) {
             loadFragment(new restaurant_LoadFragment());
@@ -378,6 +596,34 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+<<<<<<< HEAD
+=======
+    // =========================================================
+    // Module 2 - start/stop the app-open watchdog with the activity's
+    // foreground lifecycle. Only needs to run while something is actually
+    // on screen; LocationService has its own independent background
+    // watchdog for while the app isn't open at all.
+    // =========================================================
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (locationEnforcementWatcher != null) {
+            locationEnforcementWatcher.start();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        if (locationEnforcementWatcher != null) {
+            locationEnforcementWatcher.stop();
+        }
+    }
+
+>>>>>>> origin/Fahad
 }
 
 

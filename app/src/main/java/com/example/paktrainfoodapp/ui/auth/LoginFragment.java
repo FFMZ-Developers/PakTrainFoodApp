@@ -131,11 +131,14 @@ public class LoginFragment extends Fragment {
 
                                 FirebaseAuth.getInstance().signOut();
 
-                                Toast.makeText(
-                                        getContext(),
-                                        "Please verify your email first. Check your inbox.",
-                                        Toast.LENGTH_LONG
-                                ).show();
+                                // \u2705 FIX: was a Toast that vanished before most
+                                // people finished reading it, and never mentioned
+                                // the spam folder - which is where these emails
+                                // usually are. Now a dialog with a direct
+                                // "Open Email App" button.
+                                if (isAdded()) {
+                                    AuthDialogs.showNotVerified(requireContext(), email);
+                                }
 
                                 return;
                             }
@@ -154,11 +157,36 @@ public class LoginFragment extends Fragment {
 
                         progressDialog.dismiss();
 
-                        Toast.makeText(
-                                getContext(),
-                                "Login failed: " + task.getException().getMessage(),
-                                Toast.LENGTH_SHORT
-                        ).show();
+                        // \u2705 FIX: this dumped Firebase's raw exception text at
+                        // the user ("There is no user record corresponding to
+                        // this identifier..."). Now the two cases people
+                        // actually hit are told apart and explained plainly.
+                        if (isAdded()) {
+
+                            Exception ex = task.getException();
+
+                            if (ex instanceof com.google.firebase.auth.FirebaseAuthInvalidUserException) {
+
+                                // \u2705 FIX: this used to treat "no such account"
+                                // and "account disabled by admin" identically -
+                                // both are FirebaseAuthInvalidUserException, but
+                                // Firebase distinguishes them by error code, and
+                                // showing "please register first" to someone
+                                // whose account genuinely exists (just disabled)
+                                // is actively misleading.
+                                String code = ((com.google.firebase.auth.FirebaseAuthInvalidUserException) ex)
+                                        .getErrorCode();
+
+                                if ("ERROR_USER_DISABLED".equals(code)) {
+                                    AuthDialogs.showAccountDisabled(requireContext());
+                                } else {
+                                    AuthDialogs.showNotRegistered(requireContext());
+                                }
+
+                            } else {
+                                AuthDialogs.showWrongCredentials(requireContext());
+                            }
+                        }
                     }
                 });
     }
@@ -329,7 +357,7 @@ public class LoginFragment extends Fragment {
             } else if (selectedRole.equals("DELIVERY")) {
                 openDeliveryRegisterForm(uid, email);
             } else {
-                Toast.makeText(getContext(), "User not found. Please register first.", Toast.LENGTH_SHORT).show();
+                if (isAdded()) AuthDialogs.showNotRegistered(requireContext());
             }
         }
     }

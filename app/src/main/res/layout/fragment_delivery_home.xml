@@ -28,10 +28,22 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
+<<<<<<< HEAD
+=======
+                <ImageView
+                    android:id="@+id/imgRiderIcon"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:src="@drawable/deliveryboy"
+                    android:background="@drawable/status_dot_green"
+                    android:contentDescription="Rider Icon" />
+
+>>>>>>> origin/Fahad
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
+<<<<<<< HEAD
                     android:orientation="vertical">
 
                     <TextView
@@ -41,11 +53,25 @@
                         android:text="Good morning"
                         android:textColor="#CCE9E6"
                         android:textSize="14sp" />
+=======
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/txtAppTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="PakTrain Rider"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+>>>>>>> origin/Fahad
 
                     <TextView
                         android:id="@+id/txtRiderName"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+<<<<<<< HEAD
                         android:layout_marginTop="2dp"
                         android:text="Rider"
                         android:textColor="#FFFFFF"
@@ -66,6 +92,54 @@
                     android:text="Offline"
                     android:textSize="12sp"
                     android:textStyle="bold" />
+=======
+                        android:layout_marginTop="1dp"
+                        android:text="Rider"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/txtRiderGreeting"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Good morning"
+                        android:textColor="#CCE9E6"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Single, real online/offline toggle - the only one in
+                     the app now. Initial checked-state is set from the
+                     actual saved Realtime Database value (not hardcoded),
+                     and stays wherever the rider left it across app
+                     restarts. -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/txtRiderStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_badge_grey"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:text="Offline"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <Switch
+                        android:id="@+id/switchOnline"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:thumbTint="@color/white" />
+                </LinearLayout>
+>>>>>>> origin/Fahad
             </LinearLayout>
         </LinearLayout>
 

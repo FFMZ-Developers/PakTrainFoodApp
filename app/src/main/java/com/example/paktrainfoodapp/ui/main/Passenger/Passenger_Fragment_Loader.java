@@ -168,8 +168,14 @@ public class Passenger_Fragment_Loader extends Fragment {
             lastDashboardFragment = homeFragment;
         }
 
-        // Default selected button
-        selectNavButton(btnDashboard);
+        // ✅ FIX: this used to unconditionally reset the highlighted tab to
+        // Dashboard every time this view was created - including when it was
+        // RE-created after popping back from a detail/tracking screen (those
+        // replace MainActivity's container, so returning rebuilds this whole
+        // shell). The result was that backing out of an order always looked
+        // like it had thrown you back to the Dashboard. Now the highlight
+        // follows whichever tab is actually showing.
+        selectNavButton(navButtonFor(activeFragment));
 
         // ================= DASHBOARD =================
 
@@ -218,6 +224,7 @@ public class Passenger_Fragment_Loader extends Fragment {
 
             showFragment(profileFragment);
         });
+<<<<<<< HEAD
 
         if (openOrderAfterLoad) {
 
@@ -248,6 +255,54 @@ public class Passenger_Fragment_Loader extends Fragment {
         selectNavButton(btnOrder);
 
     }
+=======
+
+        if (openOrderAfterLoad) {
+
+            openOrderAfterLoad = false;
+
+            view.post(() -> {
+
+                navigateToOrders();
+
+            });
+
+        }
+        startBadgeListener();
+        startNotificationBadge();
+
+    }
+    public void navigateToOrders() {
+
+        if (!isAdded()) {
+
+            openOrderAfterLoad = true;
+            return;
+
+        }
+
+        showFragment(orderFragment);
+
+        selectNavButton(btnOrder);
+
+    }
+    /**
+     * Module: opens the journey/home screen (from -> to -> meal station,
+     * i.e. where a passenger picks a restaurant). Used when an order is
+     * rejected - that order is finished, so sending them back to the
+     * orders list would just show a dead order; what they actually need is
+     * to start choosing again.
+     */
+    public void navigateToHome() {
+
+        if (!isAdded()) return;
+
+        showFragment(homeFragment);
+
+        selectNavButton(btnJourney);
+    }
+
+>>>>>>> origin/Fahad
     public void navigateToOrders(int tabIndex) {
 
         orderFragment.setSelectedTab(tabIndex);
@@ -947,5 +1002,19 @@ public class Passenger_Fragment_Loader extends Fragment {
     }
 
 
+<<<<<<< HEAD
+=======
+
+    /** Which bottom-nav button corresponds to a given content fragment. */
+    private LinearLayout navButtonFor(Fragment f) {
+
+        if (f == orderFragment) return btnOrder;
+        if (f == cartFragment) return btnCart;
+        if (f == profileFragment) return btnProfile;
+        if (f == homeFragment) return btnJourney;
+
+        return btnDashboard;
+    }
+>>>>>>> origin/Fahad
 }
 

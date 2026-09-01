@@ -61,9 +61,39 @@ public class restaurant_LoadFragment extends Fragment {
         textDelivery = view.findViewById(R.id.text_delivery);
         textProfile = view.findViewById(R.id.text_profile);
 
+<<<<<<< HEAD
         // Default fragment open (Dashboard) - first screen, not added to back stack
         openFragment(new resturent_DashboardFragment(), "dashboard", false);
         highlightButton(btnDashboard, iconDashboard, textDashboard);
+=======
+        // Default fragment open (Dashboard) - first screen, not added to back
+        // stack.
+        //
+        // ✅ FIX: this used to run UNCONDITIONALLY every time onViewCreated
+        // fires - including when this same restaurant_LoadFragment instance
+        // is being redisplayed after popping back from a full-screen detail
+        // view (e.g. OrderDetailFragment, which replaces the Activity's
+        // main_container and gets popped on back-press). That silently
+        // forced the bottom nav back to "Dashboard" every single time,
+        // regardless of which tab (Orders, Menu, etc.) was actually active
+        // before - which is why "back" always landed on Dashboard instead
+        // of returning to the Orders tab.
+        //
+        // Now: only open the default Dashboard tab on a genuinely fresh
+        // creation (nothing in fragment_holder yet). If the child fragment
+        // manager already has content (this instance is just being shown
+        // again), leave it alone and simply re-sync the bottom-nav
+        // highlight to match whichever tag was already active.
+        if (getChildFragmentManager().findFragmentById(R.id.fragment_holder) == null) {
+
+            openFragment(new resturent_DashboardFragment(), "dashboard", false);
+            highlightButton(btnDashboard, iconDashboard, textDashboard);
+
+        } else {
+
+            restoreHighlightForCurrentTag();
+        }
+>>>>>>> origin/Fahad
 
         // Click listeners
         btnMenu.setOnClickListener(v -> {
@@ -99,6 +129,43 @@ public class restaurant_LoadFragment extends Fragment {
     }
 
     /**
+<<<<<<< HEAD
+=======
+     * Re-applies the bottom-nav highlight for whichever tab `currentTag`
+     * says is active, without touching the child fragment manager's actual
+     * content (used when this fragment's view is being recreated but its
+     * internal navigation state should be preserved - see the fix note in
+     * onViewCreated above).
+     */
+    private void restoreHighlightForCurrentTag() {
+
+        switch (currentTag) {
+
+            case "menu":
+                highlightButton(btnMenu, iconMenu, textMenu);
+                break;
+
+            case "order":
+                highlightButton(btnOrder, iconOrder, textOrder);
+                break;
+
+            case "notifications":
+                highlightButton(btnDelivery, iconDelivery, textDelivery);
+                break;
+
+            case "profile":
+                highlightButton(btnProfile, iconProfile, textProfile);
+                break;
+
+            case "dashboard":
+            default:
+                highlightButton(btnDashboard, iconDashboard, textDashboard);
+                break;
+        }
+    }
+
+    /**
+>>>>>>> origin/Fahad
      * @param tag             identifies which tab this is, used to avoid pushing
      *                        a duplicate back-stack entry when the same tab is tapped again
      * @param addToBackStack  false only for the very first screen shown

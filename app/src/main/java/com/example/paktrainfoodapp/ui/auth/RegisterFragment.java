@@ -266,12 +266,21 @@ public class RegisterFragment extends Fragment {
 
                                                 progressDialog.dismiss();
 
-                                                Toast.makeText(
-                                                        getContext(),
-                                                        "Verification email sent. Please verify your email before login.",
-                                                        Toast.LENGTH_LONG
-                                                ).show();
+                                                // \u2705 FIX: this used to be a brief Toast that
+                                                // vanished while the app moved straight on to the
+                                                // login screen - people never saw it, tried to log
+                                                // in immediately, and hit an unexplained "not
+                                                // verified" error. Now it's a blocking dialog with
+                                                // a direct "Open Email App" button and a prominent
+                                                // spam-folder warning.
+                                                // The next step only runs once the user has
+                                                // actually acknowledged the dialog, so the login
+                                                // screen (or Stripe onboarding) never appears
+                                                // over the top of the message they still need
+                                                // to read.
+                                                Runnable continueAfterDialog = () -> {
 
+<<<<<<< HEAD
                                                 // 🔥 Sirf Restaurant aur Delivery (Rider) ke liye
                                                 // Stripe Connected Account banayenge.
                                                 // Passenger ko iski zaroorat nahi (refund original
@@ -281,6 +290,30 @@ public class RegisterFragment extends Fragment {
                                                 } else {
                                                     mAuth.signOut();
                                                     goToLogin();
+=======
+                                                    if (!isAdded()) return;
+
+                                                    // 🔥 Sirf Restaurant aur Delivery (Rider) ke liye
+                                                    // Stripe Connected Account banayenge.
+                                                    // Passenger ko iski zaroorat nahi (refund original
+                                                    // payment method pe seedha wapas jata hai).
+                                                    if (userRole.equals("RESTAURANT") || userRole.equals("DELIVERY")) {
+                                                        createStripeConnectedAccount(uid, email, userRole);
+                                                    } else {
+                                                        mAuth.signOut();
+                                                        goToLogin();
+                                                    }
+                                                };
+
+                                                if (isAdded()) {
+
+                                                    AuthDialogs.showVerificationSent(
+                                                            requireContext(), email,
+                                                            continueAfterDialog::run);
+
+                                                } else {
+                                                    continueAfterDialog.run();
+>>>>>>> origin/Fahad
                                                 }
                                             })
                                             .addOnFailureListener(e -> {

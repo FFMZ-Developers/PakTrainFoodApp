@@ -167,6 +167,39 @@
             android:textColor="@color/text_secondary"/>
     </LinearLayout>
 
+<<<<<<< HEAD
+=======
+    <!-- Module: update verification documents (CNIC/license) - triggers
+         re-verification since these are sensitive, admin-checked fields. -->
+    <LinearLayout
+        android:id="@+id/layout_update_verification"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/ic_menu_edit"/>
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Update Verification Documents (CNIC / License)"
+            android:textSize="16sp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="&gt;"
+            android:textStyle="bold"
+            android:textColor="@color/text_secondary"/>
+    </LinearLayout>
+
+>>>>>>> origin/Fahad
     <LinearLayout
         android:id="@+id/layout_settings"
         android:orientation="horizontal"

@@ -33,6 +33,17 @@
             android:layout_marginTop="5dp"
             android:text="Total Price" />
 
+        <TextView
+            android:id="@+id/txtEtaArrival"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/txtTotalPrice"
+            android:layout_marginTop="4dp"
+            android:text="Estimated Arrival: --"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/teal_700" />
+
         <ImageView
             android:id="@+id/btnDelete"
             android:layout_width="34dp"
@@ -60,7 +71,7 @@
             android:id="@+id/timeRow"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/txtTotalPrice"
+            android:layout_below="@id/txtEtaArrival"
             android:layout_alignParentEnd="true"
             android:layout_marginTop="10dp"
             android:layout_marginEnd="8dp"
@@ -73,7 +84,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="10dp"
-                android:text="1:20:49"
+                android:text=""
+                android:visibility="gone"
                 android:textColor="@android:color/black"
                 android:textSize="14sp"
                 android:textStyle="bold" />

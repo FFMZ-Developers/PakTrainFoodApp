@@ -6,6 +6,38 @@
     android:orientation="vertical"
     android:background="#F6F6F6">
 
+    <!-- APP BAR -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/teal_700"
+        android:elevation="4dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="16dp">
+
+        <ImageView
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_menu_revert"
+            app:tint="@android:color/white"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Back" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Live Order Tracking"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:textSize="18sp" />
+    </LinearLayout>
+
     <!-- TOP MAP (40% SCREEN HEIGHT APPROX) -->
     <FrameLayout
         android:layout_width="match_parent"
@@ -17,23 +49,6 @@
             android:name="com.google.android.gms.maps.SupportMapFragment"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
-
-        <!-- Gradient overlay for pro look -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@drawable/map_gradient_overlay" />
-
-        <!-- Title on map -->
-        <TextView
-            android:id="@+id/txtTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Live Order Tracking"
-            android:textColor="@android:color/white"
-            android:textStyle="bold"
-            android:textSize="20sp"
-            android:layout_margin="16dp" />
     </FrameLayout>
 
     <!-- BOTTOM CONTENT (60%) -->
@@ -75,6 +90,74 @@
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="#000" />
+
+                <!-- Module: rider live route/ETA (Google Directions API) -->
+                <TextView
+                    android:id="@+id/txtRiderEta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text=""
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="#1565C0"
+                    android:visibility="gone" />
+
+                <!-- Hands off to the Google Maps app for real turn-by-turn
+                     guidance (see startNavigation()). -->
+                <Button
+                    android:id="@+id/btnNavigate"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="10dp"
+                    android:backgroundTint="#1565C0"
+                    android:text="Start Navigation"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <!-- Module: contact the other party for this order.
+                     Which counterparty this points at depends on the
+                     order's stage - see setupContactButtons(). -->
+                <LinearLayout
+                    android:id="@+id/layoutContact"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/txtContactWith"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="#212121" />
+
+                    <ImageView
+                        android:id="@+id/btnChat"
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
+                        android:layout_marginEnd="10dp"
+                        android:padding="12dp"
+                        android:background="@drawable/bg_circle_teal"
+                        android:src="@drawable/ic_chat"
+                        android:contentDescription="Chat" />
+
+                    <ImageView
+                        android:id="@+id/btnCall"
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
+                        android:padding="12dp"
+                        android:background="@drawable/bg_circle_green"
+                        android:src="@drawable/ic_call"
+                        android:contentDescription="Call" />
+                </LinearLayout>
             </LinearLayout>
 
             <!-- ORDER ITEMS CARD -->

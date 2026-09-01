@@ -4,6 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/surface">
+<<<<<<< HEAD
 
     <!-- Top App Bar -->
     <LinearLayout
@@ -83,13 +84,15 @@
                 android:thumbTint="@color/white" />
         </LinearLayout>
     </LinearLayout>
+=======
+>>>>>>> origin/Fahad
 
     <!-- Fragment Container -->
     <FrameLayout
         android:id="@+id/fragment_loader"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/top_app_bar"
+        android:layout_alignParentTop="true"
         android:layout_above="@id/bottom_deliver_nav" />
 
     <!-- Bottom Navigation -->
