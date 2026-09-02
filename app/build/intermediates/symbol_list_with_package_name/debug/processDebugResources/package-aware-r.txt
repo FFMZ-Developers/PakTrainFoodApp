@@ -91,11 +91,6 @@ animator mtrl_fab_hide_motion_spec
 animator mtrl_fab_show_motion_spec
 animator mtrl_fab_transformation_sheet_collapse_spec
 animator mtrl_fab_transformation_sheet_expand_spec
-array assume_strong_biometrics_models
-array crypto_fingerprint_fallback_prefixes
-array crypto_fingerprint_fallback_vendors
-array delay_showing_prompt_models
-array hide_fingerprint_instantly_prefixes
 attr SharedValue
 attr SharedValueId
 attr action
@@ -645,7 +640,6 @@ attr font
 attr fontFamily
 attr fontProviderAuthority
 attr fontProviderCerts
-attr fontProviderFallbackQuery
 attr fontProviderFetchStrategy
 attr fontProviderFetchTimeout
 attr fontProviderPackage
@@ -664,17 +658,6 @@ attr gapBetweenBars
 attr gestureInsetBottomIgnored
 attr goIcon
 attr graph
-attr grid_columnWeights
-attr grid_columns
-attr grid_horizontalGaps
-attr grid_orientation
-attr grid_rowWeights
-attr grid_rows
-attr grid_skips
-attr grid_spans
-attr grid_useRtl
-attr grid_validateInputs
-attr grid_verticalGaps
 attr guidelineUseRtl
 attr haloColor
 attr haloRadius
@@ -1188,7 +1171,6 @@ attr startIconMinSize
 attr startIconScaleType
 attr startIconTint
 attr startIconTintMode
-attr stateLabels
 attr state_above_anchor
 attr state_collapsed
 attr state_collapsible
@@ -1487,7 +1469,6 @@ color background_floating_material_dark
 color background_floating_material_light
 color background_material_dark
 color background_material_light
-color biometric_error_color
 color black
 color bright_foreground_disabled_material_dark
 color bright_foreground_disabled_material_light
@@ -2511,7 +2492,6 @@ dimen disabled_alpha_material_light
 dimen fastscroll_default_thickness
 dimen fastscroll_margin
 dimen fastscroll_minimum_range
-dimen fingerprint_icon_size
 dimen highlight_alpha_material_colored
 dimen highlight_alpha_material_dark
 dimen highlight_alpha_material_light
@@ -3413,8 +3393,6 @@ drawable edittext_bg
 drawable edittext_bg_disabled
 drawable email_file_text_svgrepo_com
 drawable faq_svgrepo_com
-drawable fingerprint_dialog_error
-drawable fingerprint_dialog_fp_icon
 drawable folder
 drawable googleg_disabled_color_18
 drawable googleg_standard_color_18
@@ -3448,6 +3426,7 @@ drawable ic_food_placeholder
 drawable ic_google
 drawable ic_heart_filled
 drawable ic_heart_outline
+drawable ic_help
 drawable ic_keyboard_black_24dp
 drawable ic_launcher_background
 drawable ic_launcher_foreground
@@ -3476,6 +3455,8 @@ drawable ic_search
 drawable ic_search_black_24
 drawable ic_send
 drawable ic_settings
+drawable ic_share
+drawable ic_star_filled
 drawable ic_station_marker
 drawable ic_swap
 drawable ic_train_marker
@@ -3779,7 +3760,6 @@ id SYM
 id TOP_END
 id TOP_START
 id Toolbar_Delivery_Orders
-id above
 id accelerate
 id accessibility_action_clickable_span
 id accessibility_custom_action_0
@@ -3868,12 +3848,11 @@ id android_pay_dark
 id android_pay_light
 id android_pay_light_with_border
 id androidx_compose_ui_view_composition_context
-id androidx_credential_pendingCredentialRequest
 id animateToEnd
 id animateToStart
 id antiClockwise
 id anticipate
-id app_name_text
+id app_tagline_text
 id arc
 id asConfigured
 id async
@@ -3882,13 +3861,11 @@ id auto
 id autoComplete
 id autoCompleteToEnd
 id autoCompleteToStart
-id axisRelative
 id bank_list
 id barrier
 id baseline
 id beginOnFirstDraw
 id beginning
-id below
 id bestChoice
 id billing_address_widget
 id binding_reference
@@ -3940,6 +3917,8 @@ id btnDeleteOrder
 id btnDeliverOrder
 id btnDeliveredOrder
 id btnDelivery
+id btnHelpBack
+id btnHelpSupport
 id btnIncreaseQty
 id btnJourney
 id btnLiveTracking
@@ -3955,12 +3934,15 @@ id btnPassengerCall
 id btnPassengerChat
 id btnPlus
 id btnProfile
+id btnRateSkip
+id btnRateSubmit
 id btnReady
 id btnResumeOrder
 id btnSend
 id btnStartAgain
 id btnTopNotification
 id btnTrackLive
+id btnUploadTicket
 id btnUseCurrentLocation
 id btnWithdraw
 id btn_add_variation
@@ -4059,6 +4041,7 @@ id chevron
 id chipAll
 id chipCancelled
 id chipCompleted
+id chipDisputed
 id chipGroupFilter
 id chipOngoing
 id chipPending
@@ -4131,6 +4114,7 @@ id disableIntraAutoTransition
 id disablePostScroll
 id disableScroll
 id disjoint
+id dividerChatThreads
 id donate_with
 id donate_with_google
 id dragAnticlockwise
@@ -4148,11 +4132,13 @@ id easeOut
 id east
 id edge
 id editChatMessage
+id editRateComment
 id edit_account_holder
 id edit_account_number
 id edit_address
 id edit_bank_name
 id edit_confirm_password
+id edit_delivery_otp
 id edit_driving_license_number
 id edit_full_name
 id edit_license_number
@@ -4222,10 +4208,6 @@ id fill
 id fill_horizontal
 id fill_vertical
 id filled
-id fingerprint_description
-id fingerprint_error
-id fingerprint_icon
-id fingerprint_subtitle
 id fitCenter
 id fitEnd
 id fitStart
@@ -4272,7 +4254,6 @@ id holo_light
 id home
 id homeAsUp
 id honorRequest
-id horizontal
 id horizontal_only
 id hybrid
 id icon
@@ -4300,6 +4281,7 @@ id imgIcon
 id imgItem
 id imgPreview
 id imgRiderIcon
+id imgTicketPreview
 id imgUser
 id img_bike
 id img_cnic_back
@@ -4339,6 +4321,10 @@ id layoutBankDetails
 id layoutCallSupport
 id layoutCartEmpty
 id layoutCartSummary
+id layoutChatPassenger
+id layoutChatRestaurant
+id layoutCompletedChat
+id layoutCompletedTime
 id layoutContact
 id layoutDeliveryIssue
 id layoutEmailSupport
@@ -4346,22 +4332,26 @@ id layoutEmpty
 id layoutFaq
 id layoutHelpSupport
 id layoutLiveChat
+id layoutLiveTrackingCard
 id layoutNoOrders
 id layoutNoRiderFound
 id layoutOrderIssue
 id layoutPassengerContact
 id layoutPaymentIssue
 id layoutRateApp
+id layoutRecentOrders
 id layoutRefundRequest
 id layoutRejectedAlternatives
 id layoutReportProblem
 id layoutResumeBanner
 id layoutReviews
+id layoutShareApp
 id layoutSizeButtons
 id layoutTerms
 id layoutVersion
 id layout_account_info
 id layout_address
+id layout_app_version
 id layout_change_password
 id layout_clear_favorites
 id layout_confirm_password
@@ -4375,6 +4365,7 @@ id layout_password
 id layout_phone
 id layout_search
 id layout_settings
+id layout_share_app
 id layout_update_verification
 id layout_variations_container
 id layout_wallet
@@ -4395,6 +4386,7 @@ id main
 id main_container
 id mandate_acceptance_text_view
 id map
+id mapContainer
 id mapView
 id marquee
 id masked
@@ -4497,6 +4489,7 @@ id open_search_view_search_prefix
 id open_search_view_status_bar_spacer
 id open_search_view_toolbar
 id open_search_view_toolbar_container
+id orderCardDivider
 id orders_tab_container
 id outline
 id outward
@@ -4545,11 +4538,15 @@ id radioGroupTheme
 id radioLight
 id radioSystem
 id ratingBar
+id ratingBarOrder
 id ratio
 id rectangles
 id recycler
 id recyclerBrowseMenu
 id recyclerChat
+id recyclerChatPassenger
+id recyclerChatRestaurant
+id recyclerCompletedChat
 id recyclerHistory
 id recyclerItems
 id recyclerMenu
@@ -4567,6 +4564,8 @@ id right_icon
 id right_side
 id root
 id rounded
+id rowContactSupport
+id rowRateApp
 id row_index_key
 id rvCart
 id rvItems
@@ -4624,7 +4623,7 @@ id spacer
 id special_effects_controller_view_tag
 id spinner_city
 id spinner_rider_city
-id splash_background
+id splash_logo
 id splash_screen
 id spline
 id split_action_bar
@@ -4735,7 +4734,6 @@ id toolbarNotification
 id toolbarOrders
 id top
 id topBar
-id topImage
 id topPanel
 id touch_outside
 id transitionToEnd
@@ -4753,6 +4751,7 @@ id tvAdminFee
 id tvCartTotal
 id tvCity
 id tvComment
+id tvDashboardGreeting
 id tvDashboardTitle
 id tvDeliveryFee
 id tvDesc
@@ -4771,6 +4770,7 @@ id tvItemsTotal
 id tvMenuCount
 id tvMenuTitle
 id tvName
+id tvNoRecentOrders
 id tvOrdersCount
 id tvPhone
 id tvPrice
@@ -4781,6 +4781,7 @@ id tvTitle
 id tvTo
 id tvTotal
 id tvUserName
+id tvViewAllOrders
 id tv_ad
 id tv_rating
 id tv_restaurant_info
@@ -4799,19 +4800,28 @@ id txtBankName
 id txtBody
 id txtBrowseTitle
 id txtChatMessage
+id txtChatPassengerEmpty
+id txtChatPassengerTitle
+id txtChatRestaurantEmpty
+id txtChatRestaurantTitle
 id txtChatSender
 id txtChatSubtitle
 id txtChatTime
 id txtChatTitle
 id txtCity
 id txtCoachNumber
+id txtCompletedChatEmpty
 id txtCompletedOrders
+id txtCompletedTime
 id txtContactWith
 id txtCurrentStation
 id txtDate
 id txtDeliveryOnlineStatus
 id txtDesc
 id txtDescription
+id txtDetailOrderId
+id txtDetailStatusBadge
+id txtDetailTitle
 id txtEta
 id txtEtaArrival
 id txtFoodName
@@ -4841,10 +4851,12 @@ id txtPendingBalance
 id txtPhone
 id txtPrice
 id txtQuantity
+id txtRateTitle
 id txtRest
 id txtRestName
 id txtRestaurant
 id txtRestaurantBadge
+id txtRestaurantName
 id txtResumeMessage
 id txtRiderActive
 id txtRiderBadge
@@ -4874,6 +4886,7 @@ id txtWalletBalance
 id txtWalletHint
 id txtWalletTitle
 id txtWizardTitle
+id txt_app_version
 id txt_available_label
 id txt_bike_hint
 id txt_cart_info
@@ -4897,7 +4910,6 @@ id unlabeled
 id up
 id useLogo
 id verifiedTag
-id vertical
 id vertical_only
 id viewUnread
 id view_offset_helper
@@ -5078,8 +5090,9 @@ layout design_text_input_end_icon
 layout design_text_input_start_icon
 layout dialog_add_bank
 layout dialog_change_password
+layout dialog_delivery_otp
+layout dialog_rate_order
 layout dialog_report_problem
-layout fingerprint_dialog_layout
 layout fragment_address
 layout fragment_auth_login
 layout fragment_auth_register
@@ -5092,6 +5105,7 @@ layout fragment_delivery_notification
 layout fragment_delivery_order
 layout fragment_delivery_order_new_accept_complete
 layout fragment_delivery_profile
+layout fragment_help_support
 layout fragment_live_chat
 layout fragment_my_orders
 layout fragment_notification
@@ -5348,10 +5362,8 @@ string common_google_play_services_wear_update_text
 string common_open_on_phone
 string common_signin_button_text
 string common_signin_button_text_long
-string confirm_device_credential_password
 string copy_toast_msg
 string default_error_message
-string default_error_msg
 string default_popup_window_title
 string default_web_client_id
 string dialog
@@ -5366,18 +5378,8 @@ string fallback_menu_item_copy_link
 string fallback_menu_item_open_in_browser
 string fallback_menu_item_share_link
 string fcm_fallback_notification_channel_label
-string fingerprint_dialog_touch_sensor
-string fingerprint_error_hw_not_available
-string fingerprint_error_hw_not_present
-string fingerprint_error_lockout
-string fingerprint_error_no_fingerprints
-string fingerprint_error_user_canceled
-string fingerprint_not_recognized
 string firebase_database_url
 string gcm_defaultSenderId
-string generic_error_no_device_credential
-string generic_error_no_keyguard
-string generic_error_user_canceled
 string google_api_key
 string google_app_id
 string google_crash_reporting_api_key
@@ -7125,7 +7127,7 @@ styleable ConstraintLayout_Layout android_orientation android_padding android_pa
 styleable ConstraintLayout_ReactiveGuide reactiveGuide_animateChange reactiveGuide_applyToAllConstraintSets reactiveGuide_applyToConstraintSet reactiveGuide_valueId
 styleable ConstraintLayout_placeholder content placeholder_emptyVisibility
 styleable ConstraintOverride android_orientation android_id android_visibility android_layout_width android_layout_height android_layout_marginLeft android_layout_marginTop android_layout_marginRight android_layout_marginBottom android_maxWidth android_maxHeight android_minWidth android_minHeight android_alpha android_transformPivotX android_transformPivotY android_translationX android_translationY android_scaleX android_scaleY android_rotation android_rotationX android_rotationY android_layout_marginStart android_layout_marginEnd android_translationZ android_elevation animateCircleAngleTo animateRelativeTo barrierAllowsGoneWidgets barrierDirection barrierMargin chainUseRtl constraint_referenced_ids drawPath flow_firstHorizontalBias flow_firstHorizontalStyle flow_firstVerticalBias flow_firstVerticalStyle flow_horizontalAlign flow_horizontalBias flow_horizontalGap flow_horizontalStyle flow_lastHorizontalBias flow_lastHorizontalStyle flow_lastVerticalBias flow_lastVerticalStyle flow_maxElementsWrap flow_verticalAlign flow_verticalBias flow_verticalGap flow_verticalStyle flow_wrapMode guidelineUseRtl layout_constrainedHeight layout_constrainedWidth layout_constraintBaseline_creator layout_constraintBottom_creator layout_constraintCircleAngle layout_constraintCircleRadius layout_constraintDimensionRatio layout_constraintGuide_begin layout_constraintGuide_end layout_constraintGuide_percent layout_constraintHeight layout_constraintHeight_default layout_constraintHeight_max layout_constraintHeight_min layout_constraintHeight_percent layout_constraintHorizontal_bias layout_constraintHorizontal_chainStyle layout_constraintHorizontal_weight layout_constraintLeft_creator layout_constraintRight_creator layout_constraintTag layout_constraintTop_creator layout_constraintVertical_bias layout_constraintVertical_chainStyle layout_constraintVertical_weight layout_constraintWidth layout_constraintWidth_default layout_constraintWidth_max layout_constraintWidth_min layout_constraintWidth_percent layout_editor_absoluteX layout_editor_absoluteY layout_goneMarginBaseline layout_goneMarginBottom layout_goneMarginEnd layout_goneMarginLeft layout_goneMarginRight layout_goneMarginStart layout_goneMarginTop layout_marginBaseline layout_wrapBehaviorInParent motionProgress motionStagger motionTarget pathMotionArc pivotAnchor polarRelativeTo quantizeMotionInterpolator quantizeMotionPhase quantizeMotionSteps transformPivotTarget transitionEasing transitionPathRotate visibilityMode
-styleable ConstraintSet android_orientation android_id android_visibility android_layout_width android_layout_height android_layout_marginLeft android_layout_marginTop android_layout_marginRight android_layout_marginBottom android_maxWidth android_maxHeight android_minWidth android_minHeight android_pivotX android_pivotY android_alpha android_transformPivotX android_transformPivotY android_translationX android_translationY android_scaleX android_scaleY android_rotation android_rotationX android_rotationY android_layout_marginStart android_layout_marginEnd android_translationZ android_elevation animateCircleAngleTo animateRelativeTo barrierAllowsGoneWidgets barrierDirection barrierMargin chainUseRtl constraintRotate constraint_referenced_ids constraint_referenced_tags deriveConstraintsFrom drawPath flow_firstHorizontalBias flow_firstHorizontalStyle flow_firstVerticalBias flow_firstVerticalStyle flow_horizontalAlign flow_horizontalBias flow_horizontalGap flow_horizontalStyle flow_lastHorizontalBias flow_lastHorizontalStyle flow_lastVerticalBias flow_lastVerticalStyle flow_maxElementsWrap flow_verticalAlign flow_verticalBias flow_verticalGap flow_verticalStyle flow_wrapMode guidelineUseRtl layout_constrainedHeight layout_constrainedWidth layout_constraintBaseline_creator layout_constraintBaseline_toBaselineOf layout_constraintBaseline_toBottomOf layout_constraintBaseline_toTopOf layout_constraintBottom_creator layout_constraintBottom_toBottomOf layout_constraintBottom_toTopOf layout_constraintCircle layout_constraintCircleAngle layout_constraintCircleRadius layout_constraintDimensionRatio layout_constraintEnd_toEndOf layout_constraintEnd_toStartOf layout_constraintGuide_begin layout_constraintGuide_end layout_constraintGuide_percent layout_constraintHeight_default layout_constraintHeight_max layout_constraintHeight_min layout_constraintHeight_percent layout_constraintHorizontal_bias layout_constraintHorizontal_chainStyle layout_constraintHorizontal_weight layout_constraintLeft_creator layout_constraintLeft_toLeftOf layout_constraintLeft_toRightOf layout_constraintRight_creator layout_constraintRight_toLeftOf layout_constraintRight_toRightOf layout_constraintStart_toEndOf layout_constraintStart_toStartOf layout_constraintTag layout_constraintTop_creator layout_constraintTop_toBottomOf layout_constraintTop_toTopOf layout_constraintVertical_bias layout_constraintVertical_chainStyle layout_constraintVertical_weight layout_constraintWidth_default layout_constraintWidth_max layout_constraintWidth_min layout_constraintWidth_percent layout_editor_absoluteX layout_editor_absoluteY layout_goneMarginBaseline layout_goneMarginBottom layout_goneMarginEnd layout_goneMarginLeft layout_goneMarginRight layout_goneMarginStart layout_goneMarginTop layout_marginBaseline layout_wrapBehaviorInParent motionProgress motionStagger pathMotionArc pivotAnchor polarRelativeTo quantizeMotionSteps stateLabels transitionEasing transitionPathRotate
+styleable ConstraintSet android_orientation android_id android_visibility android_layout_width android_layout_height android_layout_marginLeft android_layout_marginTop android_layout_marginRight android_layout_marginBottom android_maxWidth android_maxHeight android_minWidth android_minHeight android_pivotX android_pivotY android_alpha android_transformPivotX android_transformPivotY android_translationX android_translationY android_scaleX android_scaleY android_rotation android_rotationX android_rotationY android_layout_marginStart android_layout_marginEnd android_translationZ android_elevation animateCircleAngleTo animateRelativeTo barrierAllowsGoneWidgets barrierDirection barrierMargin chainUseRtl constraintRotate constraint_referenced_ids constraint_referenced_tags deriveConstraintsFrom drawPath flow_firstHorizontalBias flow_firstHorizontalStyle flow_firstVerticalBias flow_firstVerticalStyle flow_horizontalAlign flow_horizontalBias flow_horizontalGap flow_horizontalStyle flow_lastHorizontalBias flow_lastHorizontalStyle flow_lastVerticalBias flow_lastVerticalStyle flow_maxElementsWrap flow_verticalAlign flow_verticalBias flow_verticalGap flow_verticalStyle flow_wrapMode guidelineUseRtl layout_constrainedHeight layout_constrainedWidth layout_constraintBaseline_creator layout_constraintBaseline_toBaselineOf layout_constraintBaseline_toBottomOf layout_constraintBaseline_toTopOf layout_constraintBottom_creator layout_constraintBottom_toBottomOf layout_constraintBottom_toTopOf layout_constraintCircle layout_constraintCircleAngle layout_constraintCircleRadius layout_constraintDimensionRatio layout_constraintEnd_toEndOf layout_constraintEnd_toStartOf layout_constraintGuide_begin layout_constraintGuide_end layout_constraintGuide_percent layout_constraintHeight_default layout_constraintHeight_max layout_constraintHeight_min layout_constraintHeight_percent layout_constraintHorizontal_bias layout_constraintHorizontal_chainStyle layout_constraintHorizontal_weight layout_constraintLeft_creator layout_constraintLeft_toLeftOf layout_constraintLeft_toRightOf layout_constraintRight_creator layout_constraintRight_toLeftOf layout_constraintRight_toRightOf layout_constraintStart_toEndOf layout_constraintStart_toStartOf layout_constraintTag layout_constraintTop_creator layout_constraintTop_toBottomOf layout_constraintTop_toTopOf layout_constraintVertical_bias layout_constraintVertical_chainStyle layout_constraintVertical_weight layout_constraintWidth_default layout_constraintWidth_max layout_constraintWidth_min layout_constraintWidth_percent layout_editor_absoluteX layout_editor_absoluteY layout_goneMarginBaseline layout_goneMarginBottom layout_goneMarginEnd layout_goneMarginLeft layout_goneMarginRight layout_goneMarginStart layout_goneMarginTop layout_marginBaseline layout_wrapBehaviorInParent motionProgress motionStagger pathMotionArc pivotAnchor polarRelativeTo quantizeMotionSteps transitionEasing transitionPathRotate
 styleable CoordinatorLayout keylines statusBarBackground
 styleable CoordinatorLayout_Layout android_layout_gravity layout_anchor layout_anchorGravity layout_behavior layout_dodgeInsetEdges layout_insetEdge layout_keyline
 styleable CustomAttribute attributeName customBoolean customColorDrawableValue customColorValue customDimension customFloatValue customIntegerValue customPixelDimension customReference customStringValue methodName
@@ -7137,14 +7139,13 @@ styleable ExtendedFloatingActionButton_Behavior_Layout behavior_autoHide behavio
 styleable FloatingActionButton android_enabled backgroundTint backgroundTintMode borderWidth elevation ensureMinTouchTargetSize fabCustomSize fabSize hideMotionSpec hoveredFocusedTranslationZ maxImageSize pressedTranslationZ rippleColor shapeAppearance shapeAppearanceOverlay showMotionSpec useCompatPadding
 styleable FloatingActionButton_Behavior_Layout behavior_autoHide
 styleable FlowLayout itemSpacing lineSpacing
-styleable FontFamily fontProviderAuthority fontProviderCerts fontProviderFallbackQuery fontProviderFetchStrategy fontProviderFetchTimeout fontProviderPackage fontProviderQuery fontProviderSystemFontFamily
+styleable FontFamily fontProviderAuthority fontProviderCerts fontProviderFetchStrategy fontProviderFetchTimeout fontProviderPackage fontProviderQuery fontProviderSystemFontFamily
 styleable FontFamilyFont android_font android_fontWeight android_fontStyle android_ttcIndex android_fontVariationSettings font fontStyle fontVariationSettings fontWeight ttcIndex
 styleable ForegroundLinearLayout android_foreground android_foregroundGravity foregroundInsidePadding
 styleable Fragment android_name android_id android_tag
 styleable FragmentContainerView android_name android_tag
 styleable GradientColor android_startColor android_endColor android_type android_centerX android_centerY android_gradientRadius android_tileMode android_centerColor android_startX android_startY android_endX android_endY
 styleable GradientColorItem android_color android_offset
-styleable Grid grid_columnWeights grid_columns grid_horizontalGaps grid_orientation grid_rowWeights grid_rows grid_skips grid_spans grid_useRtl grid_validateInputs grid_verticalGaps
 styleable ImageFilterView altSrc blendSrc brightness contrast crossfade imagePanX imagePanY imageRotate imageZoom overlay round roundPercent saturation warmth
 styleable Insets marginLeftSystemWindowInsets marginRightSystemWindowInsets marginTopSystemWindowInsets paddingBottomSystemWindowInsets paddingLeftSystemWindowInsets paddingRightSystemWindowInsets paddingStartSystemWindowInsets paddingTopSystemWindowInsets
 styleable KeyAttribute android_alpha android_transformPivotX android_transformPivotY android_translationX android_translationY android_scaleX android_scaleY android_rotation android_rotationX android_rotationY android_translationZ android_elevation curveFit framePosition motionProgress motionTarget transformPivotTarget transitionEasing transitionPathRotate

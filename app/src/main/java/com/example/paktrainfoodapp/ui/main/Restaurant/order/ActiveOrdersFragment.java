@@ -168,6 +168,10 @@ public class ActiveOrdersFragment extends Fragment {
 
             h.txtTotalPrice.setText("Total: Rs " + total);
 
+            // Status pill - top-right corner, same for every role/tab.
+            // Every order in this tab is server-filtered to "Active".
+            com.example.paktrainfoodapp.utils.StatusBadge.apply(h.txtStatusBadge, "Active");
+
             // Module 2 - "Estimated Arrival" (auto-updates via the Firestore
             // snapshot listener whenever trainEtaEndTime changes - no need
             // to open the order detail screen for this to refresh).
@@ -280,7 +284,7 @@ public class ActiveOrdersFragment extends Fragment {
 
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice, txtEtaArrival;
+            TextView txtOrderId, txtTotalPrice, txtEtaArrival, txtStatusBadge;
             ImageView btnAccept, btnDelete;
             LinearLayout timeRow;
 
@@ -290,6 +294,7 @@ public class ActiveOrdersFragment extends Fragment {
                 txtOrderId = itemView.findViewById(R.id.txtOrderId);
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
                 txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
+                txtStatusBadge = itemView.findViewById(R.id.txtStatusBadge);
                 btnAccept = itemView.findViewById(R.id.btnAccept);
                 btnDelete = itemView.findViewById(R.id.btnDelete);
                 timeRow = itemView.findViewById(R.id.timeRow);

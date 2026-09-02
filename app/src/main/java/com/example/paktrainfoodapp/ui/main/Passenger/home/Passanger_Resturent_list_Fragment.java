@@ -286,6 +286,15 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
                         int reliabilityScore = reliabilityScoreLong != null
                                 ? reliabilityScoreLong.intValue() : 100;
 
+                        // Module: aggregate rating - maintained server-side
+                        // (onReviewWritten.js), already sitting right on this
+                        // same doc, so no extra read is needed for it.
+                        Double avgRatingD = doc.getDouble("averageRating");
+                        final double avgRating = avgRatingD != null ? avgRatingD : 0;
+
+                        Long reviewCountL = doc.getLong("reviewCount");
+                        final int reviewCount = reviewCountL != null ? reviewCountL.intValue() : 0;
+
                         db.collection("Users")
                                 .document("Restaurant")
                                 .collection("Register")
@@ -303,6 +312,8 @@ public class Passanger_Resturent_list_Fragment extends Fragment {
 
                                         model.setFavorite(favoritesManager.isFavorite(uid));
                                         model.setReliabilityScore(reliabilityScore);
+                                        model.setAverageRating(avgRating);
+                                        model.setReviewCount(reviewCount);
 
                                         allRestaurants.add(model);
                                         if (loadedCount[0] == totalDocs) applyFilter();

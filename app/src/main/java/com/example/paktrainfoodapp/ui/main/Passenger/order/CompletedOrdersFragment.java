@@ -102,6 +102,10 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
 
                 OrderModel model = new OrderModel(orderId, price, status);
                 model.setOrderNumber(doc.getLong("orderNumber"));
+                    model.setRestaurantName(doc.getString("restaurantName"));
+                    model.setMealStation(doc.getString("mealStation"));
+                    Long ts = doc.getLong("timestamp");
+                    model.setTimestamp(ts != null ? ts : 0L);
                 orderList.add(model);
             }
 
@@ -149,22 +153,55 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
 
             holder.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(order.getOrderNumber(), order.getOrderId()));
 
+            if (holder.txtRestaurantName != null) {
+                String restName = order.getRestaurantName();
+                if (restName != null && !restName.isEmpty()) {
+                    holder.txtRestaurantName.setVisibility(View.VISIBLE);
+                    holder.txtRestaurantName.setText(restName);
+                } else {
+                    holder.txtRestaurantName.setVisibility(View.GONE);
+                }
+            }
+
+            if (holder.txtStation != null) {
+                String st = order.getMealStation();
+                if (st != null && !st.isEmpty()) {
+                    holder.txtStation.setVisibility(View.VISIBLE);
+                    holder.txtStation.setText("Station: " + st);
+                } else {
+                    holder.txtStation.setVisibility(View.GONE);
+                }
+            }
+
+            if (holder.txtOrderDate != null) {
+                if (order.getTimestamp() > 0) {
+                    holder.txtOrderDate.setText(new java.text.SimpleDateFormat(
+                            "dd MMM yyyy, hh:mm a", java.util.Locale.getDefault())
+                            .format(new java.util.Date(order.getTimestamp())));
+                } else {
+                    holder.txtOrderDate.setText("");
+                }
+            }
+
             // Raw countdown removed - only the arrival estimate is shown.
             if (holder.txtTimer != null) holder.txtTimer.setVisibility(View.GONE);
             holder.txtTotalPrice.setText("Total: Rs " + order.getTotalPrice());
 
-            holder.timeRow.setVisibility(View.VISIBLE);
-            holder.btnReady.setEnabled(false);
-            holder.btnReady.setAlpha(0.6f);
+            // An arrival estimate for an order that's already delivered
+            // doesn't mean anything - hidden outright, rather than
+            // leaving the layout's "Estimated Arrival: --" placeholder
+            // visible.
+            if (holder.txtEtaArrival != null) holder.txtEtaArrival.setVisibility(View.GONE);
+
+            // Nothing actionable in this tab - the top-right status pill
+            // already says "Delivered", so no bottom button/badge either.
+            holder.timeRow.setVisibility(View.GONE);
+            holder.btnReady.setVisibility(View.GONE);
 
             String status = order.getStatus();
 
-            if ("pick_up".equalsIgnoreCase(status)) {
-                holder.btnReady.setText("Rider Pick up order");
-            }
-
-            else if ("completed".equalsIgnoreCase(status)) {
-                holder.btnReady.setText("Completed");
+            if (holder.txtStatusBadge != null) {
+                com.example.paktrainfoodapp.utils.StatusBadge.apply(holder.txtStatusBadge, status);
             }
 
             // CLICK → TOAST ONLY
@@ -200,7 +237,7 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
 
          class VH extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice, txtTimer;
+            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival, txtRestaurantName, txtStation, txtOrderDate, txtStatusBadge;
             LinearLayout timeRow;
             Button btnReady;
 
@@ -208,8 +245,13 @@ public class CompletedOrdersFragment extends Fragment implements Refreshable {
                 super(itemView);
 
                 txtOrderId = itemView.findViewById(R.id.txtOrderId);
+                txtRestaurantName = itemView.findViewById(R.id.txtRestaurantName);
+                txtStation = itemView.findViewById(R.id.txtStation);
+                txtOrderDate = itemView.findViewById(R.id.txtOrderDate);
             txtTimer = itemView.findViewById(R.id.txtTimer);
+                txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
+                txtStatusBadge = itemView.findViewById(R.id.txtStatusBadge);
 
                 timeRow = itemView.findViewById(R.id.timeRow);
                 btnReady = itemView.findViewById(R.id.btnReady);

@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.paktrainfoodapp-mergeDebugResources-101:/values-large-v4/values-large-v4.xml",
+            "outputFile": "com.example.paktrainfoodapp-mergeDebugResources-98:/values-large-v4/values-large-v4.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\92034bb4b4d008d66f3e162f0bd3c1dd\\transformed\\appcompat-1.7.0\\res\\values-large-v4\\values-large-v4.xml",
+                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\1dac3765b37215d9d3df00c197ad478c\\transformed\\appcompat-1.7.0\\res\\values-large-v4\\values-large-v4.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10",
                         "startColumns": "4,4,4,4,4,4,4,4,4",
@@ -14,7 +14,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\cb964a319c82887bf4da1b4f9a23ed24\\transformed\\material-1.12.0\\res\\values-large-v4\\values-large-v4.xml",
+                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\de6cd43fc9a9529083450667b2644772\\transformed\\material-1.12.0\\res\\values-large-v4\\values-large-v4.xml",
                     "from": {
                         "startLines": "2,3,4,5",
                         "startColumns": "4,4,4,4",

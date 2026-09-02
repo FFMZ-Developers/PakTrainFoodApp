@@ -83,6 +83,13 @@
                 android:text="Completed" />
 
             <com.google.android.material.chip.Chip
+                android:id="@+id/chipDisputed"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Disputed" />
+
+            <com.google.android.material.chip.Chip
                 android:id="@+id/chipCancelled"
                 style="@style/Widget.MaterialComponents.Chip.Choice"
                 android:layout_width="wrap_content"

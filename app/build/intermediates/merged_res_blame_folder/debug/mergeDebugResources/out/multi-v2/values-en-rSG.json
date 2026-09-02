@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.paktrainfoodapp-mergeDebugResources-101:/values-en-rSG/values-en-rSG.xml",
+            "outputFile": "com.example.paktrainfoodapp-mergeDebugResources-98:/values-en-rSG/values-en-rSG.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\40002efe096032cd5798293c3bc06943\\transformed\\play-services-wallet-19.4.0\\res\\values-en-rSG\\values.xml",
+                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\3feb92c04e4dc7b5d9dd26709bc19264\\transformed\\play-services-wallet-19.4.0\\res\\values-en-rSG\\values.xml",
                     "from": {
                         "startLines": "4,5",
                         "startColumns": "0,0",

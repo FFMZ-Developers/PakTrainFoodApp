@@ -94,6 +94,14 @@ public class Order_Complete_Fragment extends Fragment {
                         );
 
                         model.setStatus(status);
+
+                        // ✅ FIX: orderNumber was never populated here at
+                        // all - this tab always fell back to the short
+                        // document-id display, never the real Order #0001
+                        // format every other tab shows.
+                        model.setOrderNumber(doc.getLong("orderNumber"));
+                        model.setRestaurantName(doc.getString("restaurantName"));
+
                         orderList.add(model);
                     }
 
@@ -129,46 +137,68 @@ public class Order_Complete_Fragment extends Fragment {
 
             h.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(model.getOrderNumber(), model.getOrderId()));
 
+            if (h.txtRestaurantName != null) {
+                String restName = model.getRestaurantName();
+                if (restName != null && !restName.isEmpty()) {
+                    h.txtRestaurantName.setVisibility(View.VISIBLE);
+                    h.txtRestaurantName.setText(restName);
+                } else {
+                    h.txtRestaurantName.setVisibility(View.GONE);
+                }
+            }
+
             // Raw countdown removed - only the arrival estimate is shown.
             if (h.txtTime != null) h.txtTime.setVisibility(View.GONE);
             h.txtPrice.setText("Rs " + model.getTotalPrice());
-h.timeRow.setVisibility(View.VISIBLE);
+            h.timeRow.setVisibility(View.GONE);
+
+            // Every order in this tab is already "completed" (see the
+            // query filter above) - no ETA means anything for a delivered
+            // order, so it's hidden rather than showing the layout's
+            // leftover "Estimated Arrival: --" placeholder.
+            if (h.txtEtaArrival != null) h.txtEtaArrival.setVisibility(View.GONE);
+
             String status = model.getStatus();
 
-            // ✅ FIX: cards here had no click handler, so once the rider
-            // picked the food up (which moves the order into this tab)
-            // they lost the tracking map entirely - exactly when they most
-            // need it, since that's the leg where they're driving to the
-            // station. Tracking stays available right up until the order
-            // is actually completed.
-            if (!"completed".equals(status)) {
-
-                h.itemView.setOnClickListener(v -> {
-
-                    if (!isAdded()) return;
-
-                    requireActivity().getSupportFragmentManager()
-                            .beginTransaction()
-                            .replace(R.id.main_container,
-                                    com.example.paktrainfoodapp.ui.main.Restaurant.order
-                                            .OrderDetailFragment.newInstance(model.getOrderId()))
-                            .addToBackStack(null)
-                            .commit();
-                });
-
-            } else {
-                // Finished - nothing left to track.
-                h.itemView.setOnClickListener(null);
+            if (h.txtStatusBadge != null) {
+                com.example.paktrainfoodapp.utils.StatusBadge.apply(h.txtStatusBadge, status);
             }
 
+            // ✅ FIX: cards here had no click handler for in-progress
+            // orders, so once the rider picked the food up they lost the
+            // tracking map entirely - exactly when they most need it,
+            // since that's the leg where they're driving to the station.
+            // And completed orders opened nothing at all - now they open
+            // the same screen, which shows the simplified completed
+            // summary (order id, status, delivered time, items, chat)
+            // instead of the live map once the order is actually done.
+            h.itemView.setOnClickListener(v -> {
+
+                if (!isAdded()) return;
+
+                requireActivity().getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.main_container,
+                                com.example.paktrainfoodapp.ui.main.Restaurant.order
+                                        .OrderDetailFragment.newInstance(model.getOrderId()))
+                        .addToBackStack(null)
+                        .commit();
+            });
+
             // RESET
+            h.btnAction.setVisibility(View.GONE);
             h.btnAction.setEnabled(true);
             h.btnAction.setAlpha(1f);
 
             // ================= STATUS UI =================
+            // This tab only ever holds "completed" orders (see the query
+            // filter above) - the top-right status pill already says
+            // "Delivered", so there's nothing actionable left to show.
 
             if ("pick_up".equals(status)) {
 
+                h.timeRow.setVisibility(View.VISIBLE);
+                h.btnAction.setVisibility(View.VISIBLE);
                 h.btnAction.setText("Hand Over to Passenger");
 
                 h.btnAction.setOnClickListener(v -> {
@@ -188,14 +218,6 @@ h.timeRow.setVisibility(View.VISIBLE);
                             .show();
                 });
             }
-
-            else if ("completed".equals(status)) {
-
-                com.example.paktrainfoodapp.utils.StatusBadge.apply(h.btnAction, "completed");
-                h.btnAction.setEnabled(false);
-                h.btnAction.setAlpha(0.5f);
-                h.txtTime.setText("Arrive");
-            }
         }
 
         @Override
@@ -205,7 +227,7 @@ h.timeRow.setVisibility(View.VISIBLE);
 
         class VH extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtPrice, txtTime;
+            TextView txtOrderId, txtPrice, txtTime, txtRestaurantName, txtStatusBadge, txtEtaArrival;
             Button btnAction;
             LinearLayout timeRow;
 
@@ -213,7 +235,10 @@ h.timeRow.setVisibility(View.VISIBLE);
                 super(itemView);
 
                 txtOrderId = itemView.findViewById(R.id.txtOrderId);
+                txtRestaurantName = itemView.findViewById(R.id.txtRestaurantName);
                 txtPrice = itemView.findViewById(R.id.txtTotalPrice);
+                txtStatusBadge = itemView.findViewById(R.id.txtStatusBadge);
+                txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
                 btnAction = itemView.findViewById(R.id.btnReady);
                 timeRow = itemView.findViewById(R.id.timeRow);
                 txtTime=itemView.findViewById(R.id.txtTimer);

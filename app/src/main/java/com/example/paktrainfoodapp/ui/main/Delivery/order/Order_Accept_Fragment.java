@@ -153,6 +153,7 @@ public class Order_Accept_Fragment extends Fragment {
 
                         order.setStatus(doc.getString("orderStatus"));
                         order.setOrderNumber(doc.getLong("orderNumber"));
+                        order.setRestaurantName(doc.getString("restaurantName"));
 
                         Long trainEta = doc.getLong("trainEtaEndTime");
                         order.setTrainEtaEndTime(trainEta != null ? trainEta : 0L);
@@ -207,24 +208,101 @@ public class Order_Accept_Fragment extends Fragment {
         }
 
         // 🔵 STEP 4 → HAND OVER (final step; moves the order to Completed)
+        //
+        // ✅ FIX: tapping "Hand Over to Passenger" used to complete the
+        // order on a plain YES/NO confirm - a rider could mark any order
+        // completed without the passenger actually being there. Now the
+        // rider must enter the OTP that was sent to the passenger (see
+        // onOrderPickedUp.js, which generates it and stores it on the
+        // order as "deliveryOtp" the moment the rider picks up). Only a
+        // correct OTP moves the order to "completed".
         else if ("pick_up".equals(status)) {
 
-            new AlertDialog.Builder(requireContext())
-                    .setTitle("Hand Over to Passenger")
-                    .setMessage("Kya aap order passenger ko de chuke hain?")
-                    .setPositiveButton("YES", (dialog, which) -> {
-
-                        updateStatus(order, "completed");
-
-                        if (position != RecyclerView.NO_POSITION
-                                && position < orderList.size()) {
-                            orderList.remove(position);
-                            adapter.notifyItemRemoved(position);
-                        }
-                    })
-                    .setNegativeButton("NO", null)
-                    .show();
+            showDeliveryOtpDialog(order, position);
         }
+    }
+
+    // ================= MODULE: DELIVERY OTP VERIFICATION =================
+    private void showDeliveryOtpDialog(DeliveryBoyModel order, int position) {
+
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_delivery_otp, null);
+
+        android.widget.EditText input = dialogView.findViewById(R.id.edit_delivery_otp);
+
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle("Verify OTP")
+                .setView(dialogView)
+                .setPositiveButton("Verify", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+
+        dialog.show();
+
+        // Set the click listener AFTER show() so a wrong/empty OTP doesn't
+        // auto-dismiss the dialog - the rider should be able to just retry.
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+
+            String entered = input.getText() != null
+                    ? input.getText().toString().trim()
+                    : "";
+
+            if (entered.isEmpty()) {
+                input.setError("Enter the OTP");
+                return;
+            }
+
+            verifyDeliveryOtp(order, position, entered, dialog);
+        });
+    }
+
+    /**
+     * Re-reads the order doc fresh (rather than trusting anything cached
+     * client-side) and compares against the "deliveryOtp" field written by
+     * onOrderPickedUp.js. Only on a match does the order move to
+     * "completed".
+     */
+    private void verifyDeliveryOtp(DeliveryBoyModel order, int position,
+                                   String entered, AlertDialog dialog) {
+
+        db.collection("Orders")
+                .document(order.getOrderId())
+                .get()
+                .addOnSuccessListener(doc -> {
+
+                    if (!isAdded()) return;
+
+                    String correctOtp = doc.getString("deliveryOtp");
+
+                    if (correctOtp == null || !correctOtp.equals(entered)) {
+
+                        Toast.makeText(getContext(),
+                                "Galat OTP. Dobara koshish karein.",
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    dialog.dismiss();
+
+                    updateStatus(order, "completed");
+
+                    if (position != RecyclerView.NO_POSITION
+                            && position < orderList.size()) {
+                        orderList.remove(position);
+                        adapter.notifyItemRemoved(position);
+                    }
+
+                    Toast.makeText(getContext(),
+                            "Order Delivered",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    if (isAdded()) {
+                        Toast.makeText(getContext(),
+                                "OTP verify nahi ho saka: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 
     // ================= DETAIL =================

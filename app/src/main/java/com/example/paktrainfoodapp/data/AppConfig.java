@@ -9,31 +9,11 @@ import com.google.firebase.firestore.ListenerRegistration;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Reads the admin-configurable thresholds used across the order pipeline
- * (rider search radius, ETA/dispatch timing, reliability strike limits,
- * etc.) from Firestore's Settings/orderConfig document.
- *
- * These values must never be hardcoded elsewhere in the app - every module
- * that needs one of these numbers should call this class instead, so an
- * admin can tune them from the admin panel without shipping a new release.
- * See functions/settings/defaultOrderConfig.js on the backend for the
- * matching default values and field names - the two must stay in sync.
- *
- * Usage: call AppConfig.init(context) once at app start (already wired
- * into MyApplication), then read values anywhere with
- * AppConfig.get().getOrderDispatchEtaThresholdMinutes() etc. A real-time
- * Firestore listener keeps the cached values current, so an admin change
- * takes effect without the app needing to be restarted.
- */
+
 public class AppConfig {
 
     private static AppConfig instance;
 
-    // --- Defaults mirror functions/settings/defaultOrderConfig.js.
-    // These are ONLY used until the first real Firestore snapshot arrives,
-    // or if a field is missing from the document for any reason - never
-    // relied on as the "real" values in normal operation. ---
 
     private List<Integer> riderSearchRadiiKm = defaultRadii();
     private int riderSearchStepDelaySeconds = 5;

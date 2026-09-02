@@ -1,27 +1,129 @@
 package com.example.paktrainfoodapp.ui.auth;
 
 import android.content.Context;
-import android.content.Intent;
+import android.content.SharedPreferences;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
+import java.util.concurrent.TimeUnit;
+
 /**
- * The four things that can happen around sign-up / sign-in, each with a
- * dialog rather than a Toast.
+ * The dialogs around sign-up / sign-in.
  *
  * These were all Toasts before, which is the wrong tool here: a Toast
  * disappears in a couple of seconds and can't hold a button. "We emailed
  * you a link, go check it (and look in spam)" is exactly the kind of
  * message a user needs to be able to read at their own pace and act on -
- * so it gets a dialog with a direct "Open Email App" button.
+ * so it gets a dialog instead.
+ *
+ * Registration (showVerificationSent) is deliberately bare-bones: just
+ * "check your Gmail", the address, the spam/junk note, and a single OK.
+ * Login-time (showNotVerified) additionally offers "Resend Email", since
+ * that's the point someone is most likely to actually need it.
  */
 public class AuthDialogs {
 
     public interface OnDismissed {
         void onDismissed();
+    }
+
+    // ---- Resend throttling ----
+    //
+    // Firebase itself will start rejecting rapid repeat sends, and an
+    // unlimited "Resend" button invites people to hammer it when an email
+    // is just slow. Two per 24 hours is enough for a genuinely lost email
+    // without turning into a way to spam someone's inbox. Tracked locally
+    // (per-device, per-email) because there's no server-side counter for
+    // this and adding one for a purely cosmetic guard isn't worth a
+    // Cloud Function.
+    private static final String PREFS = "PakTrainAuthPrefs";
+    private static final int MAX_RESENDS_PER_DAY = 2;
+    private static final long WINDOW_MS = TimeUnit.HOURS.toMillis(24);
+
+    private static String countKey(String email) { return "resend_count_" + email; }
+    private static String windowKey(String email) { return "resend_window_start_" + email; }
+
+    /** How many resends are still allowed for this email right now. */
+    private static int resendsLeft(Context context, String email) {
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+
+        long windowStart = prefs.getLong(windowKey(email), 0);
+        long now = System.currentTimeMillis();
+
+        // Window expired - the allowance resets.
+        if (now - windowStart > WINDOW_MS) return MAX_RESENDS_PER_DAY;
+
+        return Math.max(0, MAX_RESENDS_PER_DAY - prefs.getInt(countKey(email), 0));
+    }
+
+    private static void recordResend(Context context, String email) {
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+
+        long windowStart = prefs.getLong(windowKey(email), 0);
+        long now = System.currentTimeMillis();
+
+        if (now - windowStart > WINDOW_MS) {
+            // Start a fresh 24h window with this as the first send.
+            prefs.edit()
+                    .putLong(windowKey(email), now)
+                    .putInt(countKey(email), 1)
+                    .apply();
+        } else {
+            prefs.edit()
+                    .putInt(countKey(email), prefs.getInt(countKey(email), 0) + 1)
+                    .apply();
+        }
+    }
+
+    /**
+     * Sends another verification email, respecting the 2-per-24h cap.
+     * Requires a currently signed-in FirebaseUser - which is the case
+     * right after registration (before the app signs them out) and any
+     * time a login attempt succeeded but the email wasn't verified yet.
+     */
+    private static void resendVerification(Context context, String email) {
+
+        if (resendsLeft(context, email) <= 0) {
+            Toast.makeText(context,
+                    "You've reached the limit of " + MAX_RESENDS_PER_DAY
+                            + " resends per day. Please check your spam folder or try again tomorrow.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+        if (user == null) {
+            Toast.makeText(context,
+                    "Please log in with your email and password first, then tap Resend.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        user.sendEmailVerification()
+                .addOnSuccessListener(unused -> {
+
+                    recordResend(context, email);
+
+                    int left = resendsLeft(context, email);
+
+                    Toast.makeText(context,
+                            "Verification email sent again. " + left + " resend(s) left today.",
+                            Toast.LENGTH_LONG).show();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(context,
+                                "Couldn't resend: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show());
     }
 
     /**
@@ -30,31 +132,39 @@ public class AuthDialogs {
      * straight to the login screen with only a brief Toast, so people
      * regularly never realised an email had been sent at all, tried to log
      * in immediately, and got an unexplained "not verified" error.
+     *
+     * Kept deliberately simple: just "check your Gmail" + the address +
+     * the spam/junk reminder, with a single OK button. No "Open Email
+     * App" and no "Resend" here - those live on the login-time
+     * showNotVerified() dialog instead.
      */
     public static void showVerificationSent(Context context, String email, OnDismissed onDismissed) {
 
         TextView message = buildMessageView(context,
-                "We've sent a verification link to:<br><b>" + email + "</b>"
-                        + "<br><br>Open that email and tap the link, then come back and log in."
-                        + "<br><br><b><font color='#C62828'>IMPORTANT: If you don't see it, CHECK YOUR SPAM / JUNK FOLDER.</font></b>"
-                        + " Verification emails very often land there.");
+                "Check your Gmail:<br><b>" + email + "</b>"
+                        + "<br><br><b><font color='#C62828'>NOTE: If the mail doesn't arrive, check your Spam / Junk folder.</font></b>");
 
-        new AlertDialog.Builder(context)
+        AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle("Verify Your Email")
                 .setView(message)
                 .setCancelable(false)
-                .setPositiveButton("Open Email App", (d, w) -> {
-                    openEmailApp(context);
+                .setPositiveButton("OK", (d, w) -> {
                     if (onDismissed != null) onDismissed.onDismissed();
                 })
-                .setNegativeButton("I'll Do It Later", (d, w) -> {
-                    if (onDismissed != null) onDismissed.onDismissed();
-                })
-                .show();
+                .create();
+
+        dialog.show();
     }
 
-    /** Login attempt with correct credentials but an unverified email. */
-    public static void showNotVerified(Context context, String email) {
+    /**
+     * Login attempt with correct credentials but an unverified email.
+     *
+     * @param onDismissed run when the dialog closes - the caller uses this
+     *                    to sign the user out. Signing out BEFORE showing
+     *                    this dialog would break the Resend button, since
+     *                    Firebase needs a signed-in user to resend for.
+     */
+    public static void showNotVerified(Context context, String email, OnDismissed onDismissed) {
 
         TextView message = buildMessageView(context,
                 "Your email <b>" + email + "</b> hasn't been verified yet."
@@ -62,12 +172,26 @@ public class AuthDialogs {
                         + "<br><br><b><font color='#C62828'>IMPORTANT: CHECK YOUR SPAM / JUNK FOLDER</font></b>"
                         + " - that's where it usually is.");
 
-        new AlertDialog.Builder(context)
+        AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle("Email Not Verified")
                 .setView(message)
-                .setPositiveButton("Open Email App", (d, w) -> openEmailApp(context))
-                .setNegativeButton("Close", null)
-                .show();
+                .setNeutralButton("Resend Email", null)
+                .setPositiveButton("OK", (d, w) -> {
+                    if (onDismissed != null) onDismissed.onDismissed();
+                })
+                .create();
+
+        dialog.setOnCancelListener(d -> {
+            if (onDismissed != null) onDismissed.onDismissed();
+        });
+
+        dialog.show();
+
+        // Listener set AFTER show() so tapping "Resend" doesn't dismiss
+        // the dialog - the user should be able to resend and still read
+        // the message before tapping OK.
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v ->
+                resendVerification(context, email));
     }
 
     /** No account exists for the email that was entered. */
@@ -82,10 +206,9 @@ public class AuthDialogs {
     }
 
     /**
-     * The admin has disabled this account (AuthDialogs.showWrongCredentials
-     * is NOT what fires here - Firebase Auth itself rejects the sign-in
-     * attempt with a distinct error code before the app ever sees a
-     * password mismatch).
+     * The admin has disabled this account (showWrongCredentials is NOT
+     * what fires here - Firebase Auth itself rejects the sign-in attempt
+     * with a distinct error code before any password mismatch).
      */
     public static void showAccountDisabled(Context context) {
 
@@ -106,37 +229,6 @@ public class AuthDialogs {
                         + "Please check both and try again.")
                 .setPositiveButton("Try Again", null)
                 .show();
-    }
-
-    /**
-     * Opens whatever the user reads mail in. ACTION_MAIN with the EMAIL
-     * category is what actually lands in an inbox - ACTION_SENDTO (the
-     * usual first instinct) opens a *compose* window instead, which isn't
-     * where the verification link is.
-     */
-    private static void openEmailApp(Context context) {
-
-        try {
-
-            Intent intent = new Intent(Intent.ACTION_MAIN);
-            intent.addCategory(Intent.CATEGORY_APP_EMAIL);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-            if (intent.resolveActivity(context.getPackageManager()) != null) {
-                context.startActivity(intent);
-                return;
-            }
-
-            // No mail app registered - Gmail on the web is the safest
-            // fallback rather than silently doing nothing.
-            context.startActivity(new Intent(Intent.ACTION_VIEW,
-                    android.net.Uri.parse("https://mail.google.com")));
-
-        } catch (Exception e) {
-            android.widget.Toast.makeText(context,
-                    "Couldn't open an email app - please check your inbox manually",
-                    android.widget.Toast.LENGTH_LONG).show();
-        }
     }
 
     private static TextView buildMessageView(Context context, String html) {

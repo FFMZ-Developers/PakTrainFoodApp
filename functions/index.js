@@ -815,3 +815,7 @@ require("./triggers/chat/onChatMessage").onRestaurantChatMessage;
 
 exports.onPassengerChatMessage =
 require("./triggers/chat/onChatMessage").onPassengerChatMessage;
+
+// Module - restaurant rating aggregation
+exports.onReviewWritten =
+require("./triggers/reviews/onReviewWritten").onReviewWritten;

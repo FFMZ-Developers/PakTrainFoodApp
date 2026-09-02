@@ -266,6 +266,81 @@ public class Step4SelfieFragment extends Fragment {
         data.put("cnicBackUrl", cnicBackUrl);
         data.put("selfieUrl", selfieUrl);
 
+        // ✅ FIX: the profile photo chosen during REGISTRATION was written
+        // to Users/{Role}/Register/{uid}, but every profile screen reads
+        // from VerifiedRegister - so that photo was effectively lost the
+        // moment verification was submitted, and profiles fell back to the
+        // ID selfie (a formal document photo, not the picture the user
+        // actually picked). Copying it across here keeps the user's own
+        // chosen photo as their profile picture.
+        copyRegistrationPhotoThenSave(
+                data,
+                isRestaurant,
+                licenseUrl,
+                drivingLicenseUrl,
+                bikeUrl
+        );
+    }
+
+    /**
+     * Reads profileImageUrl from the original registration document and
+     * merges it into the verification payload before writing. Falls
+     * through to saving without it if it isn't there (older accounts, or
+     * a user who never picked a photo) rather than blocking submission.
+     */
+    private void copyRegistrationPhotoThenSave(
+            Map<String, Object> data,
+            boolean isRestaurant,
+            String licenseUrl,
+            String drivingLicenseUrl,
+            String bikeUrl) {
+
+        String role = VerificationViewModel.ROLE_RESTAURANT.equals(viewModel.getRole())
+                ? "Restaurant"
+                : "Delivery";
+
+        FirebaseFirestore.getInstance()
+                .collection("Users")
+                .document(role)
+                .collection("Register")
+                .document(viewModel.getUid())
+                .get()
+                .addOnSuccessListener(doc -> {
+
+                    if (doc.exists()) {
+
+                        String photo = doc.getString("profileImageUrl");
+
+                        if (photo != null && !photo.isEmpty()) {
+                            data.put("profileImageUrl", photo);
+                        }
+                    }
+
+                    writeVerificationDocument(
+                            data,
+                            isRestaurant,
+                            licenseUrl,
+                            drivingLicenseUrl,
+                            bikeUrl
+                    );
+                })
+                .addOnFailureListener(e ->
+                        writeVerificationDocument(
+                                data,
+                                isRestaurant,
+                                licenseUrl,
+                                drivingLicenseUrl,
+                                bikeUrl
+                        )
+                );
+    }
+    private void writeVerificationDocument(
+            Map<String, Object> data,
+            boolean isRestaurant,
+            String licenseUrl,
+            String drivingLicenseUrl,
+            String bikeUrl) {
+
         data.put("bankName", viewModel.getBankName());
         data.put("bankAccountHolder", viewModel.getBankAccountHolder());
         data.put("bankAccountNumber", viewModel.getBankAccountNumber());

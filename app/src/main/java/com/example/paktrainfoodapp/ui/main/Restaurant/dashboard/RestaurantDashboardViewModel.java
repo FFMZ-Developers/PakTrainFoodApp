@@ -20,6 +20,15 @@ public class RestaurantDashboardViewModel extends ViewModel {
     private final MutableLiveData<Integer> menuCount = new MutableLiveData<>(0);
     private final MutableLiveData<String> restaurantName = new MutableLiveData<>("Restaurant");
 
+    // Module: real "Recent Orders" for the dashboard card - previously a
+    // single hardcoded fake row that never reflected anything real.
+    private final MutableLiveData<java.util.List<com.google.firebase.firestore.DocumentSnapshot>> recentActiveOrders
+            = new MutableLiveData<>(new java.util.ArrayList<>());
+
+    public LiveData<java.util.List<com.google.firebase.firestore.DocumentSnapshot>> getRecentActiveOrders() {
+        return recentActiveOrders;
+    }
+
     private ListenerRegistration ordersReg, menuReg, profileReg;
 
     private boolean started = false;
@@ -39,7 +48,9 @@ public class RestaurantDashboardViewModel extends ViewModel {
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        // Orders + revenue
+        // Orders + revenue + recent-active-orders, all from ONE listener -
+        // avoids a second query (and the composite index it would need)
+        // for something this listener is already reading anyway.
         ordersReg = db.collection("Orders")
                 .whereEqualTo("restaurantId", uid)
                 .addSnapshotListener((snapshot, error) -> {
@@ -48,6 +59,14 @@ public class RestaurantDashboardViewModel extends ViewModel {
 
                     int count = 0;
                     double earned = 0;
+
+                    java.util.List<DocumentSnapshot> active = new java.util.ArrayList<>();
+
+                    java.util.Set<String> activeStatuses = new java.util.HashSet<>(java.util.Arrays.asList(
+                            "Active", "Accepted", "ready_for_delivery",
+                            "accepted_by_rider", "arrive_rider_at_resturent",
+                            "dropped", "pick_up"
+                    ));
 
                     for (DocumentSnapshot doc : snapshot.getDocuments()) {
 
@@ -65,10 +84,26 @@ public class RestaurantDashboardViewModel extends ViewModel {
 
                             if (subtotal != null) earned += subtotal;
                         }
+
+                        if (status != null && activeStatuses.contains(status)) {
+                            active.add(doc);
+                        }
                     }
 
                     totalOrders.postValue(count);
                     revenue.postValue(earned);
+
+                    active.sort((a, b) -> {
+                        Long ta = a.getLong("timestamp");
+                        Long tb = b.getLong("timestamp");
+                        long va = ta != null ? ta : 0L;
+                        long vb = tb != null ? tb : 0L;
+                        return Long.compare(vb, va); // newest first
+                    });
+
+                    if (active.size() > 5) active = active.subList(0, 5);
+
+                    recentActiveOrders.postValue(active);
                 });
 
         // Menu item count

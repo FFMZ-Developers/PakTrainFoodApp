@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.paktrainfoodapp-mergeDebugResources-101:/values-la/values-la.xml",
+            "outputFile": "com.example.paktrainfoodapp-mergeDebugResources-98:/values-la/values-la.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\26ed7d7a59b9b3e6d1cc94e62f4e6c60\\transformed\\hcaptcha-20.53.0\\res\\values-la\\values-la.xml",
+                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\55a10fbb9c1e18b54b51fde411809d2c\\transformed\\hcaptcha-20.53.0\\res\\values-la\\values-la.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

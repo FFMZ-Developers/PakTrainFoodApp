@@ -64,11 +64,38 @@ public class DeliveryProfileFragment extends Fragment {
         prefManager = new PrefManager(requireContext());
 
         wireRow(view, R.id.layout_settings,
-                new com.example.paktrainfoodapp.ui.shared.profile.SettingsFragment());
+                () -> new com.example.paktrainfoodapp.ui.shared.profile.SettingsFragment());
 
         wireRow(view, R.id.layout_my_orders,
-                com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.newInstance(
+                () -> com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.newInstance(
                         com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.ROLE_DELIVERY));
+
+        // \u2705 FIX: this row existed in the layout but had never been wired
+        // to anything at all - tapping "Help & Support" did nothing.
+        wireRow(view, R.id.layout_help_support,
+                () -> new com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment());
+
+        View layoutShare = view.findViewById(R.id.layout_share_app);
+        if (layoutShare != null) {
+            layoutShare.setOnClickListener(v ->
+                    com.example.paktrainfoodapp.utils.ShareUtils.showShareOptions(requireContext()));
+        }
+
+        // App Version row: shows the real installed versionName (falls back
+        // to "1.0" only if PackageManager somehow can't resolve it) and
+        // opens a small info dialog with the same version on tap.
+        TextView txtAppVersion = view.findViewById(R.id.txt_app_version);
+        View layoutAppVersion = view.findViewById(R.id.layout_app_version);
+        String appVersion = resolveAppVersion();
+        if (txtAppVersion != null) txtAppVersion.setText(appVersion);
+        if (layoutAppVersion != null) {
+            layoutAppVersion.setOnClickListener(v ->
+                    new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            .setTitle("App Version")
+                            .setMessage("Pak Train Food\n\nVersion " + appVersion)
+                            .setPositiveButton("OK", null)
+                            .show());
+        }
 
         if (layoutAccountInfo != null) {
 
@@ -182,6 +209,18 @@ public class DeliveryProfileFragment extends Fragment {
         }
     }
 
+    /** Reads the real app version from PackageManager, same source SettingsFragment uses. */
+    private String resolveAppVersion() {
+        try {
+            return requireContext()
+                    .getPackageManager()
+                    .getPackageInfo(requireContext().getPackageName(), 0)
+                    .versionName;
+        } catch (Exception e) {
+            return "1.0";
+        }
+    }
+
     private void loadUserData() {
         if (mAuth.getCurrentUser() == null) return;
         String uid = mAuth.getCurrentUser().getUid();
@@ -197,8 +236,16 @@ public class DeliveryProfileFragment extends Fragment {
                         String email = snapshot.getString("email");
                         String imageUrl = snapshot.getString("profileImageUrl");
                         if (imageUrl == null || imageUrl.isEmpty()) {
-                            // Fallback for accounts registered before profileImageUrl existed
-                            imageUrl = snapshot.getString("ownerCnicUrlfront");
+                            // ✅ FIX: this fell back to "ownerCnicUrlfront" - a
+                            // RESTAURANT field name that was copy-pasted here
+                            // and never exists on a rider's document at all,
+                            // so the fallback silently found nothing. The
+                            // rider's actual photo from the verification
+                            // wizard is written to "selfieUrl" - falling back
+                            // to that means a rider who's never manually
+                            // changed their picture still sees their real
+                            // face instead of a blank placeholder.
+                            imageUrl = snapshot.getString("selfieUrl");
                         }
 
                         if (txtName != null) txtName.setText(deliveryBoyName != null ? deliveryBoyName : "No Name");
@@ -224,7 +271,13 @@ public class DeliveryProfileFragment extends Fragment {
     }
 
     /** Opens a shared screen from a profile row (see restaurant equivalent). */
-    private void wireRow(View parent, int rowId, androidx.fragment.app.Fragment target) {
+    /**
+     * \u2705 FIX: same bug as the restaurant profile's version - this took a
+     * single pre-built Fragment instance, created once when the screen
+     * loaded, so any tap after the first tried to re-add an already-used
+     * fragment and silently did nothing. Now builds a fresh one per tap.
+     */
+    private void wireRow(View parent, int rowId, FragmentFactory factory) {
 
         View row = parent.findViewById(rowId);
 
@@ -233,9 +286,13 @@ public class DeliveryProfileFragment extends Fragment {
         row.setOnClickListener(v ->
                 getParentFragmentManager()
                         .beginTransaction()
-                        .replace(R.id.fragment_loader, target)
+                        .replace(R.id.fragment_loader, factory.create())
                         .addToBackStack(null)
                         .commit());
+    }
+
+    interface FragmentFactory {
+        androidx.fragment.app.Fragment create();
     }
 
     /** Module: re-verification on sensitive-field edit (see restaurant equivalent for full explanation). */

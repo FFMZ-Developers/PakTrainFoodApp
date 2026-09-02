@@ -52,6 +52,51 @@ public class MapIconUtils {
     }
 
     /**
+     * Same idea as vectorToBitmapDescriptor, but clips the result to a
+     * circle with a thin white ring around it - for raster brand marks
+     * (like the app logo, a flat JPG/WEBP with a plain background) that
+     * would otherwise show up on the map as an ugly square. Used for the
+     * rider's marker (see placeOrUpdateRiderMarker()).
+     */
+    public static BitmapDescriptor circularBitmapDescriptor(
+            Context context, @DrawableRes int drawableResId, int sizeDp) {
+
+        Drawable drawable = ContextCompat.getDrawable(context, drawableResId);
+
+        if (drawable == null) {
+            return BitmapDescriptorFactory.defaultMarker();
+        }
+
+        float density = context.getResources().getDisplayMetrics().density;
+        int sizePx = Math.round(sizeDp * density);
+        float ringWidth = 2 * density;
+
+        Bitmap source = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888);
+        Canvas sourceCanvas = new Canvas(source);
+        drawable.setBounds(0, 0, sizePx, sizePx);
+        drawable.draw(sourceCanvas);
+
+        Bitmap output = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(output);
+
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        float radius = sizePx / 2f;
+
+        canvas.drawCircle(radius, radius, radius - ringWidth, paint);
+        paint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN));
+        canvas.drawBitmap(source, 0, 0, paint);
+
+        // White ring, so the marker reads clearly against a busy map.
+        android.graphics.Paint ringPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        ringPaint.setStyle(android.graphics.Paint.Style.STROKE);
+        ringPaint.setStrokeWidth(ringWidth);
+        ringPaint.setColor(android.graphics.Color.WHITE);
+        canvas.drawCircle(radius, radius, radius - ringWidth / 2f, ringPaint);
+
+        return BitmapDescriptorFactory.fromBitmap(output);
+    }
+
+    /**
      * Same as vectorToBitmapDescriptor, but bakes the station's name as a
      * small text label directly above the icon into the same bitmap - so
      * every station along the route can be identified on the map at a

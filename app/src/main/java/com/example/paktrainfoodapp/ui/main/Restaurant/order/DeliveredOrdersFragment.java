@@ -102,6 +102,16 @@ public class DeliveredOrdersFragment extends Fragment {
                         Long time = doc.getLong("etaEndTime");
                         item.setEtaEndTime(time != null ? time : 0L);
 
+                        // ✅ FIX: this fragment read "etaEndTime" but the
+                        // card's "Estimated Arrival" text is bound from
+                        // getTrainEtaEndTime() (see bindEtaArrival() below)
+                        // - "trainEtaEndTime" was never read from Firestore
+                        // into the model at all here, so every card in this
+                        // tab (accepted_by_rider through pick_up) was stuck
+                        // showing "Calculating..." regardless of status.
+                        Long trainEta = doc.getLong("trainEtaEndTime");
+                        item.setTrainEtaEndTime(trainEta != null ? trainEta : 0L);
+
                         Double price = doc.getDouble("totalPrice");
                         if (price != null) {
                             Map<String, Double> map = new HashMap<>();
@@ -152,11 +162,14 @@ public class DeliveredOrdersFragment extends Fragment {
 
             String status = m.getStatus();
 
+            // Status pill - top-right corner, same for every role/tab.
+            com.example.paktrainfoodapp.utils.StatusBadge.apply(h.txtStatusBadge, status);
+
             // RESET
             h.btnReady.setEnabled(true);
             h.btnReady.setAlpha(1f);
-            h.btnReady.setVisibility(View.VISIBLE);
-             h.timeRow.setVisibility(View.VISIBLE);
+            h.btnReady.setVisibility(View.GONE);
+            h.timeRow.setVisibility(View.GONE);
 
             // Only the arrival estimate is meaningful here - the raw
             // txtTimer placeholder was showing through empty.
@@ -184,30 +197,26 @@ public class DeliveredOrdersFragment extends Fragment {
             switch (status) {
 
                 case "accepted_by_rider":
-                    com.example.paktrainfoodapp.utils.StatusBadge.apply(h.btnReady, status);
-                    h.btnReady.setEnabled(false);
-                    h.btnReady.setAlpha(1f);
+                    // Nothing for the restaurant to do yet - top badge
+                    // already says "Rider Assigned".
                     break;
 
                 case "arrive_rider_at_resturent":
+                    h.timeRow.setVisibility(View.VISIBLE);
+                    h.btnReady.setVisibility(View.VISIBLE);
                     h.btnReady.setText("Dropped");
                     h.btnReady.setEnabled(true);
                     h.btnReady.setAlpha(1f);
                     break;
 
                 case "dropped":
-                    h.btnReady.setText("Waiting for Pickup");
-                    h.btnReady.setEnabled(false);
-                    h.btnReady.setAlpha(0.5f);
+                    // Waiting for the rider to pick up - top badge already
+                    // says "Handed to Rider", no action left here.
                     break;
 
                 case "pick_up":
-                    // Was hidden entirely here, which - now that Completed
-                    // no longer carries pick_up - left the order invisible
-                    // to the restaurant everywhere.
-                    com.example.paktrainfoodapp.utils.StatusBadge.apply(h.btnReady, status);
-                    h.btnReady.setEnabled(false);
-                    h.btnReady.setAlpha(1f);
+                    // On the way to the passenger - top badge already says
+                    // "On The Way".
                     break;
             }
 
@@ -255,7 +264,7 @@ public class DeliveredOrdersFragment extends Fragment {
 
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival;
+            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival, txtStatusBadge;
             Button btnReady;
 LinearLayout timeRow;
             ViewHolder(@NonNull View itemView) {
@@ -267,6 +276,7 @@ LinearLayout timeRow;
                 timeRow = itemView.findViewById(R.id.timeRow);
                 txtTimer = itemView.findViewById(R.id.txtTimer);
                 txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
+                txtStatusBadge = itemView.findViewById(R.id.txtStatusBadge);
             }
         }
     }

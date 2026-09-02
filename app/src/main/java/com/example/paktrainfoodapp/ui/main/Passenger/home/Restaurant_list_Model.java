@@ -97,6 +97,18 @@ public class Restaurant_list_Model {
     public void setPaused(boolean paused) {
         this.paused = paused;
     }
+
+    // Module: aggregate rating - maintained server-side by
+    // onReviewWritten.js, read here rather than computed client-side from
+    // every individual review.
+    private double averageRating = 0;
+    private int reviewCount = 0;
+
+    public double getAverageRating() { return averageRating; }
+    public void setAverageRating(double averageRating) { this.averageRating = averageRating; }
+
+    public int getReviewCount() { return reviewCount; }
+    public void setReviewCount(int reviewCount) { this.reviewCount = reviewCount; }
 }
 
 //

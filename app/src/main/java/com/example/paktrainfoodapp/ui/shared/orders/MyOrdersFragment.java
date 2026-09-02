@@ -121,13 +121,7 @@ public class MyOrdersFragment extends Fragment {
 
         recycler.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        adapter = new MyOrdersAdapter(visibleOrders, order -> {
-            // Detail screen isn't wired for history yet - keep it informative
-            // rather than silently doing nothing on tap.
-            Toast.makeText(requireContext(),
-                    "Order #" + order.getOrderId(),
-                    Toast.LENGTH_SHORT).show();
-        });
+        adapter = new MyOrdersAdapter(visibleOrders, this::openOrder);
 
         recycler.setAdapter(adapter);
 
@@ -136,6 +130,7 @@ public class MyOrdersFragment extends Fragment {
             if (checkedId == R.id.chipPending)        activeFilter = "pending";
             else if (checkedId == R.id.chipOngoing)   activeFilter = "ongoing";
             else if (checkedId == R.id.chipCompleted) activeFilter = "completed";
+            else if (checkedId == R.id.chipDisputed)  activeFilter = "disputed";
             else if (checkedId == R.id.chipCancelled) activeFilter = "cancelled";
             else                                      activeFilter = "all";
 
@@ -143,6 +138,13 @@ public class MyOrdersFragment extends Fragment {
         });
 
         listenOrders();
+    }
+
+    /** Firestore numbers can come back as Long or Double depending on how
+        they were written - normalise either into a Double safely. */
+    private static Double asDouble(Object o) {
+        if (o instanceof Number) return ((Number) o).doubleValue();
+        return null;
     }
 
     private void listenOrders() {
@@ -204,6 +206,32 @@ public class MyOrdersFragment extends Fragment {
                         MyOrderModel mo = new MyOrderModel(
                                 orderId, status, restaurant, station, dateText, total);
                         mo.setOrderNumber(doc.getLong("orderNumber"));
+
+                        // Module: resolution details, only meaningful for
+                        // cancelled/rejected/disputed orders - the detail
+                        // popup reads these to explain exactly what
+                        // happened rather than just showing a bare status.
+                        mo.setRejectionReason(doc.getString("rejectionReason"));
+                        mo.setFailureReason(doc.getString("failureReason"));
+                        mo.setDisputeStatus(doc.getString("disputeStatus"));
+
+                        Boolean captured = doc.getBoolean("paymentCaptured");
+                        mo.setPaymentCaptured(captured != null && captured);
+
+                        Object resolutionObj = doc.get("disputeResolution");
+
+                        if (resolutionObj instanceof java.util.Map) {
+
+                            @SuppressWarnings("unchecked")
+                            java.util.Map<String, Object> resolution = (java.util.Map<String, Object>) resolutionObj;
+
+                            mo.setDisputeRestaurantShare(asDouble(resolution.get("restaurantShare")));
+                            mo.setDisputeRiderShare(asDouble(resolution.get("riderShare")));
+                            mo.setDisputePassengerRefund(asDouble(resolution.get("passengerRefund")));
+                            mo.setDisputeRestaurantReason((String) resolution.get("restaurantReason"));
+                            mo.setDisputeRiderReason((String) resolution.get("riderReason"));
+                        }
+
                         allOrders.add(mo);
                     }
 
@@ -241,6 +269,133 @@ public class MyOrdersFragment extends Fragment {
             layoutNoOrders.setVisibility(View.GONE);
             recycler.setVisibility(View.VISIBLE);
         }
+    }
+
+    /**
+     * \u2705 FIX: this used to just show a Toast with the raw order id - no
+     * way to actually see what happened. Now:
+     *   - a cancelled/rejected/disputed order opens a resolution summary
+     *     (reason, and - once an admin has resolved a dispute - exactly
+     *     how much everyone received)
+     *   - every other order opens its real detail/live-tracking screen,
+     *     the same one reached from the bottom-nav Orders tab
+     */
+    private void openOrder(MyOrderModel order) {
+
+        if (!isAdded()) return;
+
+        String bucket = MyOrdersAdapter.bucketOf(order.getStatus());
+
+        if (bucket.equals("cancelled") || bucket.equals("disputed")) {
+            showResolutionDialog(order);
+            return;
+        }
+
+        androidx.fragment.app.Fragment target;
+
+        if (ROLE_PASSENGER.equals(role())) {
+
+            target = new com.example.paktrainfoodapp.ui.main.Passenger.order.passanger_orderDetailFragment();
+
+            Bundle args = new Bundle();
+            args.putString("orderId", order.getOrderId());
+            target.setArguments(args);
+
+        } else {
+
+            target = com.example.paktrainfoodapp.ui.main.Restaurant.order
+                    .OrderDetailFragment.newInstance(order.getOrderId());
+        }
+
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.main_container, target)
+                .addToBackStack(null)
+                .commit();
+    }
+
+    /**
+     * A focused summary rather than a full screen - what happened, and
+     * (once resolved) exactly how the money was split. Built as a dialog
+     * because a cancelled/disputed order has nothing left to "track" -
+     * the live tracking screen doesn't apply here.
+     */
+    private void showResolutionDialog(MyOrderModel order) {
+
+        StringBuilder msg = new StringBuilder();
+
+        boolean isDisputePending = "disputed".equalsIgnoreCase(order.getStatus())
+                || "delivery_failed".equalsIgnoreCase(order.getStatus())
+                || "pending_review".equals(order.getDisputeStatus());
+
+        boolean isDisputeResolved = order.getDisputeRestaurantShare() != null
+                || order.getDisputeRiderShare() != null
+                || order.getDisputePassengerRefund() != null;
+
+        if (isDisputeResolved) {
+
+            msg.append("This order was reviewed by our team.\n\n");
+
+            if (ROLE_RESTAURANT.equals(role()) && order.getDisputeRestaurantShare() != null) {
+                msg.append("You were credited: Rs ").append((int) (double) order.getDisputeRestaurantShare()).append("\n");
+                if (order.getDisputeRestaurantReason() != null && !order.getDisputeRestaurantReason().isEmpty()) {
+                    msg.append("Reason: ").append(order.getDisputeRestaurantReason()).append("\n");
+                }
+            }
+
+            if (ROLE_DELIVERY.equals(role()) && order.getDisputeRiderShare() != null) {
+                msg.append("You were credited: Rs ").append((int) (double) order.getDisputeRiderShare()).append("\n");
+                if (order.getDisputeRiderReason() != null && !order.getDisputeRiderReason().isEmpty()) {
+                    msg.append("Reason: ").append(order.getDisputeRiderReason()).append("\n");
+                }
+            }
+
+            if (ROLE_PASSENGER.equals(role()) && order.getDisputePassengerRefund() != null) {
+
+                double refund = order.getDisputePassengerRefund();
+                double total = order.getTotalPrice();
+
+                String refundLabel = refund <= 0 ? "No refund"
+                        : refund >= total ? "Full refund"
+                        : "Partial refund";
+
+                msg.append(refundLabel).append(": Rs ").append((int) refund).append(" of Rs ").append((int) total).append("\n");
+            }
+
+        } else if (isDisputePending) {
+
+            msg.append("This order is under review by our team.\n\n");
+
+            String reason = order.getFailureReason();
+
+            if (reason != null && !reason.isEmpty()) {
+                msg.append("Reported issue: ").append(reason).append("\n\n");
+            }
+
+            msg.append("We'll notify you as soon as this is resolved.");
+
+        } else {
+
+            // Plain cancellation/rejection - no dispute involved at all.
+            String reason = order.getRejectionReason();
+
+            msg.append("This order was cancelled.");
+
+            if (reason != null && !reason.isEmpty()) {
+                msg.append("\n\nReason: ").append(reason);
+            }
+
+            msg.append(order.isPaymentCaptured()
+                    ? "\n\nA refund was processed for this order."
+                    : "\n\nNo payment was ever captured for this order.");
+        }
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(com.example.paktrainfoodapp.utils.OrderNumberUtils
+                        .format(order.getOrderNumber(), order.getOrderId()))
+                .setMessage(msg.toString().trim())
+                .setPositiveButton("OK", null)
+                .show();
     }
 
     private void showEmpty(String hint) {

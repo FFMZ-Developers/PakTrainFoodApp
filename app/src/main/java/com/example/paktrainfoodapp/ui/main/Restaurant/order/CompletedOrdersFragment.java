@@ -152,22 +152,33 @@ public class CompletedOrdersFragment extends Fragment {
             String status = m.getStatus();
 
             // ================= UI RESET =================
-            h.btnReady.setVisibility(View.VISIBLE);
-            h.btnReady.setEnabled(false);
-            h.btnReady.setClickable(false);
-            h.btnReady.setAlpha(0.6f);
-            h.timeRow.setVisibility(View.VISIBLE);
+            // Nothing on this tab is actionable - every row is history.
+            // The status pill (top-right corner, same as every other tab)
+            // already says "Delivered", so no button/badge is needed down
+            // in the button row, and no ETA is shown either - the order
+            // already arrived, so "Estimated Arrival" has nothing left to
+            // say.
+            h.timeRow.setVisibility(View.GONE);
+            h.btnReady.setVisibility(View.GONE);
+            if (h.txtEtaArrival != null) h.txtEtaArrival.setVisibility(View.GONE);
 
+            com.example.paktrainfoodapp.utils.StatusBadge.apply(h.txtStatusBadge, status);
 
-            // ================= STATUS UI =================
-            // Nothing on this tab is actionable - every row is history, so
-            // all of it reads as a status badge rather than a button.
-            com.example.paktrainfoodapp.utils.StatusBadge.apply(h.btnReady, status);
-            h.btnReady.setEnabled(false);
-            h.btnReady.setAlpha(1f);
+            // ✅ FIX: this tab had no click handler at all - tapping a
+            // completed order did nothing. Now it opens the same detail
+            // screen every other tab uses, which shows the simplified
+            // completed summary (order id, status, delivered time, items,
+            // total price, chat history) instead of the live map.
+            h.itemView.setOnClickListener(v -> {
 
-            // txtTimer stays hidden - the arrival estimate above already
-            // says everything this row needs to.
+                if (!isAdded()) return;
+
+                requireActivity().getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.main_container, OrderDetailFragment.newInstance(m.getId()))
+                        .addToBackStack(null)
+                        .commit();
+            });
         }
 
         @Override
@@ -177,7 +188,7 @@ public class CompletedOrdersFragment extends Fragment {
 
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival;
+            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival, txtStatusBadge;
             Button btnReady;
 LinearLayout timeRow;
             ViewHolder(@NonNull View itemView) {
@@ -187,6 +198,7 @@ LinearLayout timeRow;
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
                 txtTimer = itemView.findViewById(R.id.txtTimer);
                 txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
+                txtStatusBadge = itemView.findViewById(R.id.txtStatusBadge);
                 btnReady = itemView.findViewById(R.id.btnReady);
                 timeRow = itemView.findViewById(R.id.timeRow);
             }

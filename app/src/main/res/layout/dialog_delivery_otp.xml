@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Passenger ko bheja gaya 4-digit OTP darj karein."
+        android:textSize="14sp"
+        android:textColor="@android:color/darker_gray" />
+
+    <EditText
+        android:id="@+id/edit_delivery_otp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="Enter OTP"
+        android:inputType="number"
+        android:maxLength="4"
+        android:gravity="center"
+        android:textSize="20sp"
+        android:letterSpacing="0.3"
+        android:padding="12dp"
+        android:background="@drawable/edittext_bg" />
+
+</LinearLayout>

@@ -134,6 +134,28 @@ async function actionNeeded(passengerUid, orderId, title, body) {
     });
 }
 
+/**
+ * Module: delivery handover OTP. A third, deliberate exception alongside
+ * actionNeeded() above - the passenger needs this exact code to hand to
+ * the rider at delivery, so (unlike every other milestone in this file)
+ * the message must include a specific number, not just a plain-language
+ * status update. Sent once, the moment the rider picks the order up
+ * (see onOrderPickedUp.js, which also stores the same code on the order
+ * doc as "deliveryOtp" for the rider app to verify against).
+ */
+async function deliveryOtp(passengerUid, orderId, otp) {
+
+    if (!passengerUid) return;
+
+    await sendNotification({
+        uid: passengerUid,
+        role: ROLES.PASSENGER,
+        title: "🔐 Delivery Code",
+        body: `Share this code with the rider when they hand over your order: ${otp}`,
+        data: { orderId, milestone: "delivery_otp", otp }
+    });
+}
+
 // ============================================================================
 // PAYMENT LIFECYCLE - a second, deliberate exception category alongside
 // actionNeeded() above. These aren't delivery-progress milestones - they're
@@ -206,6 +228,7 @@ module.exports = {
     delivered,
     cancelled,
     actionNeeded,
+    deliveryOtp,
     paymentHeld,
     paymentSent,
     refundPending,

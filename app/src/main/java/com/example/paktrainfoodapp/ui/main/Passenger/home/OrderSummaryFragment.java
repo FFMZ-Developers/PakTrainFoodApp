@@ -30,6 +30,17 @@ public class OrderSummaryFragment extends DialogFragment {
     private double totalAmount = 0;
 
     private ArrayList<CartItem> cartItems;
+    private OrderSummaryAdapter adapter;
+
+    // ✅ FIX: this dialog never listened for CartManager changes at all -
+    // tapping +/- correctly updated the underlying cart data (confirmed:
+    // CartManager.increaseQuantity/decreaseQuantity both call
+    // notifyChange()), but nothing here ever refreshed the RecyclerView or
+    // recalculated the totals, so the screen looked completely
+    // unresponsive. Now this listens the same way the cart screen itself
+    // does, and detaches in onDestroyView to avoid leaking a callback
+    // into a dead fragment.
+    private final Runnable cartChangeListener = this::onCartChanged;
 
     public static OrderSummaryFragment newInstance(ArrayList<CartItem> items) {
         OrderSummaryFragment fragment = new OrderSummaryFragment();
@@ -71,7 +82,10 @@ public class OrderSummaryFragment extends DialogFragment {
 
         rvItems = view.findViewById(R.id.rvItems);
         rvItems.setLayoutManager(new LinearLayoutManager(getContext()));
-        rvItems.setAdapter(new OrderSummaryAdapter(cartItems));
+        adapter = new OrderSummaryAdapter(cartItems);
+        rvItems.setAdapter(adapter);
+
+        CartManager.addListener(cartChangeListener);
 
         calculateBill();
 
@@ -141,6 +155,25 @@ public class OrderSummaryFragment extends DialogFragment {
 
             dialog.getWindow().setLayout(width, height);
         }
+    }
+
+    /**
+     * Fired by CartManager whenever a quantity actually changes - redraws
+     * the list AND recalculates the bill, since a quantity change moves
+     * both.
+     */
+    private void onCartChanged() {
+
+        if (!isAdded() || adapter == null) return;
+
+        adapter.notifyDataSetChanged();
+        calculateBill();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        CartManager.removeListener(cartChangeListener);
     }
 }
 

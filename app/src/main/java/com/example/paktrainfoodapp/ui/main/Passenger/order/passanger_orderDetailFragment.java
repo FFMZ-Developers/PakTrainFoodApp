@@ -36,6 +36,12 @@ public class passanger_orderDetailFragment extends Fragment {
     private TextView txtOrderId,txtTotalPrice;
     private RecyclerView recyclerView;
 
+    private TextView txtCompletedTime, txtCompletedChatEmpty;
+    private View layoutCompletedChat;
+    private RecyclerView recyclerCompletedChat;
+    private final List<CompletedChatMessage> completedChatMessages = new ArrayList<>();
+    private CompletedChatAdapter completedChatAdapter;
+
     private LinearLayout layoutRejectedAlternatives;
     private LinearLayout containerAlternativeRestaurants;
 
@@ -74,6 +80,14 @@ public class passanger_orderDetailFragment extends Fragment {
         txtOrderSeat = view.findViewById(R.id.txtOrderSeat);
         txtOrderEta = view.findViewById(R.id.txtOrderEta);
         btnCancelNoRider = view.findViewById(R.id.btnCancelNoRider);
+
+        txtCompletedTime = view.findViewById(R.id.txtCompletedTime);
+        layoutCompletedChat = view.findViewById(R.id.layoutCompletedChat);
+        txtCompletedChatEmpty = view.findViewById(R.id.txtCompletedChatEmpty);
+        recyclerCompletedChat = view.findViewById(R.id.recyclerCompletedChat);
+        if (recyclerCompletedChat != null) {
+            recyclerCompletedChat.setLayoutManager(new LinearLayoutManager(getContext()));
+        }
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
@@ -365,13 +379,143 @@ public class passanger_orderDetailFragment extends Fragment {
 
             Long eta = doc.getLong("trainEtaEndTime");
 
-            if (eta != null && eta > 0) {
+            if (eta != null && eta > 0 && !"completed".equalsIgnoreCase(orderStatus)) {
                 txtOrderEta.setVisibility(View.VISIBLE);
                 txtOrderEta.setText("Estimated Arrival: "
                         + new java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
                             .format(new java.util.Date(eta)));
             } else {
                 txtOrderEta.setVisibility(View.GONE);
+            }
+        }
+
+        boolean completed = "completed".equalsIgnoreCase(orderStatus);
+
+        if (txtCompletedTime != null) {
+            if (completed) {
+                Long completedAt = doc.getLong("completedAt");
+                txtCompletedTime.setVisibility(View.VISIBLE);
+                if (completedAt != null && completedAt > 0) {
+                    txtCompletedTime.setText("Delivered at: " + new java.text.SimpleDateFormat(
+                            "dd MMM yyyy, hh:mm a", java.util.Locale.getDefault())
+                            .format(new java.util.Date(completedAt)));
+                } else {
+                    txtCompletedTime.setText("Delivered");
+                }
+            } else {
+                txtCompletedTime.setVisibility(View.GONE);
+            }
+        }
+
+        if (layoutCompletedChat != null) {
+            layoutCompletedChat.setVisibility(completed ? View.VISIBLE : View.GONE);
+        }
+
+        if (completed) {
+            loadCompletedChatHistory();
+        }
+    }
+
+    /**
+     * Read-only transcript for a finished order - no send box, this is
+     * just a record of what was said between the passenger and the rider
+     * (the passenger was only ever in the "chats_passenger" thread - the
+     * rider<->restaurant thread never involved them). A completed order's
+     * chat can't change any more, so a single fetch is enough.
+     */
+    private void loadCompletedChatHistory() {
+
+        if (orderId == null || recyclerCompletedChat == null || firestore == null) return;
+
+        if (completedChatAdapter == null) {
+            completedChatAdapter = new CompletedChatAdapter(completedChatMessages);
+            recyclerCompletedChat.setAdapter(completedChatAdapter);
+        }
+
+        firestore.collection("Orders").document(orderId)
+                .collection("chats_passenger")
+                .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.ASCENDING)
+                .get()
+                .addOnCompleteListener(task -> {
+
+                    if (!isAdded()) return;
+
+                    completedChatMessages.clear();
+
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        for (com.google.firebase.firestore.DocumentSnapshot doc :
+                                task.getResult()) {
+
+                            CompletedChatMessage m = new CompletedChatMessage();
+                            m.senderName = doc.getString("senderName");
+                            m.text = doc.getString("text");
+                            Long ts = doc.getLong("timestamp");
+                            m.timestamp = ts != null ? ts : 0L;
+
+                            completedChatMessages.add(m);
+                        }
+                    }
+
+                    completedChatAdapter.notifyDataSetChanged();
+
+                    if (txtCompletedChatEmpty != null) {
+                        txtCompletedChatEmpty.setVisibility(
+                                completedChatMessages.isEmpty() ? View.VISIBLE : View.GONE);
+                    }
+
+                    if (!completedChatMessages.isEmpty()) {
+                        recyclerCompletedChat.scrollToPosition(completedChatMessages.size() - 1);
+                    }
+                });
+    }
+
+    private static class CompletedChatMessage {
+        String senderName, text;
+        long timestamp;
+    }
+
+    private static class CompletedChatAdapter
+            extends RecyclerView.Adapter<CompletedChatAdapter.VH> {
+
+        private final List<CompletedChatMessage> items;
+
+        CompletedChatAdapter(List<CompletedChatMessage> items) {
+            this.items = items;
+        }
+
+        @NonNull
+        @Override
+        public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            return new VH(LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_chat_theirs, parent, false));
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull VH h, int position) {
+
+            CompletedChatMessage m = items.get(position);
+
+            h.txtMessage.setText(m.text);
+            h.txtTime.setText(new java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
+                    .format(new java.util.Date(m.timestamp)));
+
+            if (h.txtSender != null) {
+                h.txtSender.setText(m.senderName != null ? m.senderName : "");
+            }
+        }
+
+        @Override
+        public int getItemCount() { return items.size(); }
+
+        static class VH extends RecyclerView.ViewHolder {
+
+            TextView txtMessage, txtTime, txtSender;
+
+            VH(@NonNull View itemView) {
+                super(itemView);
+                txtMessage = itemView.findViewById(R.id.txtChatMessage);
+                txtTime = itemView.findViewById(R.id.txtChatTime);
+                txtSender = itemView.findViewById(R.id.txtChatSender);
             }
         }
     }

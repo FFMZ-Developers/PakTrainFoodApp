@@ -19,6 +19,9 @@ async function handleVerificationStatusChange(beforeData, afterData, uid, role) 
 
     if (!statusChanged) return;
 
+    console.log("handleVerificationStatusChange:", role, uid,
+        "-> transition to:", after.verificationStatus);
+
     if (after.verificationStatus === "verified") {
 
         await sendNotification({

@@ -129,15 +129,19 @@ public class LoginFragment extends Fragment {
 
                                 progressDialog.dismiss();
 
-                                FirebaseAuth.getInstance().signOut();
-
-                                // \u2705 FIX: was a Toast that vanished before most
-                                // people finished reading it, and never mentioned
-                                // the spam folder - which is where these emails
-                                // usually are. Now a dialog with a direct
-                                // "Open Email App" button.
+                                // ✅ FIX: signOut() used to run HERE, before the
+                                // dialog - which meant the dialog's "Resend
+                                // Email" button had no signed-in user to resend
+                                // for, and just told people to log in first...
+                                // from the login screen they were already on.
+                                // The sign-out now happens when the dialog is
+                                // dismissed, so Resend actually works, and the
+                                // user still ends up signed out either way.
                                 if (isAdded()) {
-                                    AuthDialogs.showNotVerified(requireContext(), email);
+                                    AuthDialogs.showNotVerified(requireContext(), email,
+                                            () -> FirebaseAuth.getInstance().signOut());
+                                } else {
+                                    FirebaseAuth.getInstance().signOut();
                                 }
 
                                 return;

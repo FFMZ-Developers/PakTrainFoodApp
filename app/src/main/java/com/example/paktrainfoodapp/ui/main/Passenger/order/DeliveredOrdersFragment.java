@@ -103,6 +103,18 @@ public class DeliveredOrdersFragment extends Fragment implements Refreshable {
 
                 OrderModel model = new OrderModel(orderId, price, status);
                 model.setOrderNumber(doc.getLong("orderNumber"));
+                    model.setRestaurantName(doc.getString("restaurantName"));
+                    model.setMealStation(doc.getString("mealStation"));
+                    Long ts = doc.getLong("timestamp");
+                    model.setTimestamp(ts != null ? ts : 0L);
+
+                // ✅ FIX: this tab never populated trainEtaEndTime at all -
+                // the ETA line stuck on the layout's placeholder text
+                // ("Estimated Arrival: --") permanently once an order left
+                // the Active tab.
+                Long trainEta = doc.getLong("trainEtaEndTime");
+                model.setTrainEtaEndTime(trainEta != null ? trainEta : 0L);
+
                 orderList.add(model);
             }
 
@@ -150,15 +162,62 @@ public class DeliveredOrdersFragment extends Fragment implements Refreshable {
 
             holder.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(order.getOrderNumber(), order.getOrderId()));
 
+            if (holder.txtRestaurantName != null) {
+                String restName = order.getRestaurantName();
+                if (restName != null && !restName.isEmpty()) {
+                    holder.txtRestaurantName.setVisibility(View.VISIBLE);
+                    holder.txtRestaurantName.setText(restName);
+                } else {
+                    holder.txtRestaurantName.setVisibility(View.GONE);
+                }
+            }
+
+            if (holder.txtStation != null) {
+                String st = order.getMealStation();
+                if (st != null && !st.isEmpty()) {
+                    holder.txtStation.setVisibility(View.VISIBLE);
+                    holder.txtStation.setText("Station: " + st);
+                } else {
+                    holder.txtStation.setVisibility(View.GONE);
+                }
+            }
+
+            if (holder.txtOrderDate != null) {
+                if (order.getTimestamp() > 0) {
+                    holder.txtOrderDate.setText(new java.text.SimpleDateFormat(
+                            "dd MMM yyyy, hh:mm a", java.util.Locale.getDefault())
+                            .format(new java.util.Date(order.getTimestamp())));
+                } else {
+                    holder.txtOrderDate.setText("");
+                }
+            }
+
             // Raw countdown removed - only the arrival estimate is shown.
             if (holder.txtTimer != null) holder.txtTimer.setVisibility(View.GONE);
             holder.txtTotalPrice.setText("Total: Rs " + order.getTotalPrice());
+
+            // Same "Estimated Arrival" binding the Active tab uses.
+            if (holder.txtEtaArrival != null) {
+                if (order.getTrainEtaEndTime() <= 0) {
+                    holder.txtEtaArrival.setVisibility(View.GONE);
+                } else {
+                    holder.txtEtaArrival.setVisibility(View.VISIBLE);
+                    java.text.SimpleDateFormat fmt =
+                            new java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault());
+                    holder.txtEtaArrival.setText(
+                            "Estimated Arrival: " + fmt.format(new java.util.Date(order.getTrainEtaEndTime())));
+                }
+            }
 
             holder.timeRow.setVisibility(View.VISIBLE);
             holder.btnReady.setEnabled(false);
             holder.btnReady.setAlpha(0.6f);
 
             String status = order.getStatus();
+
+            if (holder.txtStatusBadge != null) {
+                com.example.paktrainfoodapp.utils.StatusBadge.apply(holder.txtStatusBadge, status);
+            }
 
             if ("accepted_by_rider".equalsIgnoreCase(status)) {
                 holder.btnReady.setText("Accepted by Rider..");
@@ -205,7 +264,7 @@ public class DeliveredOrdersFragment extends Fragment implements Refreshable {
 
          class VH extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice, txtTimer;
+            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival, txtRestaurantName, txtStation, txtOrderDate, txtStatusBadge;
             LinearLayout timeRow;
             Button btnReady;
 
@@ -213,8 +272,13 @@ public class DeliveredOrdersFragment extends Fragment implements Refreshable {
                 super(itemView);
 
                 txtOrderId = itemView.findViewById(R.id.txtOrderId);
+                txtRestaurantName = itemView.findViewById(R.id.txtRestaurantName);
+                txtStation = itemView.findViewById(R.id.txtStation);
+                txtOrderDate = itemView.findViewById(R.id.txtOrderDate);
             txtTimer = itemView.findViewById(R.id.txtTimer);
+                txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
+                txtStatusBadge = itemView.findViewById(R.id.txtStatusBadge);
 
                 timeRow = itemView.findViewById(R.id.timeRow);
                 btnReady = itemView.findViewById(R.id.btnReady);

@@ -69,6 +69,13 @@
             android:maxLines="1"
             android:ellipsize="end" />
 
+        <!-- ✅ FIX: this screen (My Orders / My Deliveries in the profile
+             tab, shared across all three roles) never actually set this
+             field - it just sat here showing the layout's hardcoded
+             "Estimated Arrival" placeholder dashes on every single order
+             forever. Per the redesign, this screen shouldn't show an
+             estimate at all (the tab-based order lists elsewhere still
+             do), so it's removed here rather than wired up. -->
         <TextView
             android:id="@+id/txtEtaArrival"
             android:layout_width="match_parent"
@@ -79,7 +86,8 @@
             android:textStyle="bold"
             android:textSize="12sp"
             android:maxLines="1"
-            android:ellipsize="end" />
+            android:ellipsize="end"
+            android:visibility="gone" />
 
         <View
             android:layout_width="match_parent"

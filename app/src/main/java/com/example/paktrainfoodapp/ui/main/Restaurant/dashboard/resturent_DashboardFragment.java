@@ -15,8 +15,10 @@ import com.example.paktrainfoodapp.ui.main.Restaurant.restaurant_LoadFragment;
 
 public class resturent_DashboardFragment extends Fragment {
 
-    private LinearLayout btnProfile, btnMenu, btnDelivery;
-    private TextView tvOrdersCount, tvRevenue, tvMenuCount, tvRating, tvDashboardTitle;
+    private LinearLayout btnProfile, btnMenu, btnDelivery, btnHelpSupport;
+    private LinearLayout layoutRecentOrders;
+    private TextView tvOrdersCount, tvRevenue, tvMenuCount, tvRating, tvDashboardTitle,
+            tvDashboardGreeting, tvNoRecentOrders, tvViewAllOrders;
 
     private RestaurantDashboardViewModel viewModel;
 
@@ -34,6 +36,11 @@ public class resturent_DashboardFragment extends Fragment {
         btnProfile = view.findViewById(R.id.btnProfile);
         btnMenu = view.findViewById(R.id.btnMenu);
         btnDelivery = view.findViewById(R.id.btnDelivery);
+        btnHelpSupport = view.findViewById(R.id.btnHelpSupport);
+        layoutRecentOrders = view.findViewById(R.id.layoutRecentOrders);
+        tvNoRecentOrders = view.findViewById(R.id.tvNoRecentOrders);
+        tvViewAllOrders = view.findViewById(R.id.tvViewAllOrders);
+        tvDashboardGreeting = view.findViewById(R.id.tvDashboardGreeting);
 
         // Click listeners calling the parent's navigation method
         tvOrdersCount = view.findViewById(R.id.tvOrdersCount);
@@ -45,6 +52,28 @@ public class resturent_DashboardFragment extends Fragment {
         btnMenu.setOnClickListener(v -> navigateTo("menu"));
         btnDelivery.setOnClickListener(v -> navigateTo("delivery"));
         btnProfile.setOnClickListener(v -> navigateTo("profile"));
+        tvViewAllOrders.setOnClickListener(v -> navigateTo("order"));
+
+        if (btnHelpSupport != null) {
+            btnHelpSupport.setOnClickListener(v -> {
+                if (isAdded()) {
+                    requireActivity().getSupportFragmentManager()
+                            .beginTransaction()
+                            .replace(R.id.main_container,
+                                    new com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment())
+                            .addToBackStack(null)
+                            .commit();
+                }
+            });
+        }
+
+        // A time-based greeting reads as a small, human touch rather than
+        // a static "Welcome Back!" that never changes.
+        if (tvDashboardGreeting != null) {
+            int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+            String greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+            tvDashboardGreeting.setText(greeting);
+        }
 
         // Module 7 - warn the restaurant if their account has been
         // auto-paused for repeated reliability strikes (see
@@ -79,11 +108,81 @@ public class resturent_DashboardFragment extends Fragment {
             if (tvDashboardTitle != null) tvDashboardTitle.setText(name);
         });
 
+        viewModel.getRecentActiveOrders().observe(getViewLifecycleOwner(), this::bindRecentOrders);
+
         // Ratings aren't collected anywhere yet, so show a dash rather than a
         // fake 4.8 that would mislead during a demo.
         if (tvRating != null) tvRating.setText("—");
 
         viewModel.start();
+    }
+
+    /**
+     * Builds each "Recent Orders" row programmatically - simple enough not
+     * to need its own layout resource, and each row opens straight into
+     * that order's own live detail/tracking screen.
+     */
+    private void bindRecentOrders(java.util.List<com.google.firebase.firestore.DocumentSnapshot> orders) {
+
+        if (!isAdded() || layoutRecentOrders == null) return;
+
+        layoutRecentOrders.removeAllViews();
+
+        boolean empty = orders == null || orders.isEmpty();
+
+        if (tvNoRecentOrders != null) tvNoRecentOrders.setVisibility(empty ? View.VISIBLE : View.GONE);
+
+        if (empty) return;
+
+        float density = getResources().getDisplayMetrics().density;
+
+        for (com.google.firebase.firestore.DocumentSnapshot doc : orders) {
+
+            LinearLayout row = new LinearLayout(requireContext());
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setPadding(0, (int) (8 * density), 0, (int) (8 * density));
+            row.setClickable(true);
+            row.setFocusable(true);
+
+            android.util.TypedValue outValue = new android.util.TypedValue();
+            requireContext().getTheme().resolveAttribute(
+                    android.R.attr.selectableItemBackground, outValue, true);
+            row.setBackgroundResource(outValue.resourceId);
+
+            TextView txtTitle = new TextView(requireContext());
+            txtTitle.setTextColor(0xFF000000);
+            txtTitle.setTextSize(14);
+            txtTitle.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils
+                    .format(doc.getLong("orderNumber"), doc.getId()));
+
+            TextView txtStatus = new TextView(requireContext());
+            txtStatus.setTextSize(13);
+            txtStatus.setTextColor(0xFF00695C);
+            txtStatus.setPadding(0, (int) (2 * density), 0, 0);
+            txtStatus.setText(com.example.paktrainfoodapp.utils.StatusBadge.label(doc.getString("orderStatus")));
+
+            row.addView(txtTitle);
+            row.addView(txtStatus);
+
+            row.setOnClickListener(v -> {
+                if (!isAdded()) return;
+                requireActivity().getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.main_container,
+                                com.example.paktrainfoodapp.ui.main.Restaurant.order
+                                        .OrderDetailFragment.newInstance(doc.getId()))
+                        .addToBackStack(null)
+                        .commit();
+            });
+
+            layoutRecentOrders.addView(row);
+
+            View divider = new View(requireContext());
+            divider.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, (int) (1 * density)));
+            divider.setBackgroundColor(0xFFE0E0E0);
+            layoutRecentOrders.addView(divider);
+        }
     }
 
     private void navigateTo(String target) {

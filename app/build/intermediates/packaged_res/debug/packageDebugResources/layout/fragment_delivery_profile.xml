@@ -171,13 +171,43 @@
                     android:orientation="vertical"
                     android:padding="8dp">
 
+                    <!-- ✅ FIX: layout_help_support's closing tag was missing, so
+                         layout_share_app (and everything after it) was rendering
+                         NESTED inside the Help & Support row instead of as its
+                         own row - that's why the section looked broken/squashed.
+                         Each row is now a proper sibling. -->
                     <LinearLayout android:id="@+id/layout_help_support" android:clickable="true" android:focusable="true" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
                         <ImageView
                             android:layout_width="22dp"
                             android:layout_height="23dp"
                             android:src="@drawable/help_desk" />
                         <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="Help &amp; Support" android:textSize="16sp"/>
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="&gt;" android:textStyle="bold"/>
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" android:layout_marginHorizontal="12dp"/>
+
+                    <LinearLayout android:id="@+id/layout_share_app" android:clickable="true" android:focusable="true" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_share" />
+                        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="Share PakTrainFood" android:textSize="16sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="&gt;" android:textStyle="bold"/>
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" android:layout_marginHorizontal="12dp"/>
+
+                    <!-- New row: App Version - shows the real installed version
+                         (read from PackageManager, not a hardcoded string) and
+                         opens a small dialog with the same info on tap. -->
+                    <LinearLayout android:id="@+id/layout_app_version" android:clickable="true" android:focusable="true" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:gravity="center_vertical">
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/version_svgrepo_com" />
+                        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="16dp" android:text="App Version" android:textSize="16sp"/>
+                        <TextView android:id="@+id/txt_app_version" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1.0" android:textStyle="bold" android:textColor="@color/text_secondary"/>
                     </LinearLayout>
 
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/divider" android:layout_marginHorizontal="12dp"/>

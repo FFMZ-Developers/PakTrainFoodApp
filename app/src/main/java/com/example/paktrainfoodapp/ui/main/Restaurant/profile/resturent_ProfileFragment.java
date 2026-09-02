@@ -73,11 +73,30 @@ public class resturent_ProfileFragment extends Fragment {
         });
 
         wireRow(view, R.id.layout_settings,
-                new com.example.paktrainfoodapp.ui.shared.profile.SettingsFragment());
+                () -> new com.example.paktrainfoodapp.ui.shared.profile.SettingsFragment());
 
         wireRow(view, R.id.layout_my_orders,
-                com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.newInstance(
+                () -> com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.newInstance(
                         com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.ROLE_RESTAURANT));
+
+        // ✅ FIX: "Manage Menu" existed in the layout but was never wired -
+        // tapping it did nothing at all. It now opens the same menu screen
+        // (add/edit/remove items) the dashboard's Quick Access reaches.
+        wireRow(view, R.id.layout_manage_menu,
+                () -> new com.example.paktrainfoodapp.ui.main.Restaurant.menu.resturent_MenuFragment());
+
+        // \u2705 FIX: this row existed in the layout but had never been wired
+        // to anything at all - tapping "Help & Support" did nothing.
+        wireRow(view, R.id.layout_help_support,
+                () -> new com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment());
+
+        // Module: share the app - WhatsApp / copy link / anything else,
+        // via the system share sheet.
+        View layoutShare = view.findViewById(R.id.layout_share_app);
+        if (layoutShare != null) {
+            layoutShare.setOnClickListener(v ->
+                    com.example.paktrainfoodapp.utils.ShareUtils.showShareOptions(requireContext()));
+        }
 
         if (layoutAccountInfo != null) {
 
@@ -200,7 +219,13 @@ public class resturent_ProfileFragment extends Fragment {
 
                         String imageUrl = snapshot.getString("profileImageUrl");
                         if ((imageUrl == null || imageUrl.isEmpty())) {
-                            imageUrl = snapshot.getString("licenseImageUrl");
+                            // ✅ FIX: fell back to the LICENSE document photo
+                            // (a photo of a piece of paper) rather than the
+                            // owner's actual face from the verification
+                            // selfie step. selfieUrl is the correct default
+                            // for a profile picture nobody has manually
+                            // changed yet.
+                            imageUrl = snapshot.getString("selfieUrl");
                         }
                         if (imageUrl != null && !imageUrl.isEmpty() && profileImage != null) {
                             Glide.with(requireContext())
@@ -219,7 +244,15 @@ public class resturent_ProfileFragment extends Fragment {
      * Opens a shared screen from a profile row. All these screens are the same
      * ones the passenger uses - only the role argument differs.
      */
-    private void wireRow(View parent, int rowId, androidx.fragment.app.Fragment target) {
+    /**
+     * \u2705 FIX: this took a single, already-constructed Fragment INSTANCE.
+     * That instance was created once when the profile screen loaded, so
+     * navigating away and coming back tried to re-add the very same
+     * (already-used) fragment - which silently fails, making the row look
+     * completely dead on every tap after the first. It now takes a
+     * factory and builds a fresh instance per tap.
+     */
+    private void wireRow(View parent, int rowId, FragmentFactory factory) {
 
         View row = parent.findViewById(rowId);
 
@@ -228,9 +261,13 @@ public class resturent_ProfileFragment extends Fragment {
         row.setOnClickListener(v ->
                 getParentFragmentManager()
                         .beginTransaction()
-                        .replace(R.id.fragment_holder, target)
+                        .replace(R.id.fragment_holder, factory.create())
                         .addToBackStack(null)
                         .commit());
+    }
+
+    interface FragmentFactory {
+        androidx.fragment.app.Fragment create();
     }
 
     /**

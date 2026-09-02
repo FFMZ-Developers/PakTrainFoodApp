@@ -34,6 +34,17 @@ exports.onOrderCompleted = onDocumentUpdated(
         const subtotal = after.subtotal || 0;
         const deliveryFee = after.deliveryFee || 0;
 
+        // ✅ FIX: this field was read in multiple places (the admin
+        // panel's order timeline, and now the passenger app's "prompt for
+        // a rating" check) but never actually written anywhere - every
+        // reader was silently getting nothing. Written once, right here,
+        // where "completed" is first detected.
+        try {
+            await event.data.after.ref.update({ completedAt: Date.now() });
+        } catch (err) {
+            console.error("onOrderCompleted: couldn't write completedAt for", orderId, err);
+        }
+
         // =====================================
         // Restaurant Wallet
         // =====================================

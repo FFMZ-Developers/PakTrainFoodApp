@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.paktrainfoodapp-mergeDebugResources-101:/values-it-rIT/values-it-rIT.xml",
+            "outputFile": "com.example.paktrainfoodapp-mergeDebugResources-98:/values-it-rIT/values-it-rIT.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\8185391e0342fd9fc193cbfac0838aa0\\transformed\\stripe-3ds2-android-6.1.8\\res\\values-it-rIT\\values-it-rIT.xml",
+                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\0ec38b402193f3153ab6a2cc2f1e2009\\transformed\\stripe-3ds2-android-6.1.8\\res\\values-it-rIT\\values-it-rIT.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8",
                         "startColumns": "4,4,4,4,4,4,4",

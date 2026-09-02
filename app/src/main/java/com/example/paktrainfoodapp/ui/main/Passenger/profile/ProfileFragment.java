@@ -36,6 +36,7 @@ public class ProfileFragment extends Fragment {
     private TextView btnLogout;
 
     private LinearLayout layoutHelpSupport;
+    private LinearLayout layoutShareApp;
     private LinearLayout layoutAccountInfo;
     private LinearLayout layoutWallet;
     private LinearLayout layoutMyOrders;
@@ -76,6 +77,7 @@ public class ProfileFragment extends Fragment {
         btnLogout = view.findViewById(R.id.btn_logout);
 
         layoutHelpSupport = view.findViewById(R.id.layoutHelpSupport);
+        layoutShareApp = view.findViewById(R.id.layoutShareApp);
         layoutAccountInfo = view.findViewById(R.id.layout_account_info);
         layoutWallet = view.findViewById(R.id.layout_wallet);
         layoutMyOrders = view.findViewById(R.id.layout_my_orders);
@@ -171,6 +173,13 @@ public class ProfileFragment extends Fragment {
 
         });
 
+        // Module: share the app - WhatsApp / copy link / anything else,
+        // via the system share sheet.
+        if (layoutShareApp != null) {
+            layoutShareApp.setOnClickListener(v ->
+                    com.example.paktrainfoodapp.utils.ShareUtils.showShareOptions(requireContext()));
+        }
+
         // ==========================
         // Account Info -> Personal Info edit screen
         // ==========================
@@ -188,7 +197,8 @@ public class ProfileFragment extends Fragment {
 
         if (layoutMyOrders != null) {
             layoutMyOrders.setOnClickListener(v ->
-                    openDetail(new com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment()));
+                    openDetail(com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment
+                            .newInstance(com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.ROLE_PASSENGER)));
         }
 
         if (layoutAddress != null) {

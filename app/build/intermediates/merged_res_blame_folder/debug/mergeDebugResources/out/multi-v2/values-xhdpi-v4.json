@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.paktrainfoodapp-mergeDebugResources-101:/values-xhdpi-v4/values-xhdpi-v4.xml",
+            "outputFile": "com.example.paktrainfoodapp-mergeDebugResources-98:/values-xhdpi-v4/values-xhdpi-v4.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\002aa42107c44499d9bafdeeb7a8d220\\transformed\\payments-core-20.53.0\\res\\values-xhdpi-v4\\values-xhdpi-v4.xml",
+                    "source": "C:\\Users\\ha177\\.gradle\\caches\\8.11.1\\transforms\\4a5fa10f5d960e766c731077f32c8c3f\\transformed\\payments-core-20.53.0\\res\\values-xhdpi-v4\\values-xhdpi-v4.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

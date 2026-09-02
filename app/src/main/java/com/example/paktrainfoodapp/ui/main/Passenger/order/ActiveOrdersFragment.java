@@ -112,6 +112,10 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
 
                     OrderModel model = new OrderModel(orderId, totalPrice, status, trainEtaEndTime);
                     model.setOrderNumber(doc.getLong("orderNumber"));
+                    model.setRestaurantName(doc.getString("restaurantName"));
+                    model.setMealStation(doc.getString("mealStation"));
+                    Long ts = doc.getLong("timestamp");
+                    model.setTimestamp(ts != null ? ts : 0L);
                     orderList.add(model);
                 }
             }
@@ -218,9 +222,44 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
                 holder.btnDelete.setVisibility(View.VISIBLE);
             }
 
+            if (holder.txtRestaurantName != null) {
+                String restName = order.getRestaurantName();
+                if (restName != null && !restName.isEmpty()) {
+                    holder.txtRestaurantName.setVisibility(View.VISIBLE);
+                    holder.txtRestaurantName.setText(restName);
+                } else {
+                    holder.txtRestaurantName.setVisibility(View.GONE);
+                }
+            }
+
+            if (holder.txtStation != null) {
+                String st = order.getMealStation();
+                if (st != null && !st.isEmpty()) {
+                    holder.txtStation.setVisibility(View.VISIBLE);
+                    holder.txtStation.setText("Station: " + st);
+                } else {
+                    holder.txtStation.setVisibility(View.GONE);
+                }
+            }
+
+            if (holder.txtOrderDate != null) {
+                if (order.getTimestamp() > 0) {
+                    holder.txtOrderDate.setText(new java.text.SimpleDateFormat(
+                            "dd MMM yyyy, hh:mm a", java.util.Locale.getDefault())
+                            .format(new java.util.Date(order.getTimestamp())));
+                } else {
+                    holder.txtOrderDate.setText("");
+                }
+            }
+
             holder.txtTotalPrice.setText(
                     "Total: Rs " + order.getTotalPrice()
             );
+
+            // Status pill - top-right corner, same for every role/tab.
+            if (holder.txtStatusBadge != null) {
+                com.example.paktrainfoodapp.utils.StatusBadge.apply(holder.txtStatusBadge, order.getStatus());
+            }
 
             // Module: bind "Estimated Arrival" - the layout already has
             // this label, it just was never populated with data before.
@@ -326,7 +365,7 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
         static class OrderViewHolder
                 extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice, txtEtaArrival;
+            TextView txtOrderId, txtTotalPrice, txtEtaArrival, txtRestaurantName, txtStation, txtOrderDate, txtStatusBadge;
 
             android.widget.ImageView btnDelete;
 
@@ -337,11 +376,19 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
                 txtOrderId =
                         itemView.findViewById(R.id.txtOrderId);
 
+                txtRestaurantName =
+                        itemView.findViewById(R.id.txtRestaurantName);
+                txtStation = itemView.findViewById(R.id.txtStation);
+                txtOrderDate = itemView.findViewById(R.id.txtOrderDate);
+
                 txtTotalPrice =
                         itemView.findViewById(R.id.txtTotalPrice);
 
                 txtEtaArrival =
                         itemView.findViewById(R.id.txtEtaArrival);
+
+                txtStatusBadge =
+                        itemView.findViewById(R.id.txtStatusBadge);
 
                 btnDelete =
                         itemView.findViewById(R.id.btnDelete);

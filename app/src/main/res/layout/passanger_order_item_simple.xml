@@ -3,53 +3,133 @@
     xmlns:card_view="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="10dp"
+    android:layout_marginHorizontal="10dp"
+    android:layout_marginVertical="6dp"
     android:backgroundTint="@color/half_white"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    card_view:cardCornerRadius="12dp"
-    card_view:cardElevation="6dp"
+    card_view:cardCornerRadius="14dp"
+    card_view:cardElevation="4dp"
     app:cardBackgroundColor="@color/surface">
 <!---->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp">
+        android:padding="14dp">
 
+        <!-- ✅ FIX: was a plain 16sp label with no visual weight - the
+             order number is the single most important thing on this card
+             (what a passenger/restaurant/rider actually looks for), so it
+             now reads clearly at a glance. -->
         <TextView
             android:id="@+id/txtOrderId"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentStart="true"
+            android:layout_toStartOf="@id/txtStatusBadge"
+            android:layout_marginEnd="8dp"
             android:text="Order ID"
-            android:textSize="16sp"
+            android:textSize="19sp"
+            android:textColor="@color/teal_700"
             android:textStyle="bold" />
+
+        <!-- Module: which restaurant this order is with - was missing
+             entirely from this shared card. Left empty/gone by default;
+             only the tabs that actually populate it (passenger and rider
+             screens - a restaurant already knows its own orders are its
+             own) show it. -->
+        <TextView
+            android:id="@+id/txtRestaurantName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/txtOrderId"
+            android:layout_marginTop="3dp"
+            android:text=""
+            android:textSize="14sp"
+            android:textColor="#424242"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/txtTotalPrice"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/txtOrderId"
-            android:layout_marginTop="5dp"
-            android:text="Total Price" />
+            android:layout_below="@id/orderCardDivider"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="8dp"
+            android:text="Total Price"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/teal_700" />
+
+        <!-- Module: status pill, always shown at the top-right corner of
+             every order card, on every tab, for all three roles. Colour +
+             label come from StatusBadge.apply() so it's guaranteed to
+             match the same status everywhere it's shown. Sits ABOVE
+             btnDelete/btnAccept (which now anchor below it) so the two
+             never overlap. -->
+        <TextView
+            android:id="@+id/txtStatusBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:text="Status"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <!-- Module: station + date, matching the (better) card design the
+             profile-opened order list already used - the bottom-nav tabs
+             were showing a much barer card for the exact same orders. -->
+        <TextView
+            android:id="@+id/txtStation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/txtRestaurantName"
+            android:layout_marginTop="3dp"
+            android:text=""
+            android:textSize="13sp"
+            android:textColor="#757575"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/txtEtaArrival"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/txtTotalPrice"
-            android:layout_marginTop="4dp"
+            android:layout_below="@id/txtStation"
+            android:layout_marginTop="5dp"
             android:text="Estimated Arrival: --"
             android:textSize="13sp"
             android:textStyle="bold"
             android:textColor="@color/teal_700" />
 
+        <View
+            android:id="@+id/orderCardDivider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_below="@id/txtEtaArrival"
+            android:layout_marginTop="10dp"
+            android:background="#EEEEEE" />
+
+        <TextView
+            android:id="@+id/txtOrderDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/orderCardDivider"
+            android:layout_alignParentStart="true"
+            android:layout_marginTop="8dp"
+            android:text=""
+            android:textSize="12sp"
+            android:textColor="#9E9E9E" />
+
         <ImageView
             android:id="@+id/btnDelete"
             android:layout_width="34dp"
             android:layout_height="34dp"
-            android:layout_alignParentTop="true"
+            android:layout_below="@id/txtStatusBadge"
             android:layout_alignParentEnd="true"
+            android:layout_marginTop="6dp"
             android:padding="5dp"
             android:src="@android:drawable/ic_menu_delete"
             android:visibility="gone"
@@ -71,7 +151,7 @@
             android:id="@+id/timeRow"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/txtEtaArrival"
+            android:layout_below="@id/txtOrderDate"
             android:layout_alignParentEnd="true"
             android:layout_marginTop="10dp"
             android:layout_marginEnd="8dp"

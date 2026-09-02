@@ -643,7 +643,10 @@ public class WalletFragment extends Fragment {
                             "History snapshot: " + snapshot.size() + " entries at Wallets/"
                                     + WalletPaths.roleFolder(role()) + "/Accounts/" + uid + "/history");
 
-                    historyList.clear();
+                    java.util.List<WalletHistory> freshList = new java.util.ArrayList<>();
+                    java.util.List<com.google.android.gms.tasks.Task<DocumentSnapshot>> orderLookups =
+                            new java.util.ArrayList<>();
+                    FirebaseFirestore db = FirebaseFirestore.getInstance();
 
                     for (DocumentSnapshot doc : snapshot.getDocuments()) {
 
@@ -654,16 +657,53 @@ public class WalletFragment extends Fragment {
                         String orderId = doc.getString("orderId");
                         String date = doc.getString("date");
 
-                        historyList.add(new WalletHistory(
+                        WalletHistory entry = new WalletHistory(
                                 type != null ? type : "Transaction",
                                 String.valueOf((int) amount.doubleValue()),
                                 date != null ? date : "",
-                                orderId != null ? orderId : "-"));
+                                orderId != null ? orderId : "-");
+
+                        freshList.add(entry);
+
+                        // orderId here is the Firestore document id of the order, not
+                        // the sequential number a person can read - look that up so
+                        // the row can show "Order #0001" instead of the raw id.
+                        orderLookups.add(orderId != null
+                                ? db.collection("Orders").document(orderId).get()
+                                : com.google.android.gms.tasks.Tasks.forResult(null));
                     }
 
-                    adapter.notifyDataSetChanged();
+                    com.google.android.gms.tasks.Tasks.whenAllComplete(orderLookups)
+                            .addOnCompleteListener(ignored -> {
 
-                    txtNoHistory.setVisibility(historyList.isEmpty() ? View.VISIBLE : View.GONE);
+                                if (!isAdded()) return;
+
+                                for (int i = 0; i < freshList.size(); i++) {
+
+                                    com.google.android.gms.tasks.Task<DocumentSnapshot> task =
+                                            orderLookups.get(i);
+
+                                    if (!task.isSuccessful() || task.getResult() == null) continue;
+
+                                    Long orderNumber = task.getResult().getLong("orderNumber");
+                                    if (orderNumber == null) continue;
+
+                                    WalletHistory old = freshList.get(i);
+                                    freshList.set(i, new WalletHistory(
+                                            old.getType(),
+                                            old.getAmount(),
+                                            old.getDate(),
+                                            old.getOrderId(),
+                                            orderNumber));
+                                }
+
+                                historyList.clear();
+                                historyList.addAll(freshList);
+                                adapter.notifyDataSetChanged();
+
+                                txtNoHistory.setVisibility(
+                                        historyList.isEmpty() ? View.VISIBLE : View.GONE);
+                            });
                 });
     }
 

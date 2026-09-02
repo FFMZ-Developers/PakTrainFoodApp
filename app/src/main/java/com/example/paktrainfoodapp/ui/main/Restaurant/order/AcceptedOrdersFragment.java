@@ -216,32 +216,31 @@ public class AcceptedOrdersFragment extends Fragment {
             h.btnAccept.setVisibility(View.GONE);
             h.btnDelete.setVisibility(View.GONE);
 
-            h.timeRow.setVisibility(View.VISIBLE);
-            h.btnReady.setVisibility(View.VISIBLE);
+            h.timeRow.setVisibility(View.GONE);
+            h.btnReady.setVisibility(View.GONE);
             h.btnReady.setEnabled(true);
+            h.btnReady.setAlpha(1f);
 
             String status = m.getStatus();
 
-// RESET default
-            h.btnReady.setEnabled(true);
-            h.btnReady.setAlpha(1f);
-            h.btnReady.setVisibility(View.VISIBLE);
+            // Status pill - always shown, top-right corner, same for every
+            // role/tab (see StatusBadge).
+            com.example.paktrainfoodapp.utils.StatusBadge.apply(h.txtStatusBadge, status);
 
 // STATUS UI CONTROL
             switch (status) {
 
                 case "Accepted":
+                    h.timeRow.setVisibility(View.VISIBLE);
+                    h.btnReady.setVisibility(View.VISIBLE);
                     h.btnReady.setText("Ready For Delivery");
                     h.btnReady.setEnabled(true);
                     h.btnReady.setAlpha(1f);
                     break;
 
                 case "ready_for_delivery":
-                    // Not an action - it's a state, so it reads as a badge
-                    // rather than a button nobody can press (see StatusBadge).
-                    com.example.paktrainfoodapp.utils.StatusBadge.apply(h.btnReady, status);
-                    h.btnReady.setEnabled(false);
-                    h.btnReady.setAlpha(1f);
+                    // Nothing actionable here for the restaurant - the top
+                    // badge already says "Waiting for Rider", so no button.
 
                     // Module: restaurant can flag "no rider is coming"
                     // once an order has been sitting unclaimed - the
@@ -432,7 +431,7 @@ public class AcceptedOrdersFragment extends Fragment {
 
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival;
+            TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival, txtStatusBadge;
             ImageView btnDelete, btnAccept;
             Button btnReady;
             LinearLayout timeRow;
@@ -444,6 +443,7 @@ public class AcceptedOrdersFragment extends Fragment {
                 txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
                 txtTimer = itemView.findViewById(R.id.txtTimer);
                 txtEtaArrival = itemView.findViewById(R.id.txtEtaArrival);
+                txtStatusBadge = itemView.findViewById(R.id.txtStatusBadge);
 
                 btnDelete = itemView.findViewById(R.id.btnDelete);
                 btnAccept = itemView.findViewById(R.id.btnAccept);

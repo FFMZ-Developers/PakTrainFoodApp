@@ -383,6 +383,7 @@ public class Order_New_Fragment extends Fragment {
 
             order.setStatus(doc.getString("orderStatus"));
                         order.setOrderNumber(doc.getLong("orderNumber"));
+                        order.setRestaurantName(doc.getString("restaurantName"));
 
                         Long trainEta = doc.getLong("trainEtaEndTime");
                         order.setTrainEtaEndTime(trainEta != null ? trainEta : 0L);
@@ -424,7 +425,14 @@ public class Order_New_Fragment extends Fragment {
         }
     }
 
-    private void updateStatus(DeliveryBoyModel order, String arriveRiderAtResturent) {
+    // ✅ FIX: this used to be an empty stub, so tapping "Arrived" / "Pickup"
+    // on this tab updated nothing in Firestore and silently did nothing -
+    // mirrors Order_Accept_Fragment's updateStatus.
+    private void updateStatus(DeliveryBoyModel order, String status) {
+
+        db.collection("Orders")
+                .document(order.getOrderId())
+                .update("orderStatus", status);
     }
 
     @Override

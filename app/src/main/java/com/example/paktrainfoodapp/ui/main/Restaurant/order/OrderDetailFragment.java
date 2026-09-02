@@ -25,6 +25,8 @@ import com.google.android.gms.maps.*;
 import com.google.android.gms.maps.model.*;
 import com.google.firebase.database.*;
 import com.google.firebase.firestore.*;
+import com.google.firebase.firestore.Query;
+
 import java.text.NumberFormat;
 import java.util.*;
 
@@ -101,6 +103,8 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
     private com.google.android.gms.maps.model.Polyline legToStationPolyline;
     private String legToRestaurantDuration;
     private String legToStationDuration;
+    private String legToRestaurantDistance;
+    private String legToStationDistance;
     private com.google.firebase.database.DatabaseReference riderLocationRef;
     private ValueEventListener riderLocationListener;
     private boolean riderHasPickedUp = false;
@@ -137,6 +141,23 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
     private OrderItemsAdapter adapter;
     private final List<MenuitemModel> itemList = new ArrayList<>();
 
+    // Module: order id / status pill (always shown) + the completed-only
+    // summary (completed time + read-only chat). See updateTerminalUi().
+    private TextView txtDetailOrderId, txtDetailStatusBadge, txtCompletedTime;
+    private View mapContainer, layoutLiveTrackingCard, layoutCompletedTime, layoutCompletedChat;
+    // The two conversations are kept visually SEPARATE, never merged -
+    // a rider was in both, but they're different chats about different
+    // phases of the order, so mixing them into one timeline just reads
+    // as confusing. Restaurant thread block:
+    private View layoutChatRestaurant, dividerChatThreads;
+    private TextView txtChatRestaurantTitle, txtChatRestaurantEmpty;
+    private RecyclerView recyclerChatRestaurant;
+    // Passenger thread block:
+    private View layoutChatPassenger;
+    private TextView txtChatPassengerTitle, txtChatPassengerEmpty;
+    private RecyclerView recyclerChatPassenger;
+    private String currentOrderStatus;
+
     public static OrderDetailFragment newInstance(String orderId) {
         OrderDetailFragment f = new OrderDetailFragment();
         Bundle b = new Bundle();
@@ -165,6 +186,11 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
         lastRouteRefreshAt = 0;
         lastNearestStationIndex = -1;
         lastSavedMinutes = -1;
+        currentOrderStatus = null;
+        completedChatAdapterRestaurant = null;
+        completedChatAdapterPassenger = null;
+        completedChatMessagesRestaurant.clear();
+        completedChatMessagesPassenger.clear();
 
         trainMarker = null;
         mealMarker = null;
@@ -174,6 +200,8 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
         legToStationPolyline = null;
         legToRestaurantDuration = null;
         legToStationDuration = null;
+        legToRestaurantDistance = null;
+        legToStationDistance = null;
         routeStationMarkers.clear();
         routePoints.clear();
         routeStationNames.clear();
@@ -202,6 +230,29 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
         recyclerItems = v.findViewById(R.id.recyclerItems);
         txtTotalPrice = v.findViewById(R.id.txtTotalPrice);
 
+        txtDetailOrderId = v.findViewById(R.id.txtDetailOrderId);
+        txtDetailStatusBadge = v.findViewById(R.id.txtDetailStatusBadge);
+        mapContainer = v.findViewById(R.id.mapContainer);
+        layoutLiveTrackingCard = v.findViewById(R.id.layoutLiveTrackingCard);
+        layoutCompletedTime = v.findViewById(R.id.layoutCompletedTime);
+        txtCompletedTime = v.findViewById(R.id.txtCompletedTime);
+        layoutCompletedChat = v.findViewById(R.id.layoutCompletedChat);
+        layoutChatRestaurant = v.findViewById(R.id.layoutChatRestaurant);
+        dividerChatThreads = v.findViewById(R.id.dividerChatThreads);
+        txtChatRestaurantTitle = v.findViewById(R.id.txtChatRestaurantTitle);
+        txtChatRestaurantEmpty = v.findViewById(R.id.txtChatRestaurantEmpty);
+        recyclerChatRestaurant = v.findViewById(R.id.recyclerChatRestaurant);
+        layoutChatPassenger = v.findViewById(R.id.layoutChatPassenger);
+        txtChatPassengerTitle = v.findViewById(R.id.txtChatPassengerTitle);
+        txtChatPassengerEmpty = v.findViewById(R.id.txtChatPassengerEmpty);
+        recyclerChatPassenger = v.findViewById(R.id.recyclerChatPassenger);
+        if (recyclerChatRestaurant != null) {
+            recyclerChatRestaurant.setLayoutManager(new LinearLayoutManager(getContext()));
+        }
+        if (recyclerChatPassenger != null) {
+            recyclerChatPassenger.setLayoutManager(new LinearLayoutManager(getContext()));
+        }
+
         ImageView btnBack = v.findViewById(R.id.btnBack);
         if (btnBack != null) {
             btnBack.setOnClickListener(view -> {
@@ -229,6 +280,7 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
         mMap = googleMap;
         mapReady = true;
         mMap.setPadding(0, 24, 0, 24);
+        mMap.setOnPolylineClickListener(this::onRiderLegClicked);
         loadOrder();
     }
 
@@ -254,6 +306,7 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
             String status = doc.getString("orderStatus");
             String assignedRiderId = doc.getString("acceptedBy");
 
+            currentOrderStatus = status;
             riderHasPickedUp = "pick_up".equals(status) || "completed".equals(status);
 
             restaurantNameForChat = doc.getString("restaurantName");
@@ -263,6 +316,11 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
             riderPhoneForChat = doc.getString("riderPhone");
 
             setupContactButtons(status, assignedRiderId);
+
+            // Order id / status pill (top of screen) + swaps the whole
+            // screen between "live tracking" and "completed summary" -
+            // see updateTerminalUi().
+            updateTerminalUi(status, doc.getLong("orderNumber"), doc.getLong("completedAt"));
 
             if (assignedRiderId != null && !assignedRiderId.isEmpty()
                     && !assignedRiderId.equals(trackedRiderId)) {
@@ -278,6 +336,17 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
                 lastRouteRefreshAt = 0;
                 refreshRiderRoute();
             }
+
+            // ✅ FIX: Start Navigation's visibility used to be set ONLY
+            // inside updateRiderEtaText() - i.e. only after the Directions
+            // API successfully returned a route. If that call was slow,
+            // failed, or never fired (no network, quota, etc.) the button
+            // just silently never appeared, even for the rider it's meant
+            // for. The button itself doesn't need the drawn route at all -
+            // it only needs a destination point - so its visibility is now
+            // decided independently, right here, every time the order
+            // updates.
+            updateNavigationButtonVisibility();
 
             if (staticDataLoaded) return;
             staticDataLoaded = true;
@@ -344,6 +413,7 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
             if (rLat != null && rLng != null) {
                 restaurantPos = new LatLng(rLat, rLng);
                 placeRestaurantMarker();
+                updateNavigationButtonVisibility();
             }
         });
     }
@@ -473,6 +543,7 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
 
         // Rider route may have been waiting on this coordinate.
         refreshRiderRoute();
+        updateNavigationButtonVisibility();
 
         buildCumulativeDistances();
         etaCalculator.setRoute(routePoints);
@@ -710,8 +781,8 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
             riderMarker = mMap.addMarker(new MarkerOptions()
                     .position(pos)
                     .title("Rider")
-                    .icon(MapIconUtils.vectorToBitmapDescriptor(
-                            requireContext(), R.drawable.ic_rider_marker, 44))
+                    .icon(MapIconUtils.circularBitmapDescriptor(
+                            requireContext(), R.drawable.logo5, 40))
                     .anchor(0.5f, 0.5f));
 
         } else {
@@ -748,6 +819,7 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
     private void refreshRiderRoute() {
 
         if (!isAdded() || !mapReady || riderPos == null) return;
+        if (isTerminalStatus(currentOrderStatus)) return;
 
         long now = System.currentTimeMillis();
 
@@ -765,6 +837,7 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
             }
 
             legToRestaurantDuration = null;
+            legToRestaurantDistance = null;
 
             drawLeg(riderPos, mealStationPos, 0xFFEF6C00, false);
 
@@ -798,12 +871,17 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
 
                         if (existing != null) existing.remove();
 
+                        // Module: real road route from Google Directions -
+                        // clickable, so tapping either leg on the map shows
+                        // that leg's own time/distance (see
+                        // setOnPolylineClickListener() in onMapReady()).
                         com.google.android.gms.maps.model.Polyline drawn =
                                 mMap.addPolyline(new PolylineOptions()
                                         .addAll(result.points)
                                         .width(14f)
                                         .color(colour)
                                         .zIndex(2f)
+                                        .clickable(true)
                                         .startCap(new RoundCap())
                                         .endCap(new RoundCap())
                                         .jointType(JointType.ROUND));
@@ -811,9 +889,11 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
                         if (toRestaurant) {
                             legToRestaurantPolyline = drawn;
                             legToRestaurantDuration = result.durationText;
+                            legToRestaurantDistance = result.distanceText;
                         } else {
                             legToStationPolyline = drawn;
                             legToStationDuration = result.durationText;
+                            legToStationDistance = result.distanceText;
                         }
 
                         updateRiderEtaText();
@@ -838,19 +918,83 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
 
         if (!riderHasPickedUp && legToRestaurantDuration != null) {
             sb.append("\uD83D\uDEF5 To restaurant: ").append(legToRestaurantDuration);
+            if (legToRestaurantDistance != null) {
+                sb.append(" \u2022 ").append(legToRestaurantDistance);
+            }
         }
 
         if (legToStationDuration != null) {
             if (sb.length() > 0) sb.append("   \u2192   ");
             sb.append("\uD83D\uDCE6 To station: ").append(legToStationDuration);
+            if (legToStationDistance != null) {
+                sb.append(" \u2022 ").append(legToStationDistance);
+            }
         }
 
         if (sb.length() == 0) return;
 
         txtRiderEta.setVisibility(View.VISIBLE);
         txtRiderEta.setText(sb.toString());
+    }
 
-        if (btnNavigate != null) btnNavigate.setVisibility(View.VISIBLE);
+    /**
+     * Tapping either coloured leg on the map shows a small toast with
+     * that specific leg's time and distance - "un k km ya m bhi aur time
+     * har route jis pr click kre us ka" - so the numbers aren't only
+     * readable when both legs happen to fit on one line above the map.
+     */
+    private void onRiderLegClicked(com.google.android.gms.maps.model.Polyline polyline) {
+
+        if (!isAdded()) return;
+
+        String label;
+        String duration;
+        String distance;
+
+        if (polyline.equals(legToRestaurantPolyline)) {
+            label = "Rider \u2192 Restaurant";
+            duration = legToRestaurantDuration;
+            distance = legToRestaurantDistance;
+        } else if (polyline.equals(legToStationPolyline)) {
+            label = riderHasPickedUp ? "Rider \u2192 Meal Station" : "Restaurant \u2192 Meal Station";
+            duration = legToStationDuration;
+            distance = legToStationDistance;
+        } else {
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder(label).append(": ");
+        if (duration != null) sb.append(duration);
+        if (distance != null) sb.append(" \u2022 ").append(distance);
+
+        Toast.makeText(getContext(), sb.toString(), Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Decides whether "Start Navigation" is shown - deliberately kept
+     * independent of the Directions API result (see updateRiderEtaText()).
+     * The button only launches the external Google Maps app with a
+     * destination point, so all it actually needs is that destination
+     * (restaurantPos before pickup, mealStationPos after) plus being the
+     * rider - it doesn't need the in-app polyline/duration to have loaded
+     * first. Called every time the order snapshot, restaurantPos or
+     * mealStationPos changes, so it can never get stuck hidden just
+     * because a Directions call was slow or failed.
+     */
+    private void updateNavigationButtonVisibility() {
+
+        if (btnNavigate == null) return;
+
+        if (isTerminalStatus(currentOrderStatus)) {
+            btnNavigate.setVisibility(View.GONE);
+            return;
+        }
+
+        LatLng target = riderHasPickedUp ? mealStationPos : restaurantPos;
+
+        boolean show = "DELIVERY".equalsIgnoreCase(myRole()) && target != null;
+
+        btnNavigate.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
     /**
@@ -972,14 +1116,7 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
 
         boolean riderAssigned = assignedRiderId != null && !assignedRiderId.isEmpty();
 
-        boolean terminal = status == null
-                || status.equals("completed")
-                || status.equals("Cancelled")
-                || status.equals("Rejected")
-                || status.equals("delivery_failed")
-                || status.equals("disputed");
-
-        if (!riderAssigned || terminal) {
+        if (!riderAssigned || isTerminalStatus(status)) {
             layoutContact.setVisibility(View.GONE);
             return;
         }
@@ -1063,6 +1200,251 @@ public class OrderDetailFragment extends Fragment implements OnMapReadyCallback 
                 Toast.makeText(getContext(), "Couldn't open dialer", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    /**
+     * A single definition of "this order is finished" - used everywhere
+     * the screen needs to decide between live tracking and a closed
+     * order (contact buttons, navigation button, map, completed summary).
+     * Keeping one definition means every one of those places agrees.
+     */
+    private boolean isTerminalStatus(String status) {
+        return status == null
+                || status.equals("completed")
+                || status.equals("Cancelled")
+                || status.equals("Rejected")
+                || status.equals("delivery_failed")
+                || status.equals("disputed");
+    }
+
+    /**
+     * Module: order id + status pill at the top of the screen (every
+     * status), and the switch between "live tracking" (map + ETA card)
+     * and "completed summary" (delivered time + read-only chat) once the
+     * order reaches a terminal state.
+     *
+     * ✅ FIX: a completed order used to keep showing the live map, the
+     * rider's ETA text and the Start Navigation button, and had no order
+     * id, status or delivered time on screen at all. Now, once the order
+     * is done, the map and every live-tracking control disappear (nothing
+     * left to track), and a clean summary - order id, status, train,
+     * delivery station, coach, seat, delivered time, items, total price
+     * and the chat history - is all that's left.
+     */
+    private void updateTerminalUi(String status, Long orderNumber, Long completedAtMillis) {
+
+        if (!isAdded()) return;
+
+        if (txtDetailOrderId != null) {
+            txtDetailOrderId.setText(
+                    com.example.paktrainfoodapp.utils.OrderNumberUtils.format(orderNumber, orderId));
+        }
+
+        if (txtDetailStatusBadge != null) {
+            com.example.paktrainfoodapp.utils.StatusBadge.apply(txtDetailStatusBadge, status);
+        }
+
+        boolean terminal = isTerminalStatus(status);
+        boolean completed = "completed".equals(status);
+
+        if (mapContainer != null) mapContainer.setVisibility(terminal ? View.GONE : View.VISIBLE);
+        if (layoutLiveTrackingCard != null) {
+            layoutLiveTrackingCard.setVisibility(terminal ? View.GONE : View.VISIBLE);
+        }
+
+        if (layoutCompletedTime != null) {
+            layoutCompletedTime.setVisibility(completed ? View.VISIBLE : View.GONE);
+        }
+
+        if (completed && txtCompletedTime != null) {
+            if (completedAtMillis != null && completedAtMillis > 0) {
+                txtCompletedTime.setText("Delivered at: " + new java.text.SimpleDateFormat(
+                        "dd MMM yyyy, hh:mm a", java.util.Locale.getDefault())
+                        .format(new java.util.Date(completedAtMillis)));
+            } else {
+                txtCompletedTime.setText("Delivered");
+            }
+        }
+
+        if (layoutCompletedChat != null) {
+            layoutCompletedChat.setVisibility(completed ? View.VISIBLE : View.GONE);
+        }
+
+        TextView txtDetailTitle = getView() != null ? getView().findViewById(R.id.txtDetailTitle) : null;
+        if (txtDetailTitle != null) {
+            txtDetailTitle.setText(terminal ? "Order Details" : "Live Order Tracking");
+        }
+
+        if (completed) {
+            setupCompletedChatSections();
+            loadCompletedChatHistory();
+        }
+    }
+
+    private final List<CompletedChatMessage> completedChatMessagesRestaurant = new ArrayList<>();
+    private final List<CompletedChatMessage> completedChatMessagesPassenger = new ArrayList<>();
+    private CompletedChatAdapter completedChatAdapterRestaurant;
+    private CompletedChatAdapter completedChatAdapterPassenger;
+
+    /**
+     * Decides which of the two thread blocks this viewer should even see,
+     * and what to label them - a restaurant/passenger only ever had ONE
+     * conversation (with the rider), so they see a single block titled
+     * "Chat with Rider". A rider was in both, so they see both blocks,
+     * clearly separated (never merged into one timeline) and labelled by
+     * who each one was with.
+     */
+    private void setupCompletedChatSections() {
+
+        String role = myRole();
+        boolean isRestaurant = "RESTAURANT".equalsIgnoreCase(role);
+        boolean isPassenger = "PASSENGER".equalsIgnoreCase(role) || role == null || role.isEmpty();
+        boolean isRider = !isRestaurant && !isPassenger;
+
+        if (layoutChatRestaurant != null) {
+            layoutChatRestaurant.setVisibility(isPassenger ? View.GONE : View.VISIBLE);
+        }
+        if (txtChatRestaurantTitle != null) {
+            txtChatRestaurantTitle.setText(isRestaurant ? "Chat with Rider" : "Chat with Restaurant");
+        }
+
+        if (layoutChatPassenger != null) {
+            layoutChatPassenger.setVisibility(isRestaurant ? View.GONE : View.VISIBLE);
+        }
+        if (txtChatPassengerTitle != null) {
+            txtChatPassengerTitle.setText(isPassenger ? "Chat with Rider" : "Chat with Passenger");
+        }
+
+        // Divider between the two blocks only makes sense when both are
+        // actually showing (the rider's view).
+        if (dividerChatThreads != null) {
+            dividerChatThreads.setVisibility(isRider ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    /**
+     * Read-only transcript for a finished order - no send box, this is
+     * just a record of what was said. The two conversations are fetched
+     * and rendered completely independently (never merged) - see
+     * setupCompletedChatSections() for who sees which one. A completed
+     * order's chat can't change any more, so a single fetch (not a live
+     * listener) is enough, and every message that was ever sent is kept
+     * in the list - the card only ever grows to fit them (wrap_content,
+     * nested scrolling off) inside the screen's own outer scroll, so nothing
+     * is cut off; you just scroll the page to read the rest.
+     */
+    private void loadCompletedChatHistory() {
+
+        if (orderId == null) return;
+
+        String role = myRole();
+        boolean isRestaurant = "RESTAURANT".equalsIgnoreCase(role);
+        boolean isPassenger = "PASSENGER".equalsIgnoreCase(role) || role == null || role.isEmpty();
+
+        if (!isPassenger && recyclerChatRestaurant != null) {
+            fetchChatThread("chats_restaurant", recyclerChatRestaurant, txtChatRestaurantEmpty,
+                    completedChatMessagesRestaurant, true);
+        }
+
+        if (!isRestaurant && recyclerChatPassenger != null) {
+            fetchChatThread("chats_passenger", recyclerChatPassenger, txtChatPassengerEmpty,
+                    completedChatMessagesPassenger, false);
+        }
+    }
+
+    private void fetchChatThread(String threadCollection, RecyclerView recycler, TextView emptyLabel,
+                                 List<CompletedChatMessage> targetList, boolean isRestaurantThread) {
+
+        firestore.collection("Orders").document(orderId)
+                .collection(threadCollection)
+                .orderBy("timestamp", Query.Direction.ASCENDING)
+                .get()
+                .addOnCompleteListener(task -> {
+
+                    if (!isAdded()) return;
+
+                    targetList.clear();
+
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        for (com.google.firebase.firestore.DocumentSnapshot doc : task.getResult()) {
+
+                            CompletedChatMessage m = new CompletedChatMessage();
+                            m.senderName = doc.getString("senderName");
+                            m.text = doc.getString("text");
+                            Long ts = doc.getLong("timestamp");
+                            m.timestamp = ts != null ? ts : 0L;
+
+                            targetList.add(m);
+                        }
+                    }
+
+                    CompletedChatAdapter adapter = isRestaurantThread
+                            ? completedChatAdapterRestaurant : completedChatAdapterPassenger;
+
+                    if (adapter == null) {
+                        adapter = new CompletedChatAdapter(targetList);
+                        recycler.setAdapter(adapter);
+                        if (isRestaurantThread) completedChatAdapterRestaurant = adapter;
+                        else completedChatAdapterPassenger = adapter;
+                    } else {
+                        adapter.notifyDataSetChanged();
+                    }
+
+                    if (emptyLabel != null) {
+                        emptyLabel.setVisibility(targetList.isEmpty() ? View.VISIBLE : View.GONE);
+                    }
+                });
+    }
+
+    private static class CompletedChatMessage {
+        String senderName, text;
+        long timestamp;
+    }
+
+    private static class CompletedChatAdapter
+            extends RecyclerView.Adapter<CompletedChatAdapter.VH> {
+
+        private final List<CompletedChatMessage> items;
+
+        CompletedChatAdapter(List<CompletedChatMessage> items) {
+            this.items = items;
+        }
+
+        @NonNull
+        @Override
+        public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            return new VH(LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_chat_theirs, parent, false));
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull VH h, int position) {
+
+            CompletedChatMessage m = items.get(position);
+
+            h.txtMessage.setText(m.text);
+            h.txtTime.setText(new java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
+                    .format(new java.util.Date(m.timestamp)));
+
+            if (h.txtSender != null) {
+                h.txtSender.setText(m.senderName != null ? m.senderName : "");
+            }
+        }
+
+        @Override
+        public int getItemCount() { return items.size(); }
+
+        static class VH extends RecyclerView.ViewHolder {
+
+            TextView txtMessage, txtTime, txtSender;
+
+            VH(@NonNull View itemView) {
+                super(itemView);
+                txtMessage = itemView.findViewById(R.id.txtChatMessage);
+                txtTime = itemView.findViewById(R.id.txtChatTime);
+                txtSender = itemView.findViewById(R.id.txtChatSender);
+            }
+        }
     }
 
     private void updateCurrentStation() {

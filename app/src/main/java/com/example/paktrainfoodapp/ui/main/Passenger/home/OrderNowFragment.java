@@ -48,6 +48,11 @@ public class OrderNowFragment extends DialogFragment {
     private ImageView imgFood;
     private TextView txtName, txtPrice, txtDesc, txtRest;
     private EditText edtTicket, edtCoach, edtSeat, edtTrain, edtPhone;
+    private android.widget.Button btnUploadTicket;
+    private android.widget.ImageView imgTicketPreview;
+    private androidx.activity.result.ActivityResultLauncher<String> ticketGalleryLauncher;
+    private androidx.activity.result.ActivityResultLauncher<Void> ticketCameraLauncher;
+    private String ticketPhotoUrl;
     private Button btnOrderNow, btnCancel;
 
     private String passengerUid;
@@ -79,6 +84,21 @@ public class OrderNowFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Module: ticket photo - gallery and camera pickers, registered
+        // here (must happen before STARTED, same rule as the location
+        // permission launcher below).
+        ticketGalleryLauncher = registerForActivityResult(
+                new androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) uploadTicketUri(uri);
+                });
+
+        ticketCameraLauncher = registerForActivityResult(
+                new androidx.activity.result.contract.ActivityResultContracts.TakePicturePreview(),
+                bitmap -> {
+                    if (bitmap != null) uploadTicketBitmap(bitmap);
+                });
 
         // Must be registered before the fragment reaches STARTED state.
         // Ask for the normal location permission inside the app first; only
@@ -184,6 +204,12 @@ public class OrderNowFragment extends DialogFragment {
         edtSeat = view.findViewById(R.id.edtSeat);
         edtTrain = view.findViewById(R.id.edtTrain);
         edtPhone = view.findViewById(R.id.edtPhone);
+        btnUploadTicket = view.findViewById(R.id.btnUploadTicket);
+        imgTicketPreview = view.findViewById(R.id.imgTicketPreview);
+
+        if (btnUploadTicket != null) {
+            btnUploadTicket.setOnClickListener(v -> showTicketPhotoChooser());
+        }
 
         btnOrderNow = view.findViewById(R.id.btnOrderNow);
         btnCancel = view.findViewById(R.id.btnCancel);
@@ -441,6 +467,12 @@ public class OrderNowFragment extends DialogFragment {
         // Passenger Details
 
         orderData.put("ticketNumber", ticketNumber);
+
+        // Module: ticket photo (optional) - helps the rider confirm
+        // they've found the right passenger.
+        if (ticketPhotoUrl != null && !ticketPhotoUrl.isEmpty()) {
+            orderData.put("ticketPhotoUrl", ticketPhotoUrl);
+        }
         orderData.put("coachNumber", coachNumber);
         orderData.put("seatNumber", seatNumber);
         orderData.put("phone", phone);
@@ -774,6 +806,104 @@ public class OrderNowFragment extends DialogFragment {
 
             dialog.getWindow().setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
         }
+    }
+
+    /**
+     * A simple two-option chooser (Camera / Gallery) rather than a single
+     * fixed source - a passenger might have the physical ticket in hand
+     * (camera) or a screenshot already saved (gallery).
+     */
+    private void showTicketPhotoChooser() {
+
+        if (!isAdded()) return;
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Add Ticket Photo")
+                .setItems(new String[]{"Take Photo", "Choose from Gallery"}, (dialog, which) -> {
+
+                    if (which == 0) {
+                        ticketCameraLauncher.launch(null);
+                    } else {
+                        ticketGalleryLauncher.launch("image/*");
+                    }
+                })
+                .show();
+    }
+
+    private void uploadTicketUri(android.net.Uri uri) {
+
+        if (!isAdded()) return;
+
+        String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null
+                ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : "unknown";
+
+        Toast.makeText(getContext(), "Uploading ticket photo...", Toast.LENGTH_SHORT).show();
+
+        com.example.paktrainfoodapp.utils.DocumentUploader.upload(
+                requireContext(), "passenger", uid, "ticket_" + System.currentTimeMillis(), uri,
+                new com.example.paktrainfoodapp.utils.DocumentUploader.UploadCallback() {
+
+                    @Override
+                    public void onSuccess(String downloadUrl) {
+                        onTicketUploaded(downloadUrl);
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        if (isAdded()) {
+                            Toast.makeText(getContext(), "Upload failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
+    }
+
+    private void uploadTicketBitmap(android.graphics.Bitmap bitmap) {
+
+        if (!isAdded()) return;
+
+        String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null
+                ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : "unknown";
+
+        Toast.makeText(getContext(), "Uploading ticket photo...", Toast.LENGTH_SHORT).show();
+
+        com.example.paktrainfoodapp.utils.DocumentUploader.uploadBitmap(
+                "passenger", uid, "ticket_" + System.currentTimeMillis(), bitmap,
+                new com.example.paktrainfoodapp.utils.DocumentUploader.UploadCallback() {
+
+                    @Override
+                    public void onSuccess(String downloadUrl) {
+                        onTicketUploaded(downloadUrl);
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        if (isAdded()) {
+                            Toast.makeText(getContext(), "Upload failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
+    }
+
+    private void onTicketUploaded(String downloadUrl) {
+
+        if (!isAdded()) return;
+
+        ticketPhotoUrl = downloadUrl;
+
+        if (imgTicketPreview != null) {
+
+            imgTicketPreview.setVisibility(View.VISIBLE);
+
+            com.bumptech.glide.Glide.with(this)
+                    .load(downloadUrl)
+                    .into(imgTicketPreview);
+        }
+
+        if (btnUploadTicket != null) {
+            btnUploadTicket.setText("\u2705 Ticket Photo Added - Tap to Change");
+        }
+
+        Toast.makeText(getContext(), "Ticket photo added", Toast.LENGTH_SHORT).show();
     }
 }
 

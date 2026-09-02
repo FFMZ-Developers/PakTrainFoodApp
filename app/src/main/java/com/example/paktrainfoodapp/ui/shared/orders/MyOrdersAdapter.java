@@ -111,6 +111,15 @@ public class MyOrdersAdapter
             case "rejected":
                 return "cancelled";
 
+            // \u2705 FIX: these fell through to the "ongoing" default before,
+            // which read as if the order were still actively progressing
+            // (rider en route etc.) - when in fact something went wrong
+            // and it's frozen for admin review. A distinct bucket makes
+            // that visible instead of hiding it inside "ongoing".
+            case "disputed":
+            case "delivery_failed":
+                return "disputed";
+
             case "completed":
                 return "completed";
 
@@ -145,6 +154,8 @@ public class MyOrdersAdapter
             case "cancelled":
             case "canceled":                   return "Cancelled";
             case "rejected":                   return "Rejected";
+            case "disputed":                   return "Under Review";
+            case "delivery_failed":            return "Delivery Failed";
             default:                           return rawStatus;
         }
     }
@@ -154,6 +165,7 @@ public class MyOrdersAdapter
         switch (bucketOf(rawStatus)) {
             case "completed": return R.drawable.bg_badge_green;
             case "cancelled": return R.drawable.bg_badge_red;
+            case "disputed":  return R.drawable.bg_badge_orange;
             case "pending":   return R.drawable.bg_badge_orange;
             case "ongoing":   return R.drawable.bg_badge_blue;
             default:          return R.drawable.bg_badge_grey;
@@ -165,6 +177,7 @@ public class MyOrdersAdapter
         switch (bucketOf(rawStatus)) {
             case "completed": return 0xFF2E7D32; // green
             case "cancelled": return 0xFFC62828; // red
+            case "disputed":  return 0xFFEF6C00; // orange - under review, not yet resolved
             case "pending":   return 0xFFEF6C00; // orange
             case "ongoing":   return 0xFF1565C0; // blue
             default:          return 0xFF616161; // grey

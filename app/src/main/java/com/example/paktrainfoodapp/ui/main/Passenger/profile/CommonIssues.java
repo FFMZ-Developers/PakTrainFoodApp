@@ -48,7 +48,7 @@ public class CommonIssues extends Fragment {
         btnContactSupport.setOnClickListener(v -> {
 
             Intent intent = new Intent(Intent.ACTION_SENDTO);
-            intent.setData(Uri.parse("mailto:support@paktrainfood.com"));
+            intent.setData(Uri.parse("mailto:supportpaktrainfood@gmail.com"));
             intent.putExtra(Intent.EXTRA_SUBJECT, "Support Request");
             if (intent.resolveActivity(requireActivity().getPackageManager()) != null) {
                 startActivity(Intent.createChooser(intent, "Contact Support"));

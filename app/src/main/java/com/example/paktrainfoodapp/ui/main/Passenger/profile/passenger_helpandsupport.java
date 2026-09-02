@@ -105,7 +105,7 @@ public class passenger_helpandsupport extends Fragment {
         layoutEmailSupport.setOnClickListener(v -> {
 
             Intent intent = new Intent(Intent.ACTION_SENDTO);
-            intent.setData(Uri.parse("mailto:support@paktrainfood.com"));
+            intent.setData(Uri.parse("mailto:supportpaktrainfood@gmail.com"));
             intent.putExtra(Intent.EXTRA_SUBJECT, "Pak Train Food Support");
             startActivity(intent);
 

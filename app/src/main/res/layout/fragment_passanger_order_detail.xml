@@ -123,6 +123,18 @@
             android:textStyle="bold"
             android:textColor="#1565C0" />
 
+        <!-- Shown only once the order is delivered (see bindOrderDetails()). -->
+        <TextView
+            android:id="@+id/txtCompletedTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text=""
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="#2E7D32"
+            android:visibility="gone" />
+
         <LinearLayout
             android:id="@+id/layoutPassengerContact"
             android:layout_width="match_parent"
@@ -214,6 +226,41 @@
             android:textColor="@color/teal_700"
             android:paddingTop="10dp"
             android:paddingBottom="10dp"/>
+
+        <!-- Read-only chat history, shown only once the order is
+             delivered - no send box, this is just a record of what was
+             said (see loadCompletedChatHistory()). -->
+        <LinearLayout
+            android:id="@+id/layoutCompletedChat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Chat"
+                android:textStyle="bold"
+                android:textSize="16sp"/>
+
+            <TextView
+                android:id="@+id/txtCompletedChatEmpty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="No messages were sent on this order."
+                android:textSize="13sp"
+                android:textColor="#9E9E9E"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerCompletedChat"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>

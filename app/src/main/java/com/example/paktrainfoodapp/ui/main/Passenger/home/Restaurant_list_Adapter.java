@@ -68,6 +68,19 @@ public class Restaurant_list_Adapter extends RecyclerView.Adapter<Restaurant_lis
                             : R.drawable.ic_heart_outline
             );
         }
+
+        // \u2705 FIX: tvRating was never touched here at all - the layout's
+        // hardcoded placeholder text (" 3.3 (93)") showed on every single
+        // restaurant regardless of their real reviews. Shows "New" for a
+        // restaurant with no reviews yet rather than a misleading 0.0.
+        if (holder.tvRating != null) {
+            holder.tvRating.setText(
+                    model.getReviewCount() > 0
+                            ? String.format(java.util.Locale.US, " %.1f (%d)",
+                                    model.getAverageRating(), model.getReviewCount())
+                            : " New"
+            );
+        }
     }
 
     @Override

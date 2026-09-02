@@ -59,8 +59,8 @@
     <string msgid="7215213145546190223" name="common_google_play_services_install_title">Installer les services Google Play</string>
     <string name="common_google_play_services_notification_channel_name">Disponibilité des services Google Play</string>
     <string name="common_google_play_services_notification_ticker">Erreur liée aux services Google Play</string>
-    <string name="common_google_play_services_unknown_issue">L\'appli %1$s éprouve un problème avec les services Google Play. Veuillez réessayer.</string>
-    <string name="common_google_play_services_unsupported_text">L\'appli %1$s ne fonctionnera pas sans les services Google Play, qui ne sont pas pris en charge par votre appareil.</string>
+    <string name="common_google_play_services_unknown_issue">L\'application %1$s éprouve un problème avec les services Google Play. Veuillez réessayer.</string>
+    <string name="common_google_play_services_unsupported_text">L\'application %1$s ne fonctionnera pas sans les services Google Play, qui ne sont pas pris en charge par votre appareil.</string>
     <string msgid="6556509956452265614" name="common_google_play_services_update_button">Mettre à jour</string>
     <string msgid="9053896323427875356" name="common_google_play_services_update_text">%1$s ne fonctionnera pas tant que vous n\'aurez pas mis à jour les services Google Play.</string>
     <string msgid="6006316683626838685" name="common_google_play_services_update_title">Mettre à jour les services Google Play</string>
@@ -69,10 +69,8 @@
     <string name="common_open_on_phone">Ouvrir sur le téléphone</string>
     <string name="common_signin_button_text">Se connecter</string>
     <string name="common_signin_button_text_long">Se connecter avec Google</string>
-    <string msgid="5912733858573823945" name="confirm_device_credential_password">"Utiliser le mot de passe"</string>
     <string msgid="3260749812566568062" name="copy_toast_msg">"Lien copié dans le presse-papiers"</string>
     <string msgid="8038256446254964252" name="default_error_message">"Entrée incorrecte"</string>
-    <string msgid="4776854077120974966" name="default_error_msg">"Erreur inconnue"</string>
     <string msgid="6312721426453364202" name="default_popup_window_title">"Fenêtre contextuelle"</string>
     <string msgid="4057925834421392736" name="dialog">"Dialogue"</string>
     <string msgid="1890207353314751437" name="dropdown_menu">"Menu déroulant"</string>
@@ -83,16 +81,6 @@
     <string msgid="4566929209979330987" name="fallback_menu_item_copy_link">"Copier le lien"</string>
     <string msgid="3413186855122069269" name="fallback_menu_item_open_in_browser">"Ouvrir dans le navigateur"</string>
     <string msgid="7145444925855055364" name="fallback_menu_item_share_link">"Partager le lien"</string>
-    <string msgid="1072308044213194243" name="fingerprint_dialog_touch_sensor">"Touch. capteur empr. digitales"</string>
-    <string msgid="8216738333501875566" name="fingerprint_error_hw_not_available">"Le matériel de lecture d\'empreintes digitales n\'est pas accessible."</string>
-    <string msgid="6306988885793029438" name="fingerprint_error_hw_not_present">"Cet appareil ne possède pas de capteur d\'empreintes digitales"</string>
-    <string msgid="7291787166416782245" name="fingerprint_error_lockout">"Trop de tentatives. Veuillez réessayer plus tard."</string>
-    <string msgid="7520712796891883488" name="fingerprint_error_no_fingerprints">"Aucune empreinte digitale enregistrée."</string>
-    <string msgid="7627716295344353987" name="fingerprint_error_user_canceled">"L\'opération d\'authentification par empreinte digitale a été annulée par l\'utilisateur."</string>
-    <string msgid="3873359464293253009" name="fingerprint_not_recognized">"Doigt non reconnu"</string>
-    <string msgid="3791785319221634505" name="generic_error_no_device_credential">"Aucun NIP, schéma ni mot de passe défini"</string>
-    <string msgid="1807436368654974044" name="generic_error_no_keyguard">"Cet appareil ne prend pas en charge les NIP, les schémas ni les mots de passe."</string>
-    <string msgid="7309881387583143581" name="generic_error_user_canceled">"L\'authentification a été annulée par l\'utilisateur."</string>
     <string name="gpay_logo_description">Google Pay</string>
     <string name="icon_content_description">Icône de boîte de dialogue</string>
     <string msgid="6827826412747255547" name="in_progress">"En cours…"</string>

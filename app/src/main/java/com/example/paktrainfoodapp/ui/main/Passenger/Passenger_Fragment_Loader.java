@@ -87,6 +87,13 @@ public class Passenger_Fragment_Loader extends Fragment {
 
         super.onViewCreated(view, savedInstanceState);
 
+        // Module: order-complete rating popup. Checked once here (this
+        // shell is loaded any time the passenger opens the app), rather
+        // than tied to any one specific screen - that way it eventually
+        // shows even if the passenger wasn't looking at that particular
+        // order when it actually completed.
+        checkForUnratedOrder();
+
         btnJourney = view.findViewById(R.id.btnJourney);
         // The badge moved from the bottom nav onto each screen's own top bar,
         // so there is no view to bind here any more.
@@ -979,6 +986,62 @@ public class Passenger_Fragment_Loader extends Fragment {
         if (f == homeFragment) return btnJourney;
 
         return btnDashboard;
+    }
+
+    /**
+     * Looks for a completed order that hasn't been rated yet (checked via
+     * the "reviewSubmitted" flag set once a review is actually submitted -
+     * see RateOrderDialogFragment) and prompts for one if found. Only the
+     * single most recent one is shown at a time, so a passenger with
+     * several unrated orders isn't hit with a stack of popups at once -
+     * this same check runs again the next time the app opens, so nothing
+     * is skipped, just spread out.
+     */
+    private void checkForUnratedOrder() {
+
+        String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null
+                ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
+
+        if (uid == null) return;
+
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("Orders")
+                .whereEqualTo("passengerUid", uid)
+                .whereEqualTo("orderStatus", "completed")
+                .get()
+                .addOnSuccessListener(snap -> {
+
+                    if (!isAdded() || snap == null || snap.isEmpty()) return;
+
+                    com.google.firebase.firestore.DocumentSnapshot mostRecentUnrated = null;
+                    long mostRecentTime = -1;
+
+                    for (com.google.firebase.firestore.DocumentSnapshot doc : snap.getDocuments()) {
+
+                        Boolean reviewed = doc.getBoolean("reviewSubmitted");
+
+                        if (reviewed != null && reviewed) continue;
+
+                        Long completedAt = doc.getLong("completedAt");
+                        long t = completedAt != null ? completedAt : 0L;
+
+                        if (t > mostRecentTime) {
+                            mostRecentTime = t;
+                            mostRecentUnrated = doc;
+                        }
+                    }
+
+                    if (mostRecentUnrated == null || !isAdded()) return;
+
+                    String restaurantId = mostRecentUnrated.getString("restaurantId");
+                    String restaurantName = mostRecentUnrated.getString("restaurantName");
+
+                    if (restaurantId == null) return;
+
+                    com.example.paktrainfoodapp.ui.main.Passenger.RateOrderDialogFragment
+                            .newInstance(mostRecentUnrated.getId(), restaurantId, restaurantName)
+                            .show(getChildFragmentManager(), "rate_order");
+                });
     }
 }
 

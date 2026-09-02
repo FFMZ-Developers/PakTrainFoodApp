@@ -10,7 +10,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:background="#4CAF50"
+        android:background="@color/teal_700"
         android:gravity="center_vertical"
         android:paddingHorizontal="12dp">
 
@@ -24,14 +24,22 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
+        <!-- ✅ FIX: this was a dark green (#388E3C) button on a light
+             green (#4CAF50) header - close enough in hue that the button
+             barely stood out against its own background. A solid white
+             pill with teal text reads clearly against the (now teal)
+             header, matching the app's other "action button on a
+             coloured header" spots. -->
         <Button
             android:id="@+id/btnAddItem"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
-            android:backgroundTint="#388E3C"
-            android:paddingHorizontal="10dp"
+            android:backgroundTint="@android:color/white"
+            android:paddingHorizontal="14dp"
             android:text="+ Add Item"
-            android:textColor="@android:color/white" />
+            android:textAllCaps="false"
+            android:textColor="@color/teal_700"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <HorizontalScrollView

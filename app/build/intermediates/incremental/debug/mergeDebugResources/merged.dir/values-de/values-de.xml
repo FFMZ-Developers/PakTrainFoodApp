@@ -69,10 +69,8 @@
     <string name="common_open_on_phone">Auf Smartphone öffnen</string>
     <string name="common_signin_button_text">Anmelden</string>
     <string name="common_signin_button_text_long">Über Google anmelden</string>
-    <string msgid="5912733858573823945" name="confirm_device_credential_password">"Passwort nutzen"</string>
     <string msgid="3260749812566568062" name="copy_toast_msg">"Link in Zwischenablage kopiert"</string>
     <string msgid="8038256446254964252" name="default_error_message">"Ungültige Eingabe"</string>
-    <string msgid="4776854077120974966" name="default_error_msg">"Unbekannter Fehler"</string>
     <string msgid="6312721426453364202" name="default_popup_window_title">"Pop-up-Fenster"</string>
     <string msgid="4057925834421392736" name="dialog">"Dialogfeld"</string>
     <string msgid="1890207353314751437" name="dropdown_menu">"Drop-down-Menü"</string>
@@ -83,16 +81,6 @@
     <string msgid="4566929209979330987" name="fallback_menu_item_copy_link">"Link kopieren"</string>
     <string msgid="3413186855122069269" name="fallback_menu_item_open_in_browser">"Im Browser öffnen"</string>
     <string msgid="7145444925855055364" name="fallback_menu_item_share_link">"Link teilen"</string>
-    <string msgid="1072308044213194243" name="fingerprint_dialog_touch_sensor">"Fingerabdrucksensor berühren"</string>
-    <string msgid="8216738333501875566" name="fingerprint_error_hw_not_available">"Fingerabdruckhardware nicht verfügbar."</string>
-    <string msgid="6306988885793029438" name="fingerprint_error_hw_not_present">"Dieses Gerät hat keinen Fingerabdrucksensor"</string>
-    <string msgid="7291787166416782245" name="fingerprint_error_lockout">"Zu viele Versuche. Versuche es bitte später noch einmal."</string>
-    <string msgid="7520712796891883488" name="fingerprint_error_no_fingerprints">"Keine Fingerabdrücke erfasst."</string>
-    <string msgid="7627716295344353987" name="fingerprint_error_user_canceled">"Vorgang der Fingerabdruckauthentifizierung vom Nutzer abgebrochen."</string>
-    <string msgid="3873359464293253009" name="fingerprint_not_recognized">"Nicht erkannt"</string>
-    <string msgid="3791785319221634505" name="generic_error_no_device_credential">"Keine PIN, kein Muster und kein Passwort festgelegt."</string>
-    <string msgid="1807436368654974044" name="generic_error_no_keyguard">"Dieses Gerät kann nicht mit einer PIN, einem Muster oder einem Passwort gesperrt bzw. entsperrt werden."</string>
-    <string msgid="7309881387583143581" name="generic_error_user_canceled">"Authentifizierung vom Nutzer abgebrochen."</string>
     <string name="gpay_logo_description">Google Pay</string>
     <string name="icon_content_description">Dialogfeldsymbol</string>
     <string msgid="6827826412747255547" name="in_progress">"In Bearbeitung"</string>

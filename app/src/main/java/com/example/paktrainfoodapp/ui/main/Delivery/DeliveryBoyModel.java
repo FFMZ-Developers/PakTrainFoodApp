@@ -40,6 +40,13 @@ public class DeliveryBoyModel {
     private Long orderNumber;
     public Long getOrderNumber() { return orderNumber; }
     public void setOrderNumber(Long orderNumber) { this.orderNumber = orderNumber; }
+
+
+    // Module: which restaurant this order is with - shown on the order
+    // card so it doesn't have to be looked up separately.
+    private String restaurantName;
+    public String getRestaurantName() { return restaurantName; }
+    public void setRestaurantName(String restaurantName) { this.restaurantName = restaurantName; }
 }
 
 
