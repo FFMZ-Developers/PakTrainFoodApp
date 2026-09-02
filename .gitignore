@@ -1,34 +1,32 @@
-# ==== Android / Gradle ====
+# Android/Gradle
 *.iml
 .gradle/
-build/
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
 /captures
-.externalNativeBuild/
-.cxx/
+.externalNativeBuild
+.cxx
 local.properties
 
-# ==== Android Studio / IntelliJ ====
-.idea/
-*.hprof
-
-# ==== Keystore ====
-*.jks
-*.keystore
-
-# ==== Firebase / secrets - DO NOT COMMIT ====
-service-account.json
-google-services.json
-firebase-debug.log
-firestore-debug.log
-database-debug.log
-ui-debug.log
-*-debug.log
-
-# ==== Node (functions/) ====
+# Node / Cloud Functions
 functions/node_modules/
-functions/npm-debug.log
-functions/.env
+functions_fixed/node_modules/
+npm-debug.log
+*.log
 
-# ==== OS junk ====
-.DS_Store
-Thumbs.db
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Secrets - never commit these
+service-account.json
+*.keystore
+*.jks
