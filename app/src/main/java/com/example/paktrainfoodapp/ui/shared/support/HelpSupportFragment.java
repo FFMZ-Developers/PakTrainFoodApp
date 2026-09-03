@@ -24,7 +24,7 @@ import com.example.paktrainfoodapp.R;
  */
 public class HelpSupportFragment extends Fragment {
 
-    private static final String PLAY_STORE_PACKAGE = "com.example.paktrainfoodapp";
+    private static final String PLAY_STORE_PACKAGE = "com.fahad.paktrainfoodservice";
 
     private static final String ARG_ROLE = "help_role";
 

@@ -11,7 +11,10 @@ public class WalletHistory {
     public WalletHistory() {}
 
     public WalletHistory(String type, String amount, String date, String orderId) {
-        this(type, amount, date, orderId, null);
+        this.type = type;
+        this.amount = amount;
+        this.date = date;
+        this.orderId = orderId;
     }
 
     public WalletHistory(String type, String amount, String date, String orderId, Long orderNumber) {
@@ -20,11 +23,6 @@ public class WalletHistory {
         this.date = date;
         this.orderId = orderId;
         this.orderNumber = orderNumber;
-    }
-
-    /** Sequential order number (e.g. 1 -> "Order #0001"), or null if not resolved yet. */
-    public Long getOrderNumber() {
-        return orderNumber;
     }
 
     public String getType() {
@@ -41,5 +39,9 @@ public class WalletHistory {
 
     public String getOrderId() {
         return orderId;
+    }
+
+    public Long getOrderNumber() {
+        return orderNumber;
     }
 }

@@ -403,6 +403,14 @@ public class LoginFragment extends Fragment {
             if (name != null) pref.setUserName(name);
             pref.setUserRole(roleDoc.toUpperCase());
 
+            // ✅ FIX: setUserImage() was defined but NEVER called anywhere
+            // in the whole app - so PrefManager.getUserImage() always
+            // returned null, and every review's avatar fell back to the
+            // placeholder, no matter what. Cached the same way the name
+            // already is, right here at login.
+            String photoUrl = doc.getString("profileImageUrl");
+            if (photoUrl != null) pref.setUserImage(photoUrl);
+
             // 🔓 Success! Main activity par jane se pehle loader band
             progressDialog.dismiss();
             goToMainActivity();

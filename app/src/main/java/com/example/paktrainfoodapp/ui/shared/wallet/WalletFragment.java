@@ -61,6 +61,7 @@ public class WalletFragment extends Fragment {
     private TextView txtAvailableBalance, txtPendingBalance;
 
     private LinearLayout layoutBankDetails;
+    private View cardBankAccount;
     private Button btnAddBank;
     private TextView txtNoHistory;
     // Module: self-service Stripe Connect - restaurant/rider does their
@@ -150,7 +151,13 @@ public class WalletFragment extends Fragment {
         // manually-typed account number that Stripe never sees was pure
         // decoration. Passengers never had a payout bank to begin with
         // (they only ever pay by card and get refunded to that same card).
-        btnAddBank.setVisibility(View.GONE);
+
+        View txtBankAccountTitle = view.findViewById(R.id.txtBankAccountTitle);
+        cardBankAccount = view.findViewById(R.id.cardBankAccount);
+
+        if (txtBankAccountTitle != null) txtBankAccountTitle.setVisibility(View.GONE);
+        if (cardBankAccount != null) cardBankAccount.setVisibility(View.GONE);
+
         layoutBankDetails.setVisibility(View.GONE);
 
 
@@ -164,7 +171,7 @@ public class WalletFragment extends Fragment {
             if (balanceCards != null) balanceCards.setVisibility(View.GONE);
 
         } else if (ROLE_RESTAURANT.equals(role()) || ROLE_DELIVERY.equals(role())) {
-            addStripeConnectUi();
+            addStripeConnectUi(view);
         }
 
         listenWallet();
@@ -181,10 +188,31 @@ public class WalletFragment extends Fragment {
     // "how do I get paid" concept, one step further.
     // =========================================================
 
-    private void addStripeConnectUi() {
+    private void addStripeConnectUi(@NonNull View root) {
 
-        ViewGroup container = (ViewGroup) layoutBankDetails.getParent();
-        int insertIndex = container.indexOfChild(layoutBankDetails) + 1;
+        // ✅ FIX: the Stripe section used to be inserted INSIDE the old
+        // "Bank Account" card (layoutBankDetails.getParent()) - once that
+        // whole card got hidden (View.GONE) to remove the confusing
+        // leftover "Add Bank Account" button, everything nested inside it
+        // - including this Stripe section - vanished too, since GONE
+        // hides an entire subtree regardless of the children's own
+        // visibility. Inserting as a SIBLING of the (hidden) card instead
+        // - in the same parent it already sits in - keeps the Stripe
+        // section fully independent and always visible.
+        ViewGroup container = (ViewGroup) cardBankAccount.getParent();
+        int insertIndex = container.indexOfChild(cardBankAccount) + 1;
+
+        if (container != null) {
+
+            // Right after the balance/hint block, where the old "Bank
+            // Account" section used to visually sit.
+            insertIndex = Math.min(2, container.getChildCount());
+
+        } else {
+
+            container = (ViewGroup) layoutBankDetails.getParent();
+            insertIndex = container.indexOfChild(layoutBankDetails) + 1;
+        }
 
         float density = getResources().getDisplayMetrics().density;
         int pad = (int) (12 * density);
@@ -196,6 +224,7 @@ public class WalletFragment extends Fragment {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         sectionParams.topMargin = (int) (16 * density);
         section.setLayoutParams(sectionParams);
+        section.setBackgroundResource(R.drawable.edittext_bg);
 
         TextView label = new TextView(requireContext());
         label.setText("Payout Method (Stripe)");

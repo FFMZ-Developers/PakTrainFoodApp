@@ -12,7 +12,7 @@ import android.widget.Toast;
  */
 public class ShareUtils {
 
-    private static final String PLAY_STORE_PACKAGE = "com.example.paktrainfoodapp";
+    private static final String PLAY_STORE_PACKAGE = "com.fahad.paktrainfoodservice";
 
     private static String playStoreLink() {
         return "https://play.google.com/store/apps/details?id=" + PLAY_STORE_PACKAGE;

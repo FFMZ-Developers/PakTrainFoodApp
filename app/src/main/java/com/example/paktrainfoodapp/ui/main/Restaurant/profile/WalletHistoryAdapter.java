@@ -59,7 +59,7 @@ public class WalletHistoryAdapter
                 model.getOrderId() != null && model.getOrderId().matches("[A-Z_0-9]{6,}")
                         ? model.getOrderId().replace("_", " ")
                         : com.example.paktrainfoodapp.utils.OrderNumberUtils
-                                .format(model.getOrderNumber(), model.getOrderId()));
+                        .format(model.getOrderNumber(), model.getOrderId()));
 
         String type = model.getType();
 

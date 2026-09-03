@@ -481,15 +481,21 @@ public class OrderNowFragment extends DialogFragment {
         // Module: the rider needs a name to address the passenger by in
         // chat, and the admin needs one when reviewing a dispute - the
         // order only carried a phone number before.
-        if (com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null) {
+        //
+        // ✅ FIX: was reading FirebaseAuth's displayName, which is NEVER
+        // set for anyone who registered with email/password (this app's
+        // registration saves the name to Firestore, but never calls
+        // updateProfile() to also set the Auth profile's displayName) -
+        // so this always fell back to the generic "Passenger" string, for
+        // every single order. PrefManager already caches the real name
+        // from Firestore at login and is used the same way elsewhere in
+        // the app (chat, ratings), so it's used here too.
+        String cachedName = new com.example.paktrainfoodapp.utils.PrefManager(requireContext())
+                .getUserName();
 
-            String displayName = com.google.firebase.auth.FirebaseAuth.getInstance()
-                    .getCurrentUser().getDisplayName();
-
-            orderData.put("passengerName",
-                    (displayName != null && !displayName.trim().isEmpty())
-                            ? displayName : "Passenger");
-        }
+        orderData.put("passengerName",
+                (cachedName != null && !cachedName.trim().isEmpty())
+                        ? cachedName : "Passenger");
 
         // Restaurant
 
