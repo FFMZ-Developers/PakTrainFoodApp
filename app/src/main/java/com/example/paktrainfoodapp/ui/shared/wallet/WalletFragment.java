@@ -36,15 +36,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * One wallet screen for all three roles.
- *
- * All roles store money the same way (Wallets/{uid} with an availableBalance,
- * a pendingBalance and a history sub-collection), so the only thing that
- * changes per role is the wording - which is what ARG_ROLE controls.
- *
- * Replaces the three near-identical wallet fragments that existed before.
- */
+
+
 public class WalletFragment extends Fragment {
 
     public static final String ROLE_PASSENGER = "PASSENGER";
@@ -66,10 +59,10 @@ public class WalletFragment extends Fragment {
 
     private TextView txtWalletTitle, txtWalletHint;
     private TextView txtAvailableBalance, txtPendingBalance;
-    private TextView txtBankName, txtBankAccount, txtBankHolder, txtNoBank, txtNoHistory;
+
     private LinearLayout layoutBankDetails;
     private Button btnAddBank;
-
+    private TextView txtNoHistory;
     // Module: self-service Stripe Connect - restaurant/rider does their
     // own bank onboarding directly with Stripe (not through the admin),
     // shown only for those two roles.
@@ -84,7 +77,7 @@ public class WalletFragment extends Fragment {
 
     private String uid;
     private double availableBalance = 0;
-    private boolean hasBankAccount = false;
+
 
     private ListenerRegistration walletRegistration;
     private ListenerRegistration historyRegistration;
@@ -112,13 +105,8 @@ public class WalletFragment extends Fragment {
         txtWalletHint = view.findViewById(R.id.txtWalletHint);
         txtAvailableBalance = view.findViewById(R.id.txtAvailableBalance);
         txtPendingBalance = view.findViewById(R.id.txtPendingBalance);
-        txtBankName = view.findViewById(R.id.txtBankName);
-        txtBankAccount = view.findViewById(R.id.txtBankAccount);
-        txtBankHolder = view.findViewById(R.id.txtBankHolder);
-        txtNoBank = view.findViewById(R.id.txtNoBank);
         txtNoHistory = view.findViewById(R.id.txtNoHistory);
         layoutBankDetails = view.findViewById(R.id.layoutBankDetails);
-        btnAddBank = view.findViewById(R.id.btnAddBank);
 
         // Module: "Withdraw"/"Transfer to bank" removed - a rider/
         // restaurant's payout is handled by the admin (Payments panel),
@@ -154,7 +142,7 @@ public class WalletFragment extends Fragment {
 
         uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-        btnAddBank.setOnClickListener(v -> showAddBankDialog());
+
 
         // ✅ FIX: manual "Add/Change Bank Account" entry removed entirely.
         // Restaurant/Rider now connect their real bank via Stripe Connect
@@ -164,7 +152,7 @@ public class WalletFragment extends Fragment {
         // (they only ever pay by card and get refunded to that same card).
         btnAddBank.setVisibility(View.GONE);
         layoutBankDetails.setVisibility(View.GONE);
-        txtNoBank.setVisibility(View.GONE);
+
 
         if (ROLE_PASSENGER.equals(role())) {
 
@@ -707,78 +695,7 @@ public class WalletFragment extends Fragment {
                 });
     }
 
-    // =========================================================
-    // BANK ACCOUNT
-    // =========================================================
 
-    private void loadBankAccount() {
-
-        // ✅ FIX: bank details are captured during the verification wizard
-        // (Step3BankFragment) and saved onto the restaurant/rider's
-        // VerifiedRegister document - not onto the Wallets document. This
-        // used to only ever check the Wallets doc, which only had bank
-        // info if the user separately used this screen's "Add Bank"
-        // dialog - so the wizard-submitted bank details never showed up
-        // here at all. VerifiedRegister is now the source of truth;
-        // Wallets doc is checked only as a fallback for older accounts.
-        DocumentReferenceForRole().get()
-                .addOnSuccessListener(profileSnapshot -> {
-
-                    if (!isAdded()) return;
-
-                    if (profileSnapshot.exists()
-                            && !TextUtils.isEmpty(profileSnapshot.getString("bankName"))
-                            && !TextUtils.isEmpty(profileSnapshot.getString("bankAccountNumber"))) {
-
-                        bindBankDetails(
-                                profileSnapshot.getString("bankName"),
-                                profileSnapshot.getString("bankAccountNumber"),
-                                profileSnapshot.getString("bankAccountHolder"));
-                        return;
-                    }
-
-                    // Fallback: older accounts that added a bank via this
-                    // screen before this fix, with nothing in VerifiedRegister.
-                    WalletPaths.wallet(WalletPaths.roleFolder(role()), uid)
-                            .get()
-                            .addOnSuccessListener(walletSnapshot -> {
-
-                                if (!isAdded() || !walletSnapshot.exists()) {
-                                    showNoBank();
-                                    return;
-                                }
-
-                                String bankName = walletSnapshot.getString("bankName");
-                                String accountNumber = walletSnapshot.getString("bankAccountNumber");
-                                String holder = walletSnapshot.getString("bankAccountHolder");
-
-                                if (TextUtils.isEmpty(bankName) || TextUtils.isEmpty(accountNumber)) {
-                                    showNoBank();
-                                    return;
-                                }
-
-                                bindBankDetails(bankName, accountNumber, holder);
-                            })
-                            .addOnFailureListener(e -> showNoBank());
-                })
-                .addOnFailureListener(e -> showNoBank());
-    }
-
-    private void bindBankDetails(String bankName, String accountNumber, String holder) {
-
-        if (!isAdded()) return;
-
-        hasBankAccount = true;
-
-        layoutBankDetails.setVisibility(View.VISIBLE);
-        txtNoBank.setVisibility(View.GONE);
-
-        txtBankName.setText(bankName);
-        txtBankAccount.setText(maskAccount(accountNumber));
-        txtBankHolder.setText(holder != null ? holder : "");
-
-        btnAddBank.setText("Change Bank Account");
-    }
 
     /**
      * Passengers don't go through the verification wizard, so they only
@@ -804,95 +721,9 @@ public class WalletFragment extends Fragment {
         }
     }
 
-    private void showNoBank() {
 
-        if (!isAdded()) return;
 
-        hasBankAccount = false;
-        layoutBankDetails.setVisibility(View.GONE);
-        txtNoBank.setVisibility(View.VISIBLE);
-        btnAddBank.setText("Add Bank Account");
-    }
 
-    /** Shows only the last 4 digits so the full number isn't left on screen. */
-    private String maskAccount(String accountNumber) {
-
-        if (accountNumber == null || accountNumber.length() <= 4) return accountNumber;
-
-        return "•••• •••• " + accountNumber.substring(accountNumber.length() - 4);
-    }
-
-    private void showAddBankDialog() {
-
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_add_bank, null);
-
-        TextInputEditText editBank = dialogView.findViewById(R.id.edit_bank_name);
-        TextInputEditText editHolder = dialogView.findViewById(R.id.edit_account_holder);
-        TextInputEditText editNumber = dialogView.findViewById(R.id.edit_account_number);
-
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setTitle(hasBankAccount ? "Change Bank Account" : "Add Bank Account")
-                .setView(dialogView)
-                .setPositiveButton("Save", null)
-                .setNegativeButton("Cancel", null)
-                .create();
-
-        dialog.show();
-
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-
-            String bank = editBank.getText() != null ? editBank.getText().toString().trim() : "";
-            String holder = editHolder.getText() != null ? editHolder.getText().toString().trim() : "";
-            String number = editNumber.getText() != null ? editNumber.getText().toString().trim() : "";
-
-            if (TextUtils.isEmpty(bank)) {
-                editBank.setError("Enter bank name");
-                return;
-            }
-
-            if (TextUtils.isEmpty(holder)) {
-                editHolder.setError("Enter account holder name");
-                return;
-            }
-
-            if (number.length() < 6) {
-                editNumber.setError("Enter a valid account number");
-                return;
-            }
-
-            Map<String, Object> data = new HashMap<>();
-            data.put("bankName", bank);
-            data.put("bankAccountHolder", holder);
-            data.put("bankAccountNumber", number);
-
-            // ✅ FIX: save to the SAME document loadBankAccount() reads
-            // from (VerifiedRegister for restaurant/rider, Wallets doc for
-            // passenger) - previously this always wrote to the Wallets
-            // doc regardless of role, which is why a restaurant/rider's
-            // "change" here never actually updated what the wizard-synced
-            // bank details showed.
-            DocumentReferenceForRole().set(data, SetOptions.merge())
-                    .addOnSuccessListener(unused -> {
-
-                        if (!isAdded()) return;
-
-                        dialog.dismiss();
-
-                        Toast.makeText(requireContext(), "Bank account saved", Toast.LENGTH_SHORT).show();
-
-                        loadBankAccount();
-                    })
-                    .addOnFailureListener(e -> {
-
-                        if (!isAdded()) return;
-
-                        Toast.makeText(requireContext(),
-                                "Save failed: " + e.getMessage(),
-                                Toast.LENGTH_SHORT).show();
-                    });
-        });
-    }
 
     // =========================================================
     // ✅ FIX: self-service "Withdraw"/"Transfer to bank" removed - see

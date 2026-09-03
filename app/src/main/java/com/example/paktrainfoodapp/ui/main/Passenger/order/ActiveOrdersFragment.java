@@ -79,7 +79,6 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
 
     private void listenOrdersRealtime() {
 
-        // ✅ ONLY THIS PATH NOW
         Query ordersQuery = firestore.collection("Orders")
                 .whereEqualTo("passengerUid", uid);
 
@@ -96,9 +95,13 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
 
                 String status = doc.getString("orderStatus");
 
-                // SAME FILTER AS BEFORE (Active + Cancelled)
-                if ("Active".equalsIgnoreCase(status) ||
-                        "Cancelled".equalsIgnoreCase(status)) {
+                // ✅ FIX: this tab used to also pull in "Cancelled" orders
+                // (styled red, with the raw Firestore doc id instead of a
+                // formatted order number) - a cancelled order isn't
+                // "active" any more, so it now has its own tab
+                // (see CancelledOrdersFragment) and this one only ever
+                // shows orders that are actually still pending.
+                if ("Active".equalsIgnoreCase(status)) {
 
                     String orderId = doc.getId();
 
@@ -188,39 +191,21 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
 
             OrderModel order = items.get(position);
 
-            boolean isCancelled =
-                    "Cancelled".equalsIgnoreCase(
-                            order.getStatus()
-                    );
-
             // ================= ORDER ID =================
+            // Every order reaching this adapter is "Active" now (see the
+            // fragment's query filter), so the cancelled-specific styling
+            // that used to live here is gone - it's all handled by
+            // CancelledOrdersFragment instead.
 
-            if (isCancelled) {
+            holder.itemView.setBackgroundColor(Color.WHITE);
 
-                holder.itemView.setBackgroundColor(
-                        Color.parseColor("#FFEBEE")
-                );
+            holder.txtOrderId.setText(
+                    com.example.paktrainfoodapp.utils.OrderNumberUtils.format(order.getOrderNumber(), order.getOrderId())
+            );
 
-                holder.txtOrderId.setText(
-                        "CANCELLED  #" + order.getOrderId()
-                );
+            holder.txtOrderId.setTextColor(Color.BLACK);
 
-                holder.txtOrderId.setTextColor(Color.RED);
-
-//                holder.btnDelete.setVisibility(View.VISIBLE);
-
-            } else {
-
-                holder.itemView.setBackgroundColor(Color.WHITE);
-
-                holder.txtOrderId.setText(
-                        com.example.paktrainfoodapp.utils.OrderNumberUtils.format(order.getOrderNumber(), order.getOrderId())
-                );
-
-                holder.txtOrderId.setTextColor(Color.BLACK);
-
-                holder.btnDelete.setVisibility(View.VISIBLE);
-            }
+            holder.btnDelete.setVisibility(View.VISIBLE);
 
             if (holder.txtRestaurantName != null) {
                 String restName = order.getRestaurantName();
@@ -263,7 +248,7 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
 
             // Module: bind "Estimated Arrival" - the layout already has
             // this label, it just was never populated with data before.
-            if (isCancelled || order.getTrainEtaEndTime() <= 0) {
+            if (order.getTrainEtaEndTime() <= 0) {
                 holder.txtEtaArrival.setVisibility(View.GONE);
             } else {
                 holder.txtEtaArrival.setVisibility(View.VISIBLE);
@@ -276,8 +261,6 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
             // ================= OPEN DETAIL =================
 
             holder.itemView.setOnClickListener(v -> {
-
-                if (isCancelled) return;
 
                 int pos = holder.getAdapterPosition();
 
@@ -321,8 +304,8 @@ public class ActiveOrdersFragment extends Fragment implements Refreshable {
             holder.btnDelete.setOnClickListener(v -> {
 
                 new AlertDialog.Builder(fragment.requireContext())
-                        .setTitle("Delete Order")
-                        .setMessage("Delete this cancelled order?")
+                        .setTitle("Cancel Order")
+                        .setMessage("Cancel this order?")
                         .setPositiveButton("Yes", (d, w) -> {
 
                             int pos = holder.getAdapterPosition();

@@ -286,13 +286,16 @@ public class Passanger_ItemDetailsFragment extends Fragment {
         ratingBar.setRating(rating != null ? rating.floatValue() : 0f);
         tvComment.setText(comment != null && !comment.isEmpty() ? comment : "(No comment)");
 
-        // ✅ FIX: imgUser was a static drawable in the layout - every
-        // review showed the exact same placeholder face regardless of who
-        // wrote it. Now it's the reviewer's own photo, circle-cropped.
+        // ✅ FIX: the placeholder/error fallback here was the splash
+        // screen's train photo (@drawable/hlo) - since most reviewers
+        // don't have passengerPhotoUrl set, or Glide fails, every review
+        // ended up showing a picture of a train instead of a person. Now
+        // it falls back to the same generic profile-photo placeholder the
+        // profile screens themselves already use.
         Glide.with(this)
                 .load(photoUrl)
-                .placeholder(R.drawable.hlo)
-                .error(R.drawable.hlo)
+                .placeholder(R.drawable.edit_info)
+                .error(R.drawable.edit_info)
                 .circleCrop()
                 .into(imgUser);
 
@@ -332,7 +335,7 @@ public class Passanger_ItemDetailsFragment extends Fragment {
                 if (orderId == null) return;
 
                 com.example.paktrainfoodapp.ui.main.Passenger.RateOrderDialogFragment
-                        .newInstance(orderId, restaurantId, restaurantName)
+                        .forRestaurant(orderId, restaurantId, restaurantName)
                         .show(getParentFragmentManager(), "edit_review");
             });
 

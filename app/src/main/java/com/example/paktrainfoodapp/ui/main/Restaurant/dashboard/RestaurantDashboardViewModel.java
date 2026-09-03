@@ -29,7 +29,7 @@ public class RestaurantDashboardViewModel extends ViewModel {
         return recentActiveOrders;
     }
 
-    private ListenerRegistration ordersReg, menuReg, profileReg;
+    private ListenerRegistration ordersReg, menuReg, profileReg, walletReg;
 
     private boolean started = false;
 
@@ -48,9 +48,10 @@ public class RestaurantDashboardViewModel extends ViewModel {
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        // Orders + revenue + recent-active-orders, all from ONE listener -
-        // avoids a second query (and the composite index it would need)
-        // for something this listener is already reading anyway.
+        // Orders + total-orders-count + recent-active-orders, all from ONE
+        // listener - avoids a second query (and the composite index it
+        // would need) for something this listener is already reading
+        // anyway. Revenue itself no longer comes from here (see below).
         ordersReg = db.collection("Orders")
                 .whereEqualTo("restaurantId", uid)
                 .addSnapshotListener((snapshot, error) -> {
@@ -58,7 +59,6 @@ public class RestaurantDashboardViewModel extends ViewModel {
                     if (error != null || snapshot == null) return;
 
                     int count = 0;
-                    double earned = 0;
 
                     java.util.List<DocumentSnapshot> active = new java.util.ArrayList<>();
 
@@ -72,18 +72,7 @@ public class RestaurantDashboardViewModel extends ViewModel {
 
                         count++;
 
-                        // Only completed orders count as revenue; pending or
-                        // cancelled ones would overstate earnings.
                         String status = doc.getString("orderStatus");
-
-                        if (status != null && status.equalsIgnoreCase("completed")) {
-
-                            Double subtotal = doc.getDouble("subtotal");
-
-                            if (subtotal == null) subtotal = doc.getDouble("totalPrice");
-
-                            if (subtotal != null) earned += subtotal;
-                        }
 
                         if (status != null && activeStatuses.contains(status)) {
                             active.add(doc);
@@ -91,7 +80,6 @@ public class RestaurantDashboardViewModel extends ViewModel {
                     }
 
                     totalOrders.postValue(count);
-                    revenue.postValue(earned);
 
                     active.sort((a, b) -> {
                         Long ta = a.getLong("timestamp");
@@ -104,6 +92,36 @@ public class RestaurantDashboardViewModel extends ViewModel {
                     if (active.size() > 5) active = active.subList(0, 5);
 
                     recentActiveOrders.postValue(active);
+                });
+
+        // ✅ FIX: "Revenue" used to be re-derived here by independently
+        // summing every completed order's subtotal, forever - which
+        // drifts away from the wallet's real availableBalance the moment
+        // a payout happens (onOrderCompleted.js moves each completed
+        // order's subtotal from pendingBalance into availableBalance;
+        // autoPayoutWallets.js later empties availableBalance out to the
+        // restaurant's bank). The dashboard now shows the SAME number the
+        // wallet screen does, live, so the two can never disagree.
+        walletReg = com.example.paktrainfoodapp.data.WalletPaths
+                .history(com.example.paktrainfoodapp.data.WalletPaths.ROLE_RESTAURANT, uid)
+                .addSnapshotListener((snapshot, error) -> {
+
+                    if (error != null || snapshot == null) return;
+
+                    double total = 0;
+
+                    for (DocumentSnapshot doc : snapshot.getDocuments()) {
+
+                        String type = doc.getString("type");
+
+                        if (!"Available".equals(type) && !"Payout".equals(type)) continue;
+
+                        Double amount = doc.getDouble("amount");
+
+                        if (amount != null) total += amount;
+                    }
+
+                    revenue.postValue(total);
                 });
 
         // Menu item count
@@ -137,5 +155,6 @@ public class RestaurantDashboardViewModel extends ViewModel {
         if (ordersReg != null) ordersReg.remove();
         if (menuReg != null) menuReg.remove();
         if (profileReg != null) profileReg.remove();
+        if (walletReg != null) walletReg.remove();
     }
 }

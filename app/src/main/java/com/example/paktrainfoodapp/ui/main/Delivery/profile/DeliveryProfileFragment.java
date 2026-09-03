@@ -73,7 +73,8 @@ public class DeliveryProfileFragment extends Fragment {
         // \u2705 FIX: this row existed in the layout but had never been wired
         // to anything at all - tapping "Help & Support" did nothing.
         wireRow(view, R.id.layout_help_support,
-                () -> new com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment());
+                () -> com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment
+                        .newInstance(com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment.ROLE_DELIVERY));
 
         View layoutShare = view.findViewById(R.id.layout_share_app);
         if (layoutShare != null) {

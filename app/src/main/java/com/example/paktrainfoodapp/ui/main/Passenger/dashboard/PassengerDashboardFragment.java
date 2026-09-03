@@ -25,6 +25,8 @@ public class PassengerDashboardFragment extends Fragment {
     private TextView txtGreeting, txtUserName;
     private TextView txtTotalOrders, txtActiveOrders, txtCompletedOrders, txtWalletBalance;
     private TextView txtTopBadge;
+    private android.widget.LinearLayout layoutRecentOrders;
+    private TextView tvNoRecentOrders, tvViewAllOrders;
 
     private PassengerDashboardViewModel viewModel;
     private NotificationRepository notificationRepository;
@@ -69,6 +71,14 @@ public class PassengerDashboardFragment extends Fragment {
                 v -> txtWalletBalance.setText("Rs " + (v == null ? 0 : (int) v.doubleValue())));
 
         viewModel.start();
+
+        layoutRecentOrders = view.findViewById(R.id.layoutRecentOrders);
+        tvNoRecentOrders = view.findViewById(R.id.tvNoRecentOrders);
+        tvViewAllOrders = view.findViewById(R.id.tvViewAllOrders);
+
+        tvViewAllOrders.setOnClickListener(v -> openMyOrders());
+
+        viewModel.getRecentOrders().observe(getViewLifecycleOwner(), this::bindRecentOrders);
 
         setupNotificationBadge(view);
 
@@ -172,6 +182,70 @@ public class PassengerDashboardFragment extends Fragment {
 
     private void openMyOrders() {
         openDetail(new MyOrdersFragment());
+    }
+
+    /**
+     * Builds each "Recent Orders" row programmatically - same pattern as
+     * the restaurant dashboard's own bindRecentOrders() - and opens
+     * straight into that order's own detail/tracking screen.
+     */
+    private void bindRecentOrders(java.util.List<com.google.firebase.firestore.DocumentSnapshot> orders) {
+
+        if (!isAdded() || layoutRecentOrders == null) return;
+
+        layoutRecentOrders.removeAllViews();
+
+        boolean empty = orders == null || orders.isEmpty();
+
+        if (tvNoRecentOrders != null) tvNoRecentOrders.setVisibility(empty ? View.VISIBLE : View.GONE);
+
+        if (empty) return;
+
+        float density = getResources().getDisplayMetrics().density;
+
+        for (com.google.firebase.firestore.DocumentSnapshot doc : orders) {
+
+            android.widget.LinearLayout row = new android.widget.LinearLayout(requireContext());
+            row.setOrientation(android.widget.LinearLayout.VERTICAL);
+            row.setPadding(0, (int) (8 * density), 0, (int) (8 * density));
+            row.setClickable(true);
+            row.setFocusable(true);
+
+            android.util.TypedValue outValue = new android.util.TypedValue();
+            requireContext().getTheme().resolveAttribute(
+                    android.R.attr.selectableItemBackground, outValue, true);
+            row.setBackgroundResource(outValue.resourceId);
+
+            TextView txtTitle = new TextView(requireContext());
+            txtTitle.setTextColor(0xFF000000);
+            txtTitle.setTextSize(14);
+            txtTitle.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils
+                    .format(doc.getLong("orderNumber"), doc.getId()));
+
+            TextView txtStatus = new TextView(requireContext());
+            txtStatus.setTextSize(13);
+            txtStatus.setTextColor(0xFF00695C);
+            txtStatus.setPadding(0, (int) (2 * density), 0, 0);
+            txtStatus.setText(com.example.paktrainfoodapp.utils.StatusBadge.label(doc.getString("orderStatus")));
+
+            row.addView(txtTitle);
+            row.addView(txtStatus);
+
+            String orderId = doc.getId();
+
+            row.setOnClickListener(v -> {
+                Passenger_Fragment_Loader l = loader();
+                if (l != null) l.openOrderDetail(orderId);
+            });
+
+            layoutRecentOrders.addView(row);
+
+            View divider = new View(requireContext());
+            divider.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, (int) (1 * density)));
+            divider.setBackgroundColor(0xFFE0E0E0);
+            layoutRecentOrders.addView(divider);
+        }
     }
 
     private void openNotifications() {

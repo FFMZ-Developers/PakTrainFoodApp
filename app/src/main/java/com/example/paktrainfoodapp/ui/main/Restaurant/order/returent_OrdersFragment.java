@@ -38,6 +38,7 @@ public class returent_OrdersFragment extends Fragment {
             tabCounter.attachStatuses(tabsOrders, 0, "Active", "restaurantId", counterUid, "Active");
             tabCounter.attachStatuses(tabsOrders, 1, "Accepted", "restaurantId", counterUid, "Accepted", "ready_for_delivery");
             tabCounter.attachStatuses(tabsOrders, 2, "Delivered", "restaurantId", counterUid, "accepted_by_rider","arrive_rider_at_resturent","dropped","pick_up");
+            tabCounter.attachStatuses(tabsOrders, 4, "Cancelled", "restaurantId", counterUid, "Cancelled", "Rejected");
         }
 
         // 🔹 Default Load

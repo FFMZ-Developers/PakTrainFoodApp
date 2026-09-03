@@ -154,7 +154,7 @@ public class LoginFragment extends Fragment {
                             pref.setUserRole(selectedRole);
                             pref.setUserEmail(email);
 
-                            checkUserRegistration(uid, email);
+                            checkAccountNotUsedByOtherRole(uid, email, () -> checkUserRegistration(uid, email));
                         });
 
                     } else {
@@ -194,6 +194,61 @@ public class LoginFragment extends Fragment {
                     }
                 });
     }
+
+    /**
+     * ✅ FIX: one email must only ever belong to ONE role. Previously,
+     * logging in with an email already registered as (say) Passenger but
+     * with "Restaurant" selected would find no Restaurant doc for this uid
+     * and just fall into the Restaurant registration form - silently
+     * creating a second role under the same account. This checks the OTHER
+     * two role collections first and blocks with a clear message if the
+     * account already belongs to one of them.
+     */
+    private void checkAccountNotUsedByOtherRole(String uid, String email, Runnable onClear) {
+
+        java.util.List<String[]> others = new java.util.ArrayList<>();
+        // {roleLabel, collectionName, subCollectionName}
+        if (!selectedRole.equals("PASSENGER")) others.add(new String[]{"Passenger", "Passenger", "Register"});
+        if (!selectedRole.equals("RESTAURANT")) others.add(new String[]{"Restaurant", "Restaurant", "VerifiedRegister"});
+        if (!selectedRole.equals("DELIVERY")) others.add(new String[]{"Delivery", "Delivery", "VerifiedRegister"});
+
+        checkOthersSequentially(uid, others, 0, onClear);
+    }
+
+    private void checkOthersSequentially(String uid, java.util.List<String[]> others, int index, Runnable onClear) {
+
+        if (index >= others.size()) {
+            onClear.run();
+            return;
+        }
+
+        String[] entry = others.get(index);
+
+        db.collection("Users").document(entry[1])
+                .collection(entry[2])
+                .document(uid)
+                .get()
+                .addOnSuccessListener(doc -> {
+
+                    if (doc.exists()) {
+
+                        progressDialog.dismiss();
+                        FirebaseAuth.getInstance().signOut();
+
+                        if (isAdded()) AuthDialogs.showWrongRole(requireContext(), entry[0]);
+
+                        return;
+                    }
+
+                    checkOthersSequentially(uid, others, index + 1, onClear);
+                })
+                .addOnFailureListener(e -> {
+                    // Non-fatal - if this check itself fails, don't block a
+                    // legitimate login over it; fall through to the normal path.
+                    checkOthersSequentially(uid, others, index + 1, onClear);
+                });
+    }
+
 
     // ---------------- CHECK REGISTRATION ---------------- //
     private void checkUserRegistration(String uid, String email) {
@@ -493,7 +548,7 @@ public class LoginFragment extends Fragment {
                         // A Google account is already verified by Google, so the
                         // email-verification gate is skipped; everything else
                         // (role lookup, admin approval) stays exactly the same.
-                        checkUserRegistration(uid, email);
+                        checkAccountNotUsedByOtherRole(uid, email, () -> checkUserRegistration(uid, email));
                     })
                     .addOnFailureListener(e -> {
 

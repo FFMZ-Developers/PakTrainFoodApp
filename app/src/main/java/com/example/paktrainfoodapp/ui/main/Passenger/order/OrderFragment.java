@@ -61,7 +61,8 @@ public class OrderFragment extends Fragment implements Refreshable {
         // Live counts next to each tab label - see OrderTabCounter.
         String counterUid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
         if (counterUid != null) {
-            tabCounter.attachStatuses(tabsOrders, 0, "Active", "passengerUid", counterUid, "Active", "Cancelled");
+
+            tabCounter.attachStatuses(tabsOrders, 0, "Active", "passengerUid", counterUid, "Active");
             tabCounter.attachStatuses(tabsOrders, 1, "Accepted", "passengerUid", counterUid, "Accepted","ready_for_delivery");
             // Must mirror DeliveredOrdersFragment's own filter exactly - it does
             // NOT include pick_up (that sits in the Completed tab), so counting

@@ -90,6 +90,10 @@ public class resturent_DashboardFragment extends Fragment {
             ((View) tvMenuCount.getParent()).setOnClickListener(v -> navigateTo("menu"));
         }
 
+        if (tvRating != null) {
+            ((View) tvRating.getParent()).setOnClickListener(v -> openReviews());
+        }
+
         viewModel = new ViewModelProvider(this).get(RestaurantDashboardViewModel.class);
 
         viewModel.getTotalOrders().observe(getViewLifecycleOwner(), v -> {
@@ -110,11 +114,72 @@ public class resturent_DashboardFragment extends Fragment {
 
         viewModel.getRecentActiveOrders().observe(getViewLifecycleOwner(), this::bindRecentOrders);
 
-        // Ratings aren't collected anywhere yet, so show a dash rather than a
-        // fake 4.8 that would mislead during a demo.
-        if (tvRating != null) tvRating.setText("—");
+        // ✅ FIX: this was hardcoded to "—" with a comment saying ratings
+        // weren't collected anywhere - they are now (see
+        // RateOrderDialogFragment), so this computes the real average
+        // from this restaurant's own Reviews subcollection.
+        loadAverageRating();
 
         viewModel.start();
+    }
+
+    /** Averages this restaurant's own Reviews subcollection for the
+     *  dashboard's Rating stat card. */
+    private void loadAverageRating() {
+
+        if (tvRating == null) return;
+
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() == null) return;
+
+        String uid = auth.getCurrentUser().getUid();
+
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("Users").document("Restaurant")
+                .collection("VerifiedRegister").document(uid)
+                .collection("Reviews")
+                .addSnapshotListener((snap, e) -> {
+
+                    if (!isAdded() || tvRating == null) return;
+
+                    if (e != null || snap == null || snap.isEmpty()) {
+                        tvRating.setText("\u2014");
+                        return;
+                    }
+
+                    double total = 0;
+                    int count = 0;
+
+                    for (com.google.firebase.firestore.DocumentSnapshot doc : snap.getDocuments()) {
+                        Double rating = doc.getDouble("rating");
+                        if (rating != null) {
+                            total += rating;
+                            count++;
+                        }
+                    }
+
+                    tvRating.setText(count > 0
+                            ? String.format(java.util.Locale.getDefault(), "%.1f", total / count)
+                            : "\u2014");
+                });
+    }
+
+    private void openReviews() {
+
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() == null || !isAdded()) return;
+
+        String uid = auth.getCurrentUser().getUid();
+        String name = tvDashboardTitle != null ? tvDashboardTitle.getText().toString() : "Ratings & Reviews";
+
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.main_container,
+                        com.example.paktrainfoodapp.ui.shared.reviews.ReviewsListFragment.newInstance(
+                                com.example.paktrainfoodapp.ui.shared.reviews.ReviewsListFragment.ROOT_RESTAURANT,
+                                uid, name))
+                .addToBackStack(null)
+                .commit();
     }
 
     /**

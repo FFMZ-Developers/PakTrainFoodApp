@@ -125,59 +125,16 @@
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp">
 
+                <!-- FAQ rows are built in HelpSupportFragment.java, not
+                     hardcoded here - the questions differ per role
+                     (Restaurant/Rider get earnings & payout questions, a
+                     Passenger gets ordering/tracking/refund questions). -->
                 <LinearLayout
+                    android:id="@+id/layoutFaqContent"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="When do I get paid?"
-                        android:textStyle="bold"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:layout_marginBottom="14dp"
-                        android:text="Your earnings move to your Available balance once an order is completed, and are transferred to your bank automatically every 24 hours once Stripe is connected (see your Wallet screen)."
-                        android:textSize="13sp"
-                        android:textColor="#666" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="How do I set up payments?"
-                        android:textStyle="bold"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:layout_marginBottom="14dp"
-                        android:text="Go to Wallet \u2192 Setup Payments, and follow Stripe's onboarding form."
-                        android:textSize="13sp"
-                        android:textColor="#666" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="An order has a problem - what do I do?"
-                        android:textStyle="bold"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Open the order and use &quot;Report a Problem&quot; - our team reviews every report and resolves payment fairly for everyone involved."
-                        android:textSize="13sp"
-                        android:textColor="#666" />
-                </LinearLayout>
+                    android:padding="16dp" />
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

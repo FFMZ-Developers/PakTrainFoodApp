@@ -79,16 +79,24 @@ public class resturent_ProfileFragment extends Fragment {
                 () -> com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.newInstance(
                         com.example.paktrainfoodapp.ui.shared.orders.MyOrdersFragment.ROLE_RESTAURANT));
 
-        // ✅ FIX: "Manage Menu" existed in the layout but was never wired -
-        // tapping it did nothing at all. It now opens the same menu screen
-        // (add/edit/remove items) the dashboard's Quick Access reaches.
-        wireRow(view, R.id.layout_manage_menu,
-                () -> new com.example.paktrainfoodapp.ui.main.Restaurant.menu.resturent_MenuFragment());
+        // ✅ FIX: this used to open resturent_MenuFragment directly via
+        // wireRow() (a plain fragment replace) - the exact same screen the
+        // bottom nav's "Menu" tab opens, but without going through that
+        // tab's own click listener, so the bottom nav kept showing
+        // "Profile" highlighted even though Manage Menu was now on
+        // screen. Routing through the host's navigateFromDashboard() -
+        // the same path the dashboard's own "Manage Menu" shortcut uses -
+        // makes the highlight follow the screen correctly.
+        View layoutManageMenu = view.findViewById(R.id.layout_manage_menu);
+        if (layoutManageMenu != null) {
+            layoutManageMenu.setOnClickListener(v -> navigateToTab("menu"));
+        }
 
         // \u2705 FIX: this row existed in the layout but had never been wired
         // to anything at all - tapping "Help & Support" did nothing.
         wireRow(view, R.id.layout_help_support,
-                () -> new com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment());
+                () -> com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment
+                        .newInstance(com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment.ROLE_RESTAURANT));
 
         // Module: share the app - WhatsApp / copy link / anything else,
         // via the system share sheet.
@@ -96,6 +104,22 @@ public class resturent_ProfileFragment extends Fragment {
         if (layoutShare != null) {
             layoutShare.setOnClickListener(v ->
                     com.example.paktrainfoodapp.utils.ShareUtils.showShareOptions(requireContext()));
+        }
+
+        // App Version row: shows the real installed versionName and opens
+        // a small info dialog with the same version on tap - same as the
+        // rider profile's row.
+        TextView txtAppVersion = view.findViewById(R.id.txt_app_version);
+        View layoutAppVersion = view.findViewById(R.id.layout_app_version);
+        String appVersion = resolveAppVersion();
+        if (txtAppVersion != null) txtAppVersion.setText(appVersion);
+        if (layoutAppVersion != null) {
+            layoutAppVersion.setOnClickListener(v ->
+                    new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            .setTitle("App Version")
+                            .setMessage("Pak Train Food\n\nVersion " + appVersion)
+                            .setPositiveButton("OK", null)
+                            .show());
         }
 
         if (layoutAccountInfo != null) {
@@ -181,8 +205,7 @@ public class resturent_ProfileFragment extends Fragment {
 
 
 
-    private void performLogout() {
-        // 1. Firebase sign out
+    private void performLogout() {        // 1. Firebase sign out
         FirebaseAuth.getInstance().signOut();
 
         // 2. Data clear
@@ -198,6 +221,18 @@ public class resturent_ProfileFragment extends Fragment {
         // 4. Activity finish safely
         if (getActivity() != null) {
             getActivity().finish();
+        }
+    }
+
+    /** Reads the real app version from PackageManager, same source SettingsFragment/rider profile use. */
+    private String resolveAppVersion() {
+        try {
+            return requireContext()
+                    .getPackageManager()
+                    .getPackageInfo(requireContext().getPackageName(), 0)
+                    .versionName;
+        } catch (Exception e) {
+            return "1.0";
         }
     }
 
@@ -268,6 +303,16 @@ public class resturent_ProfileFragment extends Fragment {
 
     interface FragmentFactory {
         androidx.fragment.app.Fragment create();
+    }
+
+    /** Routes through the host's own bottom-nav click path (same as
+     *  resturent_DashboardFragment.navigateTo()) so the highlighted tab
+     *  always matches whatever screen is actually showing. */
+    private void navigateToTab(String target) {
+        if (getParentFragment() instanceof com.example.paktrainfoodapp.ui.main.Restaurant.restaurant_LoadFragment) {
+            ((com.example.paktrainfoodapp.ui.main.Restaurant.restaurant_LoadFragment) getParentFragment())
+                    .navigateFromDashboard(target);
+        }
     }
 
     /**

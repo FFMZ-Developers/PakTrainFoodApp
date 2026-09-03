@@ -27,6 +27,7 @@ public class DeliveryHomeFragment extends Fragment {
 
     private TextView txtGreeting, txtName, txtStatus;
     private TextView txtTotal, txtActive, txtCompleted, txtEarnings;
+    private TextView txtRiderRating, txtRiderRatingCount;
     private Switch switchOnline;
 
     // Set while we're pushing the OBSERVED (already-saved) value into the
@@ -57,6 +58,8 @@ public class DeliveryHomeFragment extends Fragment {
         txtActive = view.findViewById(R.id.txtRiderActive);
         txtCompleted = view.findViewById(R.id.txtRiderCompleted);
         txtEarnings = view.findViewById(R.id.txtRiderEarnings);
+        txtRiderRating = view.findViewById(R.id.txtRiderRating);
+        txtRiderRatingCount = view.findViewById(R.id.txtRiderRatingCount);
 
         txtGreeting.setText(greetingForTimeOfDay());
 
@@ -113,6 +116,9 @@ public class DeliveryHomeFragment extends Fragment {
         view.findViewById(R.id.cardRiderActive).setOnClickListener(v -> openMyDeliveries());
         view.findViewById(R.id.cardRiderCompleted).setOnClickListener(v -> openMyDeliveries());
         view.findViewById(R.id.cardRiderEarnings).setOnClickListener(v -> openWallet());
+        view.findViewById(R.id.cardRiderRating).setOnClickListener(v -> openReviews());
+
+        loadAverageRating();
 
         view.findViewById(R.id.actionMyDeliveries).setOnClickListener(v -> openMyDeliveries());
         view.findViewById(R.id.actionRiderWallet).setOnClickListener(v -> openWallet());
@@ -142,6 +148,65 @@ public class DeliveryHomeFragment extends Fragment {
     private void openWallet() {
 
         openDetail(WalletFragment.newInstance(WalletFragment.ROLE_DELIVERY));
+    }
+
+    /** Averages this rider's own Reviews subcollection for the dashboard's
+     *  Rating card. */
+    private void loadAverageRating() {
+
+        if (txtRiderRating == null) return;
+
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() == null) return;
+
+        String uid = auth.getCurrentUser().getUid();
+
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("Users").document("Delivery")
+                .collection("VerifiedRegister").document(uid)
+                .collection("Reviews")
+                .addSnapshotListener((snap, e) -> {
+
+                    if (!isAdded() || txtRiderRating == null) return;
+
+                    if (e != null || snap == null || snap.isEmpty()) {
+                        txtRiderRating.setText("\u2014");
+                        if (txtRiderRatingCount != null) txtRiderRatingCount.setText("Your Rating");
+                        return;
+                    }
+
+                    double total = 0;
+                    int count = 0;
+
+                    for (com.google.firebase.firestore.DocumentSnapshot doc : snap.getDocuments()) {
+                        Double rating = doc.getDouble("rating");
+                        if (rating != null) {
+                            total += rating;
+                            count++;
+                        }
+                    }
+
+                    txtRiderRating.setText(count > 0
+                            ? String.format(java.util.Locale.getDefault(), "%.1f", total / count)
+                            : "\u2014");
+
+                    if (txtRiderRatingCount != null) {
+                        txtRiderRatingCount.setText(count + (count == 1 ? " rating" : " ratings"));
+                    }
+                });
+    }
+
+    private void openReviews() {
+
+        com.google.firebase.auth.FirebaseAuth auth = com.google.firebase.auth.FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() == null || !isAdded()) return;
+
+        String uid = auth.getCurrentUser().getUid();
+        String name = txtName != null ? txtName.getText().toString() : "Ratings & Reviews";
+
+        openDetail(com.example.paktrainfoodapp.ui.shared.reviews.ReviewsListFragment.newInstance(
+                com.example.paktrainfoodapp.ui.shared.reviews.ReviewsListFragment.ROOT_DELIVERY,
+                uid, name));
     }
 
     private void openDetail(Fragment fragment) {

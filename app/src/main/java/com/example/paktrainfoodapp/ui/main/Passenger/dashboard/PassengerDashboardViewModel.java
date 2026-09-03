@@ -24,6 +24,13 @@ public class PassengerDashboardViewModel extends ViewModel {
     private final MutableLiveData<Integer> completedOrders = new MutableLiveData<>(0);
     private final MutableLiveData<Double> walletBalance = new MutableLiveData<>(0.0);
 
+    // Module: real "Recent Orders" for the dashboard card - same pattern
+    // as the restaurant dashboard's own recentActiveOrders.
+    private final MutableLiveData<java.util.List<DocumentSnapshot>> recentOrders
+            = new MutableLiveData<>(new java.util.ArrayList<>());
+
+    public LiveData<java.util.List<DocumentSnapshot>> getRecentOrders() { return recentOrders; }
+
     private ListenerRegistration ordersRegistration;
     private ListenerRegistration walletRegistration;
 
@@ -59,6 +66,8 @@ public class PassengerDashboardViewModel extends ViewModel {
 
                     int total = 0, active = 0, completed = 0;
 
+                    java.util.List<DocumentSnapshot> recent = new java.util.ArrayList<>();
+
                     for (DocumentSnapshot doc : snapshot.getDocuments()) {
 
                         total++;
@@ -72,12 +81,25 @@ public class PassengerDashboardViewModel extends ViewModel {
                             completed++;
                         } else if ("ongoing".equals(bucket) || "pending".equals(bucket)) {
                             active++;
+                            recent.add(doc);
                         }
                     }
 
                     totalOrders.postValue(total);
                     activeOrders.postValue(active);
                     completedOrders.postValue(completed);
+
+                    recent.sort((a, b) -> {
+                        Long ta = a.getLong("timestamp");
+                        Long tb = b.getLong("timestamp");
+                        long va = ta != null ? ta : 0L;
+                        long vb = tb != null ? tb : 0L;
+                        return Long.compare(vb, va); // newest first
+                    });
+
+                    if (recent.size() > 5) recent = recent.subList(0, 5);
+
+                    recentOrders.postValue(recent);
                 });
     }
 

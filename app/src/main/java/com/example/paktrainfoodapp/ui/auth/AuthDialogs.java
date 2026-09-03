@@ -230,7 +230,18 @@ public class AuthDialogs {
                 .setPositiveButton("Try Again", null)
                 .show();
     }
+    /** Signed-in account belongs to a different role than the one selected
+     *  on the login screen - stops here rather than silently starting a
+     *  fresh registration for the selected role under the same account. */
+    public static void showWrongRole(Context context, String actualRole) {
 
+        new AlertDialog.Builder(context)
+                .setTitle("Wrong Role Selected")
+                .setMessage("Your account was created for the " + actualRole
+                        + " role.\n\nPlease select the correct role to log in.")
+                .setPositiveButton("OK", null)
+                .show();
+    }
     private static TextView buildMessageView(Context context, String html) {
 
         TextView tv = new TextView(context);
