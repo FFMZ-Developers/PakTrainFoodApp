@@ -779,3 +779,84 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Hamburger button - hidden on desktop, shown on mobile below */
+.hamburger-button {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #374151;
+  cursor: pointer;
+  padding: 4px;
+  margin-right: 12px;
+}
+
+.hamburger-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Dark backdrop shown behind the sidebar on mobile */
+.sidebar-overlay {
+  display: none;
+}
+
+/* ============================================================
+   MOBILE (<= 768px): sidebar becomes an off-canvas drawer that
+   slides in over the content, opened via the hamburger button.
+   Placed at the END of the file on purpose - these rules must
+   come after the base .sidebar / .topbar rules above so they
+   win the cascade (same selector, same specificity: later wins).
+   ============================================================ */
+@media (max-width: 768px) {
+  .hamburger-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 80%;
+    max-width: 300px;
+    transform: translateX(-100%);
+    z-index: 40;
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 30;
+  }
+
+  .topbar {
+    padding: 0 16px;
+  }
+
+  .search-container {
+    width: auto;
+    flex: 1;
+    max-width: 220px;
+  }
+
+  .profile-text {
+    display: none;
+  }
+
+  .profile-container {
+    padding-left: 12px;
+  }
+
+  .content-container {
+    padding: 16px;
+  }
+}

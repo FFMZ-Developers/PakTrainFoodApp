@@ -42,8 +42,17 @@ function pkrToUsdCents(pkrAmount) {
 //    every order on the platform and are worth the extra check.
 // ============================================================
 
-/** Verifies the request's Bearer token belongs to a real admin account. */
-async function requireAdmin(req) {
+/**
+ * Verifies the request's Bearer token belongs to a real admin account.
+ *
+ * @param {object} req
+ * @param {string[]|null} allowedRoles - e.g. ["super-admin"] or
+ *   ["super-admin", "finance"]. If provided, the caller's role must be
+ *   one of these, even if they have a valid admin token - this stops a
+ *   lower-privileged role from hitting the endpoint URL directly.
+ *   Leave null to just require "any admin account", regardless of role.
+ */
+async function requireAdmin(req, allowedRoles = null) {
 
   const authHeader = req.headers.authorization || "";
   const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -65,7 +74,15 @@ async function requireAdmin(req) {
     return { ok: false, status: 403, error: "Not an admin account." };
   }
 
-  return { ok: true, uid: decoded.uid };
+  // Default to the least-privileged role if the document doesn't set one -
+  // fail-safe rather than fail-open.
+  const role = adminDoc.data().role || "support";
+
+  if (allowedRoles && role !== "super-admin" && !allowedRoles.includes(role)) {
+    return { ok: false, status: 403, error: "This action requires super-admin privileges." };
+  }
+
+  return { ok: true, uid: decoded.uid, role };
 }
 
 exports.getOrderConfig = functions.https.onRequest(async (req, res) => {
@@ -110,7 +127,7 @@ exports.updateOrderConfig = functions.https.onRequest(async (req, res) => {
     return res.status(405).json({ success: false, error: "Method Not Allowed" });
   }
 
-  const authCheck = await requireAdmin(req);
+  const authCheck = await requireAdmin(req, ["super-admin"]);
 
   if (!authCheck.ok) {
     return res.status(authCheck.status).json({ success: false, error: authCheck.error });
@@ -1110,6 +1127,162 @@ exports.sendAdminMessage = functions.https.onCall(async (data) => {
 
   } catch (error) {
     console.error("sendAdminMessage error:", error);
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+// ============================================================
+// 7) ADMIN MANAGEMENT (super-admin only)
+//
+//    Backs the "Admin Management" tab in the panel - lets a
+//    super-admin create a new admin account, list existing ones,
+//    change someone's role, or remove an admin entirely, without
+//    ever touching the Firebase Console by hand.
+//
+//    Every function below re-checks the caller's OWN role against
+//    Firestore server-side (never trusts the frontend), because this
+//    is the one feature that can grant/revoke access to everything
+//    else in the panel.
+// ============================================================
+
+/** Shared guard: caller must be signed in AND have role "super-admin". */
+async function requireSuperAdminCallable(context) {
+
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "You must be signed in.");
+  }
+
+  const callerDoc = await db.collection("admins").doc(context.auth.uid).get();
+
+  if (!callerDoc.exists || callerDoc.data().role !== "super-admin") {
+    throw new functions.https.HttpsError(
+        "permission-denied",
+        "Only a super-admin can manage admin accounts.",
+    );
+  }
+}
+
+/** Lists every admin account (uid, email, name, role, createdAt). */
+exports.listAdmins = functions.https.onCall(async (data, context) => {
+
+  await requireSuperAdminCallable(context);
+
+  try {
+    const snap = await db.collection("admins").get();
+
+    const admins = snap.docs.map((d) => {
+      const v = d.data();
+      return {
+        uid: d.id,
+        email: v.email || null,
+        name: v.name || "",
+        role: v.role || "support",
+        createdAt: v.createdAt ? v.createdAt.toMillis() : null,
+      };
+    });
+
+    return { success: true, admins };
+
+  } catch (error) {
+    console.error("listAdmins error:", error);
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+/** Creates a brand-new Firebase Auth user AND its admins/{uid} doc. */
+exports.createAdminAccount = functions.https.onCall(async (data, context) => {
+
+  await requireSuperAdminCallable(context);
+
+  const { email, password, name, role } = data;
+
+  if (!email || !password || !role) {
+    throw new functions.https.HttpsError("invalid-argument", "email, password and role are required.");
+  }
+
+  if (password.length < 6) {
+    throw new functions.https.HttpsError("invalid-argument", "Password must be at least 6 characters.");
+  }
+
+  let userRecord;
+  try {
+    userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: name || undefined,
+    });
+  } catch (error) {
+    // e.g. auth/email-already-exists, auth/invalid-email
+    throw new functions.https.HttpsError("already-exists", error.message);
+  }
+
+  try {
+    await db.collection("admins").doc(userRecord.uid).set({
+      email,
+      name: name || "",
+      role,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: context.auth.uid,
+    });
+  } catch (error) {
+    // Roll back the auth user so we don't end up with an orphaned
+    // login that has no admins/ doc (and therefore no role at all).
+    await admin.auth().deleteUser(userRecord.uid).catch(() => {});
+    console.error("createAdminAccount (firestore write) error:", error);
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+
+  return { success: true, uid: userRecord.uid };
+});
+
+/** Changes an existing admin's role. */
+exports.updateAdminRole = functions.https.onCall(async (data, context) => {
+
+  await requireSuperAdminCallable(context);
+
+  const { uid, role } = data;
+
+  if (!uid || !role) {
+    throw new functions.https.HttpsError("invalid-argument", "uid and role are required.");
+  }
+
+  if (uid === context.auth.uid) {
+    // Stops a super-admin from accidentally locking themselves out by
+    // demoting their own only super-admin account mid-session.
+    throw new functions.https.HttpsError("failed-precondition", "You can't change your own role.");
+  }
+
+  try {
+    await db.collection("admins").doc(uid).set({ role }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.error("updateAdminRole error:", error);
+    throw new functions.https.HttpsError("internal", error.message);
+  }
+});
+
+/** Removes an admin account completely (Auth user + Firestore doc). */
+exports.deleteAdminAccount = functions.https.onCall(async (data, context) => {
+
+  await requireSuperAdminCallable(context);
+
+  const { uid } = data;
+
+  if (!uid) {
+    throw new functions.https.HttpsError("invalid-argument", "uid is required.");
+  }
+
+  if (uid === context.auth.uid) {
+    throw new functions.https.HttpsError("failed-precondition", "You can't delete your own account.");
+  }
+
+  try {
+    // Ignore "already gone" so a half-deleted admin can still be cleaned up.
+    await admin.auth().deleteUser(uid).catch(() => {});
+    await db.collection("admins").doc(uid).delete();
+    return { success: true };
+  } catch (error) {
+    console.error("deleteAdminAccount error:", error);
     throw new functions.https.HttpsError("internal", error.message);
   }
 });

@@ -43,9 +43,12 @@ const Login = () => {
         const adminData = adminSnap.data(); // ✅ FIXED
 
         // 👉 STORE ROLE (IMPORTANT)
-        localStorage.setItem("role", adminData.role);
+        // Fail-safe: agar Firestore doc mein role field set nahi hai
+        // to "support" (sab se limited role) treat karo, "super-admin" nahi.
+        const resolvedRole = adminData.role || 'support';
+        localStorage.setItem("role", resolvedRole);
 
-        console.log('Admin Role:', adminData.role);
+        console.log('Admin Role:', resolvedRole);
 
         setError('');
 

@@ -1,0 +1,131 @@
+.admin-mgmt-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.admin-mgmt-container .page-header h2 { font-size: 26px; font-weight: 800; color: #111827; }
+.admin-mgmt-container .page-header p { color: #6b7280; margin-top: 4px; font-size: 14px; }
+
+.admin-mgmt-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-top: 20px;
+}
+
+.admin-mgmt-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 16px;
+}
+
+.admin-mgmt-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.admin-mgmt-success {
+  background: #f0fdf4;
+  color: #15803d;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.admin-mgmt-muted { color: #9ca3af; font-size: 14px; }
+
+.admin-mgmt-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.admin-mgmt-field { display: flex; flex-direction: column; gap: 6px; }
+
+.admin-mgmt-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.admin-mgmt-field input,
+.admin-mgmt-field select,
+.admin-mgmt-table select {
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+
+.admin-mgmt-field input:focus,
+.admin-mgmt-field select:focus {
+  border-color: #6366f1;
+}
+
+.admin-mgmt-submit {
+  grid-column: span 2;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  justify-self: start;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.admin-mgmt-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.admin-mgmt-table-wrap { overflow-x: auto; }
+
+.admin-mgmt-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-mgmt-table th {
+  text-align: left;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding: 10px 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.admin-mgmt-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 14px;
+  color: #111827;
+}
+
+.admin-mgmt-actions { text-align: right; }
+
+.admin-mgmt-remove {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-mgmt-remove:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .admin-mgmt-form { grid-template-columns: 1fr; }
+  .admin-mgmt-submit { grid-column: span 1; }
+}

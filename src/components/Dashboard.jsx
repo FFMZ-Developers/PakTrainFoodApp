@@ -9,14 +9,50 @@ import Orders from './Orders';
 import LiveMap from './LiveMap';
 import Passengers from './Passengers';
 import Settings from './Settings';
+import AdminManagement from './AdminManagement';
 
 // Firebase Firestore ke imports
 import { db } from '../firebase/config'; 
 import { collection, onSnapshot } from 'firebase/firestore';
 
+// Role-based access (multiple roles, each with its own allowed tabs)
+import { getCurrentRole, isSuperAdmin, canAccessTab, roleLabel } from '../utils/permissions';
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Dashboard');
+
+  // Mobile: sidebar is hidden off-canvas until this is toggled on.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // When the mobile sidebar opens, push a throwaway history entry so the
+  // phone's hardware/browser "back" button closes the sidebar first,
+  // instead of leaving the dashboard page (which would land on Login).
+  useEffect(() => {
+    if (!sidebarOpen) return;
+
+    window.history.pushState({ mobileSidebar: true }, '');
+
+    const handlePopState = () => setSidebarOpen(false);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [sidebarOpen]);
+
+  // Use this (not setSidebarOpen(false) directly) whenever the sidebar is
+  // closed by something OTHER than the back button - e.g. tapping a menu
+  // item or the overlay - so the throwaway history entry above gets
+  // cleaned up immediately instead of lingering for the next back press.
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+    if (window.history.state && window.history.state.mobileSidebar) {
+      window.history.back();
+    }
+  };
+
+  // Role stored by Login.jsx after sign-in (e.g. "super-admin", "manager",
+  // "support", "finance" - see src/utils/permissions.js for the full list).
+  const [role] = useState(getCurrentRole());
+  const superAdmin = isSuperAdmin(role);
 
   const menuItems = [
     { name: 'Dashboard', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
@@ -27,13 +63,30 @@ const Dashboard = () => {
     { name: 'Orders', icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' },
     { name: 'Disputes', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
     { name: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+    { name: 'Admin Management', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7zM19 8v4m2-2h-4' },
   ];
 
+  // Only show sidebar entries this role is allowed to open.
+  const visibleMenuItems = menuItems.filter((item) => canAccessTab(item.name, role));
+
   const handleLogout = () => {
+    localStorage.removeItem('role');
     navigate('/');
   };
 
   const renderContent = () => {
+    // Defensive check: even if activeTab somehow got set to a restricted
+    // tab (e.g. it was the last tab open before the role changed), a
+    // limited admin never sees the actual content.
+    if (!canAccessTab(activeTab, role)) {
+      return (
+        <div className="placeholder-content">
+          <h2>Access Restricted</h2>
+          <p>You need super-admin privileges to view {activeTab}.</p>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'Dashboard':
         return <DashboardOverview setActiveTab={setActiveTab} />;
@@ -51,6 +104,8 @@ const Dashboard = () => {
         return <Disputes />;
       case 'Settings':
         return <Settings />;
+      case 'Admin Management':
+        return <AdminManagement />;
       default:
         return (
           <div className="placeholder-content">
@@ -62,18 +117,21 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-wrapper">
+      {/* Dark backdrop behind the sidebar on mobile - tapping it closes the menu */}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar}></div>}
+
       {/* Sidebar */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-header">
           <h1>PakTrain</h1>
           <p>Logistics Admin</p>
         </div>
 
         <nav className="sidebar-nav">
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <button
               key={item.name}
-              onClick={() => setActiveTab(item.name)}
+              onClick={() => { setActiveTab(item.name); closeSidebar(); }}
               className={`nav-item ${activeTab === item.name ? 'active' : ''}`}
             >
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -87,7 +145,7 @@ const Dashboard = () => {
           <span style={{ display: 'block', padding: '0 1.25rem', fontSize: '0.75rem', fontWeight: 'bold', color: '#a3aed1', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Other Routes</span>
           
           <button
-            onClick={() => navigate('/train-routes')}
+            onClick={() => { closeSidebar(); navigate('/train-routes'); }}
             className="nav-item"
           >
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -111,6 +169,12 @@ const Dashboard = () => {
       <main className="main-area">
         {/* Top Navbar */}
         <header className="topbar">
+          <button className="hamburger-button" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
           <div className="search-container">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -127,7 +191,7 @@ const Dashboard = () => {
             <div className="profile-container">
               <div className="profile-text">
                 <p className="profile-name">Admin User</p>
-                <p className="profile-role">SUPER ADMIN</p>
+                <p className="profile-role">{roleLabel(role)}</p>
               </div>
               <div className="profile-avatar">AU</div>
             </div>
