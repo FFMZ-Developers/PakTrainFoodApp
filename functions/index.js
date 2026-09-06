@@ -85,6 +85,37 @@ async function requireAdmin(req, allowedRoles = null) {
   return { ok: true, uid: decoded.uid, role };
 }
 
+/**
+ * Same idea as requireAdmin(), but for onCall functions (which get
+ * `context.auth` instead of a raw Bearer header) - used for admin-panel
+ * actions like disabling an account, resolving a dispute, or paying out
+ * a partner, so they can't be triggered by anyone who just happens to
+ * know the function's name.
+ *
+ * Throws (rather than returning ok:false) since onCall handlers are
+ * expected to throw functions.https.HttpsError on failure.
+ */
+async function requireAdminCallable(context, allowedRoles = null) {
+
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "You must be signed in.");
+  }
+
+  const adminDoc = await db.collection("admins").doc(context.auth.uid).get();
+
+  if (!adminDoc.exists) {
+    throw new functions.https.HttpsError("permission-denied", "Not an admin account.");
+  }
+
+  const role = adminDoc.data().role || "support";
+
+  if (allowedRoles && role !== "super-admin" && !allowedRoles.includes(role)) {
+    throw new functions.https.HttpsError("permission-denied", "You don't have permission for this action.");
+  }
+
+  return { uid: context.auth.uid, role };
+}
+
 exports.getOrderConfig = functions.https.onRequest(async (req, res) => {
 
   res.set("Access-Control-Allow-Origin", "*");
@@ -181,15 +212,21 @@ exports.getAdminBalance = functions
     secrets: ["STRIPE_SECRET_KEY"],
   })
   .https.onRequest(async (req, res) => {
-         const stripe = getStripe();
 
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") {
     return res.status(204).send("");
   }
+
+  const authCheck = await requireAdmin(req);
+  if (!authCheck.ok) {
+    return res.status(authCheck.status).json({ success: false, error: authCheck.error });
+  }
+
+  const stripe = getStripe();
 
   try {
     const balance = await stripe.balance.retrieve();
@@ -511,7 +548,7 @@ exports.payoutToPartner = functions
     const stripe = getStripe();
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
     if (req.method === "OPTIONS") {
       return res.status(204).send("");
@@ -522,6 +559,11 @@ exports.payoutToPartner = functions
         success: false,
         error: "Method Not Allowed",
       });
+    }
+
+    const authCheck = await requireAdmin(req);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status).json({ success: false, error: authCheck.error });
     }
 
     try {
@@ -708,6 +750,8 @@ exports.simulateSandboxPayout = functions.https.onRequest(async (req, res) => {
 exports.resolveDispute = functions
   .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
   .https.onCall(async (data, context) => {
+
+    await requireAdminCallable(context);
 
     const stripe = getStripe();
 
@@ -989,7 +1033,9 @@ function userDocRef(role, uid) {
  * The reason is stored in Firestore purely so the app CAN show it if it
  * wants to (Firebase Auth's own disabled flag carries no reason text).
  */
-exports.setAccountDisabled = functions.https.onCall(async (data) => {
+exports.setAccountDisabled = functions.https.onCall(async (data, context) => {
+
+  await requireAdminCallable(context);
 
   const { uid, role, disabled, reason } = data;
 
@@ -1035,7 +1081,9 @@ exports.setAccountDisabled = functions.https.onCall(async (data) => {
  * is a manual admin action, and conflating the two would make it
  * impossible to tell why an account is limited.
  */
-exports.setAccountRestricted = functions.https.onCall(async (data) => {
+exports.setAccountRestricted = functions.https.onCall(async (data, context) => {
+
+  await requireAdminCallable(context);
 
   const { uid, role, restricted, reason } = data;
 
@@ -1076,7 +1124,9 @@ exports.setAccountRestricted = functions.https.onCall(async (data) => {
  * account itself being gone (an order already paid for shouldn't lose
  * its trail just because the restaurant was later removed).
  */
-exports.deleteAccount = functions.https.onCall(async (data) => {
+exports.deleteAccount = functions.https.onCall(async (data, context) => {
+
+  await requireAdminCallable(context);
 
   const { uid, role } = data;
 
@@ -1105,7 +1155,9 @@ exports.deleteAccount = functions.https.onCall(async (data) => {
 });
 
 /** A direct message with no account status change at all. */
-exports.sendAdminMessage = functions.https.onCall(async (data) => {
+exports.sendAdminMessage = functions.https.onCall(async (data, context) => {
+
+  await requireAdminCallable(context);
 
   const { uid, role, title, body } = data;
 
@@ -1147,19 +1199,7 @@ exports.sendAdminMessage = functions.https.onCall(async (data) => {
 
 /** Shared guard: caller must be signed in AND have role "super-admin". */
 async function requireSuperAdminCallable(context) {
-
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "You must be signed in.");
-  }
-
-  const callerDoc = await db.collection("admins").doc(context.auth.uid).get();
-
-  if (!callerDoc.exists || callerDoc.data().role !== "super-admin") {
-    throw new functions.https.HttpsError(
-        "permission-denied",
-        "Only a super-admin can manage admin accounts.",
-    );
-  }
+  await requireAdminCallable(context, ["super-admin"]);
 }
 
 /** Lists every admin account (uid, email, name, role, createdAt). */

@@ -3,6 +3,7 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getFunctions } from "firebase/functions";
 import { getDatabase } from "firebase/database";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDeA29tUGfig2XLve_jbQfOr-U-yIgdAt4",
@@ -28,3 +29,6 @@ export const functions = getFunctions(app);
 // passenger positions live in the Realtime Database, not Firestore, same
 // as the Android app.
 export const rtdb = getDatabase(app);
+
+// Module: needed for uploading/storing the admin's profile picture.
+export const storage = getStorage(app);

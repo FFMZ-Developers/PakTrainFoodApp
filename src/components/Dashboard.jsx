@@ -10,10 +10,12 @@ import LiveMap from './LiveMap';
 import Passengers from './Passengers';
 import Settings from './Settings';
 import AdminManagement from './AdminManagement';
+import ProfileModal from './ProfileModal';
 
 // Firebase Firestore ke imports
-import { db } from '../firebase/config'; 
-import { collection, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../firebase/config'; 
+import { collection, onSnapshot, doc } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 // Role-based access (multiple roles, each with its own allowed tabs)
 import { getCurrentRole, isSuperAdmin, canAccessTab, roleLabel } from '../utils/permissions';
@@ -49,6 +51,43 @@ const Dashboard = () => {
     }
   };
 
+  // Live profile info (name / email / picture) for the header + the
+  // "My Account" modal - kept in sync with admins/{uid} in Firestore so
+  // a picture/name change reflects immediately without a page reload.
+  const [adminProfile, setAdminProfile] = useState({ name: '', email: '', photoURL: '' });
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+  useEffect(() => {
+    let unsubDoc = () => {};
+
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      unsubDoc();
+      if (!user) {
+        setAdminProfile({ name: '', email: '', photoURL: '' });
+        return;
+      }
+      unsubDoc = onSnapshot(doc(db, 'admins', user.uid), (snap) => {
+        const d = snap.exists() ? snap.data() : {};
+        setAdminProfile({
+          name: d.name || '',
+          email: d.email || user.email || '',
+          photoURL: d.photoURL || '',
+        });
+      });
+    });
+
+    return () => { unsubAuth(); unsubDoc(); };
+  }, []);
+
+  /** "AU" style initials from a name or email, for the fallback avatar. */
+  const initialsFrom = (text) => {
+    const clean = (text || '').trim();
+    if (!clean) return 'A';
+    const parts = clean.split(/\s+/);
+    if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return clean.slice(0, 2).toUpperCase();
+  };
+
   // Role stored by Login.jsx after sign-in (e.g. "super-admin", "manager",
   // "support", "finance" - see src/utils/permissions.js for the full list).
   const [role] = useState(getCurrentRole());
@@ -69,7 +108,12 @@ const Dashboard = () => {
   // Only show sidebar entries this role is allowed to open.
   const visibleMenuItems = menuItems.filter((item) => canAccessTab(item.name, role));
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("signOut error:", err);
+    }
     localStorage.removeItem('role');
     navigate('/');
   };
@@ -183,18 +227,21 @@ const Dashboard = () => {
           </div>
 
           <div className="user-section">
-            <button className="icon-button">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </button>
-            <div className="profile-container">
+            <button
+              className="profile-container"
+              onClick={() => setProfileModalOpen(true)}
+              title="My Account"
+            >
               <div className="profile-text">
-                <p className="profile-name">Admin User</p>
+                <p className="profile-name">{adminProfile.name || 'Admin User'}</p>
                 <p className="profile-role">{roleLabel(role)}</p>
               </div>
-              <div className="profile-avatar">AU</div>
-            </div>
+              {adminProfile.photoURL ? (
+                <img src={adminProfile.photoURL} alt="Profile" className="profile-avatar-img" />
+              ) : (
+                <div className="profile-avatar">{initialsFrom(adminProfile.name || adminProfile.email)}</div>
+              )}
+            </button>
           </div>
         </header>
 
@@ -202,6 +249,10 @@ const Dashboard = () => {
         <div className="content-container">
           {renderContent()}
         </div>
+
+        {profileModalOpen && (
+          <ProfileModal profile={adminProfile} onClose={() => setProfileModalOpen(false)} />
+        )}
       </main>
     </div>
   );

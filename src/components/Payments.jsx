@@ -10,7 +10,7 @@ import {
 
 import { httpsCallable } from "firebase/functions";
 
-import { db, functions } from "../firebase/config";
+import { db, functions, auth } from "../firebase/config";
 
 // Currency formatting utility shifted to PKR
 const formatCurrency = (amount, currency = "PKR") => {
@@ -61,12 +61,14 @@ const Payments = () => {
   // ----------------------------------------------------
   const loadStripeBalance = useCallback(async (isMounted = { current: true }) => {
     try {
+      const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch(
         "https://us-central1-paktrainfoodservice.cloudfunctions.net/getAdminBalance",
         {
           method: "GET",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${idToken}`,
           }
         }
       );
@@ -399,11 +401,15 @@ const Payments = () => {
       // rider their "payment sent" notification. Fixes both the "No
       // document to update" crash and manual payouts never notifying
       // anyone.
+      const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch(
         "https://us-central1-paktrainfoodservice.cloudfunctions.net/payoutToPartner",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${idToken}`,
+          },
           body: JSON.stringify({
             walletId: selectedWallet.id,
             amount: selectedWallet.available,

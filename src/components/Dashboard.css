@@ -205,6 +205,16 @@
   gap: 12px;
   padding-left: 24px;
   border-left: 1px solid #e2e8f0;
+  background: transparent;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.profile-container:hover {
+  opacity: 0.85;
 }
 
 .profile-text {
@@ -234,6 +244,13 @@
   color: white;
   font-weight: 600;
   font-size: 14px;
+}
+
+.profile-avatar-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .content-container {
