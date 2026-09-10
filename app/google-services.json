@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "584020651389-8tq19q2ua4p1j00kjqf0cgdhndlmvoj2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.paktrainfoodapp",
+            "certificate_hash": "f4ff0b5b3ba8bf6cfc17a17cd0c52765f4d2fdea"
+          }
+        },
+        {
           "client_id": "584020651389-b6jp2hicvfq5cv7jg3kk40vu2r0037m9.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -65,6 +73,14 @@
           "android_info": {
             "package_name": "com.fahad.paktrainfoodservice",
             "certificate_hash": "b6665e54652bb069c31aaefd4e2165eca59c6ca0"
+          }
+        },
+        {
+          "client_id": "584020651389-iqbun2m4d25a1v6auonqednffpc9hf6r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fahad.paktrainfoodservice",
+            "certificate_hash": "f4ff0b5b3ba8bf6cfc17a17cd0c52765f4d2fdea"
           }
         },
         {
