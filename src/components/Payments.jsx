@@ -10,7 +10,7 @@ import {
 
 import { httpsCallable } from "firebase/functions";
 
-import { db, functions, auth } from "../firebase/config";
+import { db, functions } from "../firebase/config";
 
 // Currency formatting utility shifted to PKR
 const formatCurrency = (amount, currency = "PKR") => {
@@ -61,14 +61,12 @@ const Payments = () => {
   // ----------------------------------------------------
   const loadStripeBalance = useCallback(async (isMounted = { current: true }) => {
     try {
-      const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch(
         "https://us-central1-paktrainfoodservice.cloudfunctions.net/getAdminBalance",
         {
           method: "GET",
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${idToken}`,
+            "Content-Type": "application/json"
           }
         }
       );
@@ -142,7 +140,7 @@ const Payments = () => {
       const available = Number(walletData.availableBalance || 0);
       const pending = Number(walletData.pendingBalance || 0);
 
-      let user = null;
+      let user;
       let name = "";
       let phone = "";
       let email = "";
@@ -157,7 +155,7 @@ const Payments = () => {
 
       // Where each role's real profile document lives (matches the
       // Android app's own docRef() logic for each role).
-      let profileRef = null;
+      let profileRef;
 
       if (uiRole === "Restaurant") {
         profileRef = doc(db, "Users", "Restaurant", "VerifiedRegister", walletDoc.id);
@@ -401,15 +399,11 @@ const Payments = () => {
       // rider their "payment sent" notification. Fixes both the "No
       // document to update" crash and manual payouts never notifying
       // anyone.
-      const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch(
         "https://us-central1-paktrainfoodservice.cloudfunctions.net/payoutToPartner",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${idToken}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             walletId: selectedWallet.id,
             amount: selectedWallet.available,
@@ -469,7 +463,6 @@ const Payments = () => {
   const totalRiders = wallets.filter((w) => w.role === "Delivery").length;
 
   const sortedHistory = [...history].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-  const sortedWallets = [...wallets].sort((a, b) => b.available - a.available);
 
   // ----------------------------------------------------
   // One reusable section per role: heading, its own Total
