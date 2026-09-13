@@ -23,11 +23,7 @@ import com.example.paktrainfoodapp.ui.main.Passenger.home.Passanger_Resturent_li
 import com.example.paktrainfoodapp.ui.main.Passenger.home.Resturent_Menu_Fragment;
 import com.example.paktrainfoodapp.ui.main.Passenger.order.OrderFragment;
 import com.example.paktrainfoodapp.ui.main.Passenger.order.passanger_orderDetailFragment;
-import com.example.paktrainfoodapp.ui.main.Passenger.profile.CommonIssues;
-import com.example.paktrainfoodapp.ui.main.Passenger.profile.LiveChatFragment;
 import com.example.paktrainfoodapp.ui.main.Passenger.profile.ProfileFragment;
-import com.example.paktrainfoodapp.ui.main.Passenger.profile.StaticPage;
-import com.example.paktrainfoodapp.ui.main.Passenger.profile.passenger_helpandsupport;
 import com.example.paktrainfoodapp.ui.main.notification.NotificationFragment;
 import com.example.paktrainfoodapp.ui.main.notification.NotificationRepository;
 
@@ -46,7 +42,6 @@ public class Passenger_Fragment_Loader extends Fragment {
     private OrderFragment orderFragment;
     private CartFragment cartFragment;
     private ProfileFragment profileFragment;
-    private passenger_helpandsupport helpSupportFragment;
     private TextView txtNotificationBadge;
 
     private NotificationRepository notificationRepository;
@@ -87,6 +82,13 @@ public class Passenger_Fragment_Loader extends Fragment {
 
         super.onViewCreated(view, savedInstanceState);
 
+        // Module: order-complete rating popup. Checked once here (this
+        // shell is loaded any time the passenger opens the app), rather
+        // than tied to any one specific screen - that way it eventually
+        // shows even if the passenger wasn't looking at that particular
+        // order when it actually completed.
+        checkForUnratedOrder();
+
         btnJourney = view.findViewById(R.id.btnJourney);
         // The badge moved from the bottom nav onto each screen's own top bar,
         // so there is no view to bind here any more.
@@ -110,7 +112,6 @@ public class Passenger_Fragment_Loader extends Fragment {
             orderFragment = new OrderFragment();
             cartFragment = new CartFragment();
             profileFragment = new ProfileFragment();
-            helpSupportFragment = new passenger_helpandsupport();
 
             FragmentTransaction ft = childFm.beginTransaction();
 
@@ -131,11 +132,6 @@ public class Passenger_Fragment_Loader extends Fragment {
             ft.add(R.id.fragment_holder, profileFragment, "PROFILE")
                     .hide(profileFragment);
 
-            ft.add(R.id.fragment_holder,
-                            helpSupportFragment,
-                            "HELP_SUPPORT")
-                    .hide(helpSupportFragment);
-
             ft.commit();
 
             activeFragment = homeFragment;
@@ -154,7 +150,6 @@ public class Passenger_Fragment_Loader extends Fragment {
             orderFragment = (OrderFragment) childFm.findFragmentByTag("ORDER");
             cartFragment = (CartFragment) childFm.findFragmentByTag("CART");
             profileFragment = (ProfileFragment) childFm.findFragmentByTag("PROFILE");
-            helpSupportFragment = (passenger_helpandsupport) childFm.findFragmentByTag("HELP_SUPPORT");
 
             if (homeFragment == null) {
                 // Extremely defensive fallback - should not normally happen,
@@ -642,10 +637,7 @@ public class Passenger_Fragment_Loader extends Fragment {
             selectNavButton(btnCart);
 
         } else if (fragment instanceof ProfileFragment
-                || fragment instanceof passenger_helpandsupport
-                || fragment instanceof CommonIssues
-                || fragment instanceof StaticPage
-                || fragment instanceof LiveChatFragment
+                || fragment instanceof com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment
                 // Screens opened from the profile list keep Profile highlighted
                 || fragment instanceof com.example.paktrainfoodapp.ui.shared.profile.PersonalInfoFragment
                 || fragment instanceof com.example.paktrainfoodapp.ui.shared.profile.SettingsFragment
@@ -773,10 +765,13 @@ public class Passenger_Fragment_Loader extends Fragment {
     }
     public void openHelpSupport() {
 
-        if (helpSupportFragment == null) {
-            helpSupportFragment = new passenger_helpandsupport();
-        }
-        openSubFragment(helpSupportFragment);
+        // ✅ FIX: this used to open passenger_helpandsupport - a much
+        // longer, separate screen with far more options than a passenger
+        // actually needs. It now opens the SAME simple Help & Support
+        // screen Restaurant/Rider use, with passenger-relevant FAQ
+        // content (see HelpSupportFragment.passengerFaqs()).
+        openSubFragment(com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment
+                .newInstance(com.example.paktrainfoodapp.ui.shared.support.HelpSupportFragment.ROLE_PASSENGER));
 
     }
     public void openCommonFragment(Fragment fragment) {
@@ -979,6 +974,114 @@ public class Passenger_Fragment_Loader extends Fragment {
         if (f == homeFragment) return btnJourney;
 
         return btnDashboard;
+    }
+
+    /**
+     * Looks for a completed order that hasn't been fully rated yet -
+     * "fully" now means both the restaurant AND the rider (see
+     * riderReviewSubmitted, added alongside the existing reviewSubmitted
+     * flag) - and prompts for whichever of the two is still missing.
+     * Only the single most recent order is handled at a time, so a
+     * passenger with several unrated orders isn't hit with a stack of
+     * popups at once - this same check runs again the next time the app
+     * opens, so nothing is skipped, just spread out.
+     */
+    private void checkForUnratedOrder() {
+
+        String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null
+                ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
+
+        if (uid == null) return;
+
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("Orders")
+                .whereEqualTo("passengerUid", uid)
+                .whereEqualTo("orderStatus", "completed")
+                .get()
+                .addOnSuccessListener(snap -> {
+
+                    if (!isAdded() || snap == null || snap.isEmpty()) return;
+
+                    com.google.firebase.firestore.DocumentSnapshot mostRecentUnrated = null;
+                    long mostRecentTime = -1;
+
+                    for (com.google.firebase.firestore.DocumentSnapshot doc : snap.getDocuments()) {
+
+                        Boolean restaurantReviewed = doc.getBoolean("reviewSubmitted");
+                        Boolean riderReviewed = doc.getBoolean("riderReviewSubmitted");
+                        String riderId = doc.getString("acceptedBy");
+
+                        boolean restaurantDone = restaurantReviewed != null && restaurantReviewed;
+                        // No rider ever got assigned (e.g. order was
+                        // handled without one) - nothing to rate there.
+                        boolean riderDone = (riderReviewed != null && riderReviewed) || riderId == null;
+
+                        if (restaurantDone && riderDone) continue;
+
+                        Long completedAt = doc.getLong("completedAt");
+                        long t = completedAt != null ? completedAt : 0L;
+
+                        if (t > mostRecentTime) {
+                            mostRecentTime = t;
+                            mostRecentUnrated = doc;
+                        }
+                    }
+
+                    if (mostRecentUnrated == null || !isAdded()) return;
+
+                    showRatingFlow(mostRecentUnrated);
+                });
+    }
+
+    /**
+     * Shows the restaurant rating dialog first (if not already submitted
+     * for this order), then chains straight into the rider rating dialog
+     * once it closes (submit or skip either way) - if the restaurant was
+     * already rated, it skips straight to the rider dialog.
+     */
+    private void showRatingFlow(com.google.firebase.firestore.DocumentSnapshot orderDoc) {
+
+        String orderId = orderDoc.getId();
+        Boolean restaurantReviewed = orderDoc.getBoolean("reviewSubmitted");
+        boolean restaurantDone = restaurantReviewed != null && restaurantReviewed;
+
+        if (!restaurantDone) {
+
+            String restaurantId = orderDoc.getString("restaurantId");
+            String restaurantName = orderDoc.getString("restaurantName");
+
+            if (restaurantId == null) {
+                showRiderRatingIfNeeded(orderDoc);
+                return;
+            }
+
+            com.example.paktrainfoodapp.ui.main.Passenger.RateOrderDialogFragment dialog =
+                    com.example.paktrainfoodapp.ui.main.Passenger.RateOrderDialogFragment
+                            .forRestaurant(orderId, restaurantId, restaurantName);
+
+            dialog.setOnClosedCallback(() -> {
+                if (isAdded()) showRiderRatingIfNeeded(orderDoc);
+            });
+
+            dialog.show(getChildFragmentManager(), "rate_order_restaurant");
+
+        } else {
+            showRiderRatingIfNeeded(orderDoc);
+        }
+    }
+
+    private void showRiderRatingIfNeeded(com.google.firebase.firestore.DocumentSnapshot orderDoc) {
+
+        Boolean riderReviewed = orderDoc.getBoolean("riderReviewSubmitted");
+        String riderId = orderDoc.getString("acceptedBy");
+
+        if ((riderReviewed != null && riderReviewed) || riderId == null) return;
+
+        String riderName = orderDoc.getString("riderName");
+
+        com.example.paktrainfoodapp.ui.main.Passenger.RateOrderDialogFragment
+                .forRider(orderDoc.getId(), riderId, riderName)
+                .show(getChildFragmentManager(), "rate_order_rider");
     }
 }
 

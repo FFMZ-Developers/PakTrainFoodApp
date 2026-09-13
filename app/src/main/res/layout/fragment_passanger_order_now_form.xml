@@ -118,6 +118,36 @@
                 android:padding="10dp"
                 android:background="@drawable/edittext_bg" />
 
+            <!-- Module: ticket photo upload - optional, helps the rider
+                 confirm they've found the right passenger at the meal
+                 station. -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Ticket Photo (optional)"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary" />
+
+            <Button
+                android:id="@+id/btnUploadTicket"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="6dp"
+                android:backgroundTint="@color/teal_700"
+                android:text="\uD83D\uDCF7 Add Ticket Photo"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white" />
+
+            <ImageView
+                android:id="@+id/imgTicketPreview"
+                android:layout_width="match_parent"
+                android:layout_height="160dp"
+                android:layout_marginTop="8dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                android:contentDescription="Ticket photo preview" />
+
             <Button
                 android:id="@+id/btnOrderNow"
                 android:layout_width="match_parent"

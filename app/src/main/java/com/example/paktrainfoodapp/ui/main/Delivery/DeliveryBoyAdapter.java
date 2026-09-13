@@ -53,6 +53,16 @@ public class DeliveryBoyAdapter extends RecyclerView.Adapter<DeliveryBoyAdapter.
         DeliveryBoyModel order = list.get(position);
 
         h.txtOrderId.setText(com.example.paktrainfoodapp.utils.OrderNumberUtils.format(order.getOrderNumber(), order.getOrderId()));
+
+        if (h.txtRestaurantName != null) {
+            String restName = order.getRestaurantName();
+            if (restName != null && !restName.isEmpty()) {
+                h.txtRestaurantName.setVisibility(View.VISIBLE);
+                h.txtRestaurantName.setText(restName);
+            } else {
+                h.txtRestaurantName.setVisibility(View.GONE);
+            }
+        }
         h.txtTotalPrice.setText("Rs " + order.getTotalPrice());
 
         // ✅ FIX: "Estimated Arrival" was never populated on the rider's
@@ -76,6 +86,11 @@ public class DeliveryBoyAdapter extends RecyclerView.Adapter<DeliveryBoyAdapter.
         }
 
         String status = order.getStatus();
+
+        // Status pill - top-right corner, same for every role/tab.
+        if (h.txtStatusBadge != null) {
+            com.example.paktrainfoodapp.utils.StatusBadge.apply(h.txtStatusBadge, status);
+        }
 
         // ✅ FIX: the item click (which opens the tracking/detail screen)
         // used to be wired ONLY inside the "ready_for_delivery" branch
@@ -187,7 +202,7 @@ public class DeliveryBoyAdapter extends RecyclerView.Adapter<DeliveryBoyAdapter.
     static class VH extends RecyclerView.ViewHolder {
 
         ImageView btnAccept, btnReportProblem;
-        TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival;
+        TextView txtOrderId, txtTotalPrice, txtTimer, txtEtaArrival, txtRestaurantName, txtStatusBadge;
         Button btnReady;
         View timeRow;
 
@@ -195,6 +210,8 @@ public class DeliveryBoyAdapter extends RecyclerView.Adapter<DeliveryBoyAdapter.
             super(itemView);
 
             txtOrderId = itemView.findViewById(R.id.txtOrderId);
+            txtRestaurantName = itemView.findViewById(R.id.txtRestaurantName);
+            txtStatusBadge = itemView.findViewById(R.id.txtStatusBadge);
             txtTotalPrice = itemView.findViewById(R.id.txtTotalPrice);
 
             btnReady = itemView.findViewById(R.id.btnReady);

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/app_background">
+
+    <!-- Top Bar -->
+    <LinearLayout
+        android:id="@+id/wizard_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@color/teal_700"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:elevation="4dp">
+
+        <TextView
+            android:id="@+id/txtWizardTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Account Verification"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Step progress -->
+    <LinearLayout
+        android:id="@+id/wizard_step_progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/txtStepLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Step 1 of 4 — Personal Details"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/progressStep"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            android:layout_marginTop="8dp"
+            android:max="4"
+            android:progress="1"
+            android:progressTint="@color/teal_700" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/wizard_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>

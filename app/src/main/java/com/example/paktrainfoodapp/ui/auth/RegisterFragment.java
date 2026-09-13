@@ -271,27 +271,35 @@ public class RegisterFragment extends Fragment {
                                                 // login screen - people never saw it, tried to log
                                                 // in immediately, and hit an unexplained "not
                                                 // verified" error. Now it's a blocking dialog with
-                                                // a direct "Open Email App" button and a prominent
-                                                // spam-folder warning.
+                                                // a clear "check your Gmail" message and a
+                                                // prominent spam-folder warning.
                                                 // The next step only runs once the user has
                                                 // actually acknowledged the dialog, so the login
-                                                // screen (or Stripe onboarding) never appears
-                                                // over the top of the message they still need
-                                                // to read.
+                                                // screen never appears over the top of the
+                                                // message they still need to read.
+                                                //
+                                                // ✅ FIX: this used to branch on role and, for
+                                                // Restaurant/Delivery, immediately kick off Stripe
+                                                // Connect onboarding right here - regardless of
+                                                // which button they tapped on the EMAIL
+                                                // verification dialog ("Open Email App" or "I'll
+                                                // Do It Later" both led here). That produced two
+                                                // unrelated, overlapping Toasts back-to-back
+                                                // ("Account created...", then often "Could not
+                                                // open onboarding link...") that read as one
+                                                // garbled message, and it asked a not-yet-verified
+                                                // account to set up payments before admin has even
+                                                // reviewed them. Stripe onboarding now only ever
+                                                // starts when the user deliberately taps "Setup
+                                                // Payments" on their own Wallet screen - the same
+                                                // place that already has proper browser-availability
+                                                // checking and a copy-link fallback.
                                                 Runnable continueAfterDialog = () -> {
 
                                                     if (!isAdded()) return;
 
-                                                    // 🔥 Sirf Restaurant aur Delivery (Rider) ke liye
-                                                    // Stripe Connected Account banayenge.
-                                                    // Passenger ko iski zaroorat nahi (refund original
-                                                    // payment method pe seedha wapas jata hai).
-                                                    if (userRole.equals("RESTAURANT") || userRole.equals("DELIVERY")) {
-                                                        createStripeConnectedAccount(uid, email, userRole);
-                                                    } else {
-                                                        mAuth.signOut();
-                                                        goToLogin();
-                                                    }
+                                                    mAuth.signOut();
+                                                    goToLogin();
                                                 };
 
                                                 if (isAdded()) {
@@ -330,74 +338,4 @@ public class RegisterFragment extends Fragment {
                 });
     }
 
-    // 🚀 STEP 3: Restaurant/Rider ke liye Stripe Test Connected Account banana
-    // aur onboarding link browser mein open karna (sandbox mode)
-    private void createStripeConnectedAccount(String uid, String email, String role) {
-
-        progressDialog.setMessage("Setting up payment account... Please wait.");
-        progressDialog.show();
-
-        Map<String, Object> data = new HashMap<>();
-        data.put("email", email);
-        data.put("uid", uid);
-        data.put("type", role.equals("RESTAURANT") ? "restaurant" : "rider");
-
-        functions
-                .getHttpsCallable("createConnectedAccount")
-                .call(data)
-                .addOnSuccessListener(result -> {
-
-                    progressDialog.dismiss();
-
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> resultData = (Map<String, Object>) result.getData();
-
-                    Boolean success = resultData != null && resultData.get("success") != null
-                            ? (Boolean) resultData.get("success")
-                            : false;
-
-                    String onboardingUrl = resultData != null
-                            ? (String) resultData.get("onboardingUrl")
-                            : null;
-
-                    if (success != null && success && onboardingUrl != null) {
-
-                        Toast.makeText(getContext(),
-                                "Account created. Please complete Stripe onboarding.",
-                                Toast.LENGTH_LONG).show();
-
-                        // Onboarding link browser mein open karein (sandbox test details fill karne ke liye)
-                        try {
-                            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(onboardingUrl));
-                            startActivity(browserIntent);
-                        } catch (Exception e) {
-                            Toast.makeText(getContext(),
-                                    "Could not open onboarding link. Please complete it later from your profile.",
-                                    Toast.LENGTH_LONG).show();
-                        }
-                    } else {
-                        Toast.makeText(getContext(),
-                                "Payment account setup incomplete. You can complete it later from your profile.",
-                                Toast.LENGTH_LONG).show();
-                    }
-
-                    mAuth.signOut();
-                    goToLogin();
-                })
-                .addOnFailureListener(e -> {
-
-                    progressDialog.dismiss();
-
-                    // 🔥 Stripe account creation fail ho jaye tab bhi registration
-                    // process rukna nahi chahiye. User baad mein profile se
-                    // payment account setup retry kar sakta hai.
-                    Toast.makeText(getContext(),
-                            "Payment account setup failed: " + e.getMessage() +
-                                    "\nYou can set it up later from your profile.",
-                            Toast.LENGTH_LONG).show();
-
-                    mAuth.signOut();
-                    goToLogin();
-                });
-    }
 }

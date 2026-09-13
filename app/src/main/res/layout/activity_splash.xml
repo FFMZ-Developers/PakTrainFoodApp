@@ -1,22 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ✅ FIX: was a busy full-bleed photo background with a dark overlay and
+     plain white text on top. Redesigned as a clean white screen with the
+     app logo centered, and the tagline directly below it - matches how a
+     splash screen should read: quiet, branded, nothing competing with the
+     logo for attention. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/splash_screen"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
-    <!-- Background image -->
-    <ImageView
-        android:id="@+id/splash_background"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:src="@drawable/hlo"
-        android:contentDescription="PakTrainFoodService" />
-
-    <!-- Dark overlay for blur/dim effect -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#99D5CDCD" />
+    android:layout_height="match_parent"
+    android:background="@android:color/white">
 
     <!-- Center content -->
     <LinearLayout
@@ -26,23 +18,25 @@
         android:orientation="vertical"
         android:gravity="center">
 
-        <TextView
-            android:id="@+id/app_name_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="PakTrain Food App"
-            android:textColor="@android:color/white"
-            android:textSize="32sp"
-            android:textStyle="bold" />
+        <ImageView
+            android:id="@+id/splash_logo"
+            android:layout_width="170dp"
+            android:layout_height="170dp"
+            android:src="@drawable/logo5"
+            android:scaleType="centerInside"
+            android:contentDescription="PakTrainFood" />
 
-        <!-- optional small subtitle -->
         <TextView
-            android:layout_marginTop="8dp"
+            android:id="@+id/app_tagline_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Order on the train — fast and easy"
-            android:textColor="#DDFFFFFF"
-            android:textSize="14sp" />
+            android:layout_marginTop="18dp"
+            android:text="Map Your Meal on Your Seat"
+            android:textColor="@color/teal_700"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:letterSpacing="0.02" />
 
     </LinearLayout>
 
