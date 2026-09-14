@@ -21,6 +21,12 @@ const formatCurrency = (amount, currency = "PKR") => {
   }).format(Number(amount || 0));
 };
 
+// Same conversion rate used server-side (functions/utils/currency.js), so
+// this stays consistent with whatever the backend actually charges/pays
+// out in USD.
+const PKR_TO_USD = 283;
+const toUsdEquivalent = (pkrAmount) => (Number(pkrAmount || 0) / PKR_TO_USD).toFixed(2);
+
 const Payments = () => {
   const [loading, setLoading] = useState(true);
 
@@ -247,9 +253,20 @@ const Payments = () => {
         ...passengerResult.historyList
       ];
 
+      // ✅ FIX: this used to only count history entries with
+      // type === "Paid by Admin" - the type written by the MANUAL "Pay
+      // Now" flow (handleConfirmPayout below). But autoPayoutWallets.js
+      // (the scheduled function that pays out wallets automatically every
+      // 24 hours) writes its history entries with type === "Auto Payout"
+      // instead, so every automatic payout was silently invisible to this
+      // total - "Total Paid" stayed stuck at whatever had been paid out
+      // manually, no matter how much the scheduler had actually sent out
+      // in the background. Now both types count.
       let paidTotal = 0;
       allHistory.forEach((h) => {
-        if (h.type === "Paid by Admin") paidTotal += Number(h.amount || 0);
+        if (h.type === "Paid by Admin" || h.type === "Auto Payout") {
+          paidTotal += Number(h.amount || 0);
+        }
       });
 
       if (isMounted.current) {
@@ -464,6 +481,16 @@ const Payments = () => {
 
   const sortedHistory = [...history].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
+  // Restaurant/Rider total available balances - computed once here so
+  // both the summary card and its USD line below use the exact same
+  // number.
+  const restaurantAvailableTotal = restaurantWallets.reduce(
+    (sum, w) => sum + Number(w.available || 0), 0
+  );
+  const riderAvailableTotal = riderWallets.reduce(
+    (sum, w) => sum + Number(w.available || 0), 0
+  );
+
   // ----------------------------------------------------
   // One reusable section per role: heading, its own Total
   // Available / Total Pending summary, and a table with a "View" button
@@ -589,15 +616,18 @@ const Payments = () => {
 
         {/* Module - restaurant + rider now each show BOTH balances
             (available in green, pending in orange), instead of only a
-            single "Pending" number that hid the available side entirely. */}
+            single "Pending" number that hid the available side entirely.
+            A USD equivalent line was added under each so the admin can
+            see roughly what that PKR balance is worth without doing the
+            conversion by hand. */}
         <div className="payment-card">
           <h3>RESTAURANT BALANCE</h3>
           <h2 style={{ color: "#2e7d32" }}>
-            {formatCurrency(
-              restaurantWallets.reduce((sum, w) => sum + Number(w.available || 0), 0),
-              "PKR"
-            )}
+            {formatCurrency(restaurantAvailableTotal, "PKR")}
           </h2>
+          <p style={{ marginTop: "4px", color: "#888", fontSize: "13px" }}>
+            ≈ US${toUsdEquivalent(restaurantAvailableTotal)}
+          </p>
           <p style={{ marginTop: "10px", color: "#e07b00", fontWeight: "bold" }}>
             Pending : {formatCurrency(restaurantPending, "PKR")}
           </p>
@@ -606,11 +636,11 @@ const Payments = () => {
         <div className="payment-card">
           <h3>RIDER BALANCE</h3>
           <h2 style={{ color: "#2e7d32" }}>
-            {formatCurrency(
-              riderWallets.reduce((sum, w) => sum + Number(w.available || 0), 0),
-              "PKR"
-            )}
+            {formatCurrency(riderAvailableTotal, "PKR")}
           </h2>
+          <p style={{ marginTop: "4px", color: "#888", fontSize: "13px" }}>
+            ≈ US${toUsdEquivalent(riderAvailableTotal)}
+          </p>
           <p style={{ marginTop: "10px", color: "#e07b00", fontWeight: "bold" }}>
             Pending : {formatCurrency(riderPending, "PKR")}
           </p>
