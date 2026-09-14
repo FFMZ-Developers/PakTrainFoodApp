@@ -4,7 +4,8 @@ import {
   onSnapshot,
   query,
   doc,
-  updateDoc
+  updateDoc,
+  getDocs
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import AccountActionsModal from './AccountActionsModal';
@@ -18,6 +19,10 @@ const Restaurant = () => {
   const [allRestaurants, setAllRestaurants] = useState([]);
   const [error, setError] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [reliabilityDetail, setReliabilityDetail] = useState(null);
+  const [strikesList, setStrikesList] = useState([]);
+  const [loadingStrikes, setLoadingStrikes] = useState(false);
+  const [newScoreInput, setNewScoreInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -85,6 +90,85 @@ const Restaurant = () => {
     setError('Could not change live status.');
   }
 };
+
+  // Module: clears the auto-pause set by reliabilityHelper.js's recordStrike()
+  // once the admin has reviewed the strikes and is satisfied the restaurant
+  // can operate again. Deliberately does NOT touch reliabilityScore or the
+  // strikes history - only lifts the pause itself, so the score still
+  // reflects real history and can keep recovering normally via completed
+  // orders (recordCompletion's +2 bonus per order).
+  const handleReactivate = async (id, name) => {
+    if (!window.confirm(`Reactivate ${name || 'this restaurant'}? They will be able to receive orders again immediately.`)) {
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'Users', 'Restaurant', 'VerifiedRegister', id), {
+        isPaused: false,
+        pausedReason: null
+      });
+    } catch (err) {
+      console.error("Reactivate error: ", err);
+      setError('Could not reactivate this restaurant.');
+    }
+  };
+
+  // Module: opens the strikes-history panel for one restaurant. Actual
+  // fetch happens in the useEffect below (keyed on reliabilityDetail), so
+  // this just sets which restaurant we're looking at.
+  const openReliabilityDetail = (partner) => {
+    setReliabilityDetail(partner);
+    setNewScoreInput('');
+  };
+
+  useEffect(() => {
+    if (!reliabilityDetail) {
+      setStrikesList([]);
+      return;
+    }
+
+    setLoadingStrikes(true);
+
+    getDocs(collection(db, 'Users', 'Restaurant', 'VerifiedRegister', reliabilityDetail.id, 'strikes'))
+      .then((snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        list.sort((a, b) => (b.at || 0) - (a.at || 0));
+        setStrikesList(list);
+      })
+      .catch((err) => {
+        console.error('Could not load strikes: ', err);
+      })
+      .finally(() => setLoadingStrikes(false));
+  }, [reliabilityDetail]);
+
+  // Module: lets the admin manually correct a score - e.g. the strikes
+  // were for a genuine one-off issue that's since been resolved, and the
+  // restaurant shouldn't have to wait for +2-per-order recovery to earn
+  // their way back. Does not touch the strikes history itself (audit
+  // trail stays intact) or isPaused (use Reactivate for that) - purely
+  // the number.
+  const handleAdjustScore = async () => {
+    const value = Number(newScoreInput);
+
+    if (Number.isNaN(value) || value < 0 || value > 100) {
+      alert('Enter a score between 0 and 100.');
+      return;
+    }
+
+    if (!window.confirm(`Set ${reliabilityDetail.restaurantName || 'this restaurant'}'s reliability score to ${value}?`)) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, 'Users', 'Restaurant', 'VerifiedRegister', reliabilityDetail.id), {
+        reliabilityScore: value
+      });
+      setReliabilityDetail((prev) => ({ ...prev, reliabilityScore: value }));
+      setNewScoreInput('');
+    } catch (err) {
+      console.error('Score adjust error: ', err);
+      alert('Could not update score.');
+    }
+  };
 
   const handleApprove = async (id) => {
 
@@ -313,6 +397,7 @@ const Restaurant = () => {
                   <th>LOCATION</th>
                   <th>STATUS</th>
                   <th>RATING</th>
+                  <th>RELIABILITY</th>
                   <th className="text-right">ACTIONS</th>
                 </tr>
               </thead>
@@ -344,6 +429,36 @@ const Restaurant = () => {
                         <span className="rating-count">({partner.reviewCount || 0})</span>
                       </div>
                     </td>
+                    <td>
+                      <span
+                        onClick={() => openReliabilityDetail(partner)}
+                        style={{
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          color: (partner.reliabilityScore ?? 100) >= 85 ? '#2e7d32'
+                               : (partner.reliabilityScore ?? 100) >= 50 ? '#f9a825'
+                               : '#c62828'
+                        }}
+                        title="Click to view strikes and adjust score"
+                      >
+                        {(partner.reliabilityScore ?? 100).toFixed(0)}
+                      </span>
+                      {partner.isPaused && (
+                        <>
+                          <span className="status-badge" style={{ background: '#ffebee', color: '#c62828', marginLeft: '6px', fontSize: '11px', padding: '2px 6px', borderRadius: '4px' }}>
+                            PAUSED
+                          </span>
+                          <button
+                            className="btn-action-outline btn-green-outline"
+                            style={{ marginLeft: '6px', fontSize: '11px', padding: '2px 8px' }}
+                            onClick={() => handleReactivate(partner.id, partner.restaurantName)}
+                          >
+                            Reactivate
+                          </button>
+                        </>
+                      )}
+                    </td>
                     <td className="text-right">
                       <div className="action-buttons">
                         <button 
@@ -364,7 +479,7 @@ const Restaurant = () => {
                 ))}
                 {filteredActive.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="empty-table-cell">No active partners found.</td>
+                    <td colSpan="6" className="empty-table-cell">No active partners found.</td>
                   </tr>
                 )}
               </tbody>
@@ -562,6 +677,72 @@ const Restaurant = () => {
             <div className="reject-reason-actions">
               <button className="btn-secondary" onClick={() => setRejectingId(null)}>Cancel</button>
               <button className="btn-reject" onClick={confirmReject}>Confirm Reject</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reliabilityDetail && (
+        <div className="modal-overlay" onClick={() => setReliabilityDetail(null)}>
+          <div className="reject-reason-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <h3>{reliabilityDetail.restaurantName || 'Restaurant'} - Reliability</h3>
+
+            <p>
+              Current score: <b>{(reliabilityDetail.reliabilityScore ?? 100).toFixed(0)} / 100</b>
+              {reliabilityDetail.isPaused && <span style={{ color: '#c62828', fontWeight: 'bold' }}> (Paused)</span>}
+            </p>
+
+            <h4 style={{ marginTop: '14px', marginBottom: '6px' }}>Strike History</h4>
+
+            {loadingStrikes ? (
+              <p>Loading...</p>
+            ) : strikesList.length === 0 ? (
+              <p style={{ color: '#888' }}>No strikes recorded.</p>
+            ) : (
+              <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '8px' }}>
+                {strikesList.map((s) => (
+                  <div key={s.id} style={{ padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
+                    <p style={{ margin: 0, fontWeight: 'bold' }}>
+                      {s.reason === 'order_rejected' ? 'Order Rejected'
+                        : s.reason === 'missed_prep_deadline' ? 'Missed Prep Deadline'
+                        : (s.reason || 'Strike')}
+                    </p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>
+                      Order: {s.orderId || 'N/A'} &middot; {s.at ? new Date(s.at).toLocaleString() : 'Unknown date'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <h4 style={{ marginTop: '14px', marginBottom: '6px' }}>Adjust Score Manually</h4>
+            <p style={{ fontSize: '12px', color: '#888', marginTop: 0 }}>
+              Use this if the issue behind these strikes has been resolved and the restaurant
+              shouldn't have to wait for it to recover on its own.
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={newScoreInput}
+                onChange={(e) => setNewScoreInput(e.target.value)}
+                placeholder="0-100"
+                style={{ flex: 1, padding: '6px', borderRadius: '6px', border: '1px solid #ccc' }}
+              />
+              <button className="btn-approve" onClick={handleAdjustScore}>Set Score</button>
+            </div>
+
+            <div className="reject-reason-actions" style={{ marginTop: '16px' }}>
+              {reliabilityDetail.isPaused && (
+                <button
+                  className="btn-approve"
+                  onClick={() => { handleReactivate(reliabilityDetail.id, reliabilityDetail.restaurantName); setReliabilityDetail(null); }}
+                >
+                  Reactivate Account
+                </button>
+              )}
+              <button className="btn-secondary" onClick={() => setReliabilityDetail(null)}>Close</button>
             </div>
           </div>
         </div>

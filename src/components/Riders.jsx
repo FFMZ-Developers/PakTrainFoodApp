@@ -28,6 +28,10 @@ const [search,setSearch] = useState("");
 const [rejectingId, setRejectingId] = useState(null);
 const [rejectReason, setRejectReason] = useState("");
 const [lightboxImage, setLightboxImage] = useState(null);
+const [reliabilityDetail, setReliabilityDetail] = useState(null);
+const [strikesList, setStrikesList] = useState([]);
+const [loadingStrikes, setLoadingStrikes] = useState(false);
+const [newScoreInput, setNewScoreInput] = useState('');
 
 
 
@@ -111,6 +115,93 @@ loadProfile();
 
 
 
+
+// Module: clears the auto-pause set by reliabilityHelper.js's recordStrike()
+// once the admin has reviewed the strikes and is satisfied the rider can
+// operate again. Deliberately does NOT touch reliabilityScore or the
+// strikes history - only lifts the pause itself, so the score still
+// reflects real history and can keep recovering normally via completed
+// deliveries (recordCompletion's +2 bonus per order).
+const handleReactivate = async (id, name) => {
+
+  if (!window.confirm(`Reactivate ${name || 'this rider'}? They will be able to accept orders again immediately.`)) {
+    return;
+  }
+
+  await updateDoc(
+
+  doc(
+  db,
+  "Users",
+  "Delivery",
+  "VerifiedRegister",
+  id
+  ),
+
+  {
+  isPaused:false,
+  pausedReason:null
+  }
+
+  );
+
+};
+
+// Module: opens the strikes-history panel for one rider. Actual fetch
+// happens in the useEffect below (keyed on reliabilityDetail).
+const openReliabilityDetail = (rider) => {
+  setReliabilityDetail(rider);
+  setNewScoreInput('');
+};
+
+useEffect(() => {
+  if (!reliabilityDetail) {
+    setStrikesList([]);
+    return;
+  }
+
+  setLoadingStrikes(true);
+
+  getDocs(collection(db, "Users", "Delivery", "VerifiedRegister", reliabilityDetail.id, "strikes"))
+    .then((snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (b.at || 0) - (a.at || 0));
+      setStrikesList(list);
+    })
+    .catch((err) => {
+      console.error("Could not load strikes: ", err);
+    })
+    .finally(() => setLoadingStrikes(false));
+}, [reliabilityDetail]);
+
+// Module: lets the admin manually correct a score - e.g. the strikes were
+// for a genuine one-off issue that's since been resolved, and the rider
+// shouldn't have to wait for +2-per-delivery recovery to earn their way
+// back. Does not touch the strikes history itself (audit trail stays
+// intact) or isPaused (use Reactivate for that) - purely the number.
+const handleAdjustScore = async () => {
+  const value = Number(newScoreInput);
+
+  if (Number.isNaN(value) || value < 0 || value > 100) {
+    alert("Enter a score between 0 and 100.");
+    return;
+  }
+
+  if (!window.confirm(`Set ${reliabilityDetail.name || "this rider"}'s reliability score to ${value}?`)) {
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, "Users", "Delivery", "VerifiedRegister", reliabilityDetail.id), {
+      reliabilityScore: value
+    });
+    setReliabilityDetail((prev) => ({ ...prev, reliabilityScore: value }));
+    setNewScoreInput('');
+  } catch (err) {
+    console.error("Score adjust error: ", err);
+    alert("Could not update score.");
+  }
+};
 
 const approve = async(id)=>{
 
@@ -607,6 +698,7 @@ onChange={e=>setSearch(e.target.value)}
 <th>CONTACT</th>
 <th>LOCATION</th>
 <th>STATUS</th>
+<th>RELIABILITY</th>
 <th>ACTION</th>
 
 </tr>
@@ -714,7 +806,38 @@ alt="rider"
 </td>
 
 
+<td>
 
+<span
+  onClick={() => openReliabilityDetail(r)}
+  style={{
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    color: (r.reliabilityScore ?? 100) >= 85 ? '#2e7d32'
+         : (r.reliabilityScore ?? 100) >= 50 ? '#f9a825'
+         : '#c62828'
+  }}
+  title="Click to view strikes and adjust score"
+>
+  {(r.reliabilityScore ?? 100).toFixed(0)}
+</span>
+{r.isPaused && (
+  <>
+    <span className="status-badge" style={{ background: '#ffebee', color: '#c62828', marginLeft: '6px', fontSize: '11px', padding: '2px 6px', borderRadius: '4px' }}>
+      PAUSED
+    </span>
+    <button
+      className="btn-action-outline btn-green-outline"
+      style={{ marginLeft: '6px', fontSize: '11px', padding: '2px 8px' }}
+      onClick={() => handleReactivate(r.id, r.name)}
+    >
+      Reactivate
+    </button>
+  </>
+)}
+
+</td>
 
 
 <td>
@@ -1110,6 +1233,72 @@ Approve
 </div>
 )}
 
+{reliabilityDetail && (
+<div className="modal-overlay" onClick={() => setReliabilityDetail(null)}>
+  <div className="reject-reason-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+    <h3>{reliabilityDetail.name || 'Rider'} - Reliability</h3>
+
+    <p>
+      Current score: <b>{(reliabilityDetail.reliabilityScore ?? 100).toFixed(0)} / 100</b>
+      {reliabilityDetail.isPaused && <span style={{ color: '#c62828', fontWeight: 'bold' }}> (Paused)</span>}
+    </p>
+
+    <h4 style={{ marginTop: '14px', marginBottom: '6px' }}>Strike History</h4>
+
+    {loadingStrikes ? (
+      <p>Loading...</p>
+    ) : strikesList.length === 0 ? (
+      <p style={{ color: '#888' }}>No strikes recorded.</p>
+    ) : (
+      <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '8px' }}>
+        {strikesList.map((s) => (
+          <div key={s.id} style={{ padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
+            <p style={{ margin: 0, fontWeight: 'bold' }}>
+              {s.reason === 'order_rejected' ? 'Order Rejected'
+                : s.reason === 'missed_prep_deadline' ? 'Missed Prep Deadline'
+                : s.reason === 'rider_search_exhausted' ? 'No Response To Dispatch'
+                : (s.reason || 'Strike')}
+            </p>
+            <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>
+              Order: {s.orderId || 'N/A'} &middot; {s.at ? new Date(s.at).toLocaleString() : 'Unknown date'}
+            </p>
+          </div>
+        ))}
+      </div>
+    )}
+
+    <h4 style={{ marginTop: '14px', marginBottom: '6px' }}>Adjust Score Manually</h4>
+    <p style={{ fontSize: '12px', color: '#888', marginTop: 0 }}>
+      Use this if the issue behind these strikes has been resolved and the rider
+      shouldn't have to wait for it to recover on its own.
+    </p>
+    <div style={{ display: 'flex', gap: '8px' }}>
+      <input
+        type="number"
+        min="0"
+        max="100"
+        value={newScoreInput}
+        onChange={(e) => setNewScoreInput(e.target.value)}
+        placeholder="0-100"
+        style={{ flex: 1, padding: '6px', borderRadius: '6px', border: '1px solid #ccc' }}
+      />
+      <button className="btn-action-text text-green" onClick={handleAdjustScore}>Set Score</button>
+    </div>
+
+    <div className="reject-reason-actions" style={{ marginTop: '16px' }}>
+      {reliabilityDetail.isPaused && (
+        <button
+          className="btn-action-text text-green"
+          onClick={() => { handleReactivate(reliabilityDetail.id, reliabilityDetail.name); setReliabilityDetail(null); }}
+        >
+          Reactivate Account
+        </button>
+      )}
+      <button className="btn-secondary" onClick={() => setReliabilityDetail(null)}>Close</button>
+    </div>
+  </div>
+</div>
+)}
 
 {lightboxImage && (
 <div className="modal-overlay" onClick={() => setLightboxImage(null)}>
