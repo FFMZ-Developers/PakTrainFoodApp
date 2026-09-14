@@ -221,6 +221,16 @@ r.isVerified===true
 
 );
 
+let totalRating = 0;
+let ratedCount = 0;
+activeRiders.forEach(r => {
+  if (r.averageRating) {
+    totalRating += Number(r.averageRating);
+    ratedCount++;
+  }
+});
+const avgRiderRating = ratedCount > 0 ? (totalRating / ratedCount).toFixed(1) : '0.0';
+
 
 
 
@@ -489,7 +499,7 @@ AVG RATING
 </div>
 
 <h4 className="metric-value">
-0.0
+{avgRiderRating}
 </h4>
 
 <span className="metric-sub-badge badge-rating">

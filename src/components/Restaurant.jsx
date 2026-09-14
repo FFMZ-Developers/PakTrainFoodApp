@@ -65,8 +65,8 @@ const Restaurant = () => {
   let totalRating = 0;
   let ratedCount = 0;
   activePartners.forEach(p => {
-    if (p.rating) {
-      totalRating += Number(p.rating);
+    if (p.averageRating) {
+      totalRating += Number(p.averageRating);
       ratedCount++;
     }
   });
@@ -340,8 +340,8 @@ const Restaurant = () => {
                     </td>
                     <td>
                       <div className="rating-cell">
-                        <span className="rating-score">{partner.rating || '0.0'}</span>
-                        <span className="rating-count">({partner.ratingCount || 0})</span>
+                        <span className="rating-score">{partner.averageRating || '0.0'}</span>
+                        <span className="rating-count">({partner.reviewCount || 0})</span>
                       </div>
                     </td>
                     <td className="text-right">

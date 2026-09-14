@@ -299,9 +299,20 @@ const DashboardOverview = ({ setActiveTab }) => {
     });
 
     // 3. Restaurant Real-time Listener
+    // ✅ FIX: snapshot.size was counting EVERY document in
+    // VerifiedRegister, including rejected restaurants (Restaurant.jsx's
+    // handleReject keeps the doc, just sets status: 'Rejected' - it
+    // doesn't delete it). Now uses the exact same filter as Restaurant.jsx's
+    // activePartners, so this card always matches the Active Partners tab.
     const restaurantCollectionRef = collection(db, 'Users', 'Restaurant', 'VerifiedRegister');
     const unsubscribeRestaurants = onSnapshot(restaurantCollectionRef, (snapshot) => {
-      setRestaurantCount(snapshot.size);
+      const activeCount = snapshot.docs.filter((docSnap) => {
+        const r = docSnap.data();
+        return r.status?.toLowerCase() === 'approved'
+          || r.status?.toLowerCase() === 'active'
+          || r.isVerified === true;
+      }).length;
+      setRestaurantCount(activeCount);
       setLoadingRestaurants(false);
     }, (error) => {
       console.error("Restaurant fetch error: ", error);
