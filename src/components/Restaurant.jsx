@@ -122,6 +122,7 @@ const Restaurant = () => {
 
   useEffect(() => {
     if (!reliabilityDetail) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStrikesList([]);
       return;
     }

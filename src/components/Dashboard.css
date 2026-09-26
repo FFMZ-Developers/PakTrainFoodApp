@@ -285,8 +285,9 @@
 }
 
 .overview-header {
-  display: flex;
-  justify-content: space-between;
+  display: flex !important;
+  width: 100% !important;
+  justify-content: space-between !important;
   align-items: flex-end;
   margin-bottom: 32px;
 }
@@ -305,6 +306,7 @@
 .header-actions {
   display: flex;
   gap: 16px;
+  margin-left: auto !important;
 }
 
 .btn-secondary {
@@ -584,7 +586,7 @@
   box-shadow: 0 0 15px rgba(34, 197, 94, 0.6);
 }
 
-.dot-1 { }
+
 .dot-2 { position: absolute; top: 25%; left: 25%; }
 
 @keyframes pulse {

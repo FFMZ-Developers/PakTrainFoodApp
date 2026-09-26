@@ -21,9 +21,7 @@ const formatCurrency = (amount, currency = "PKR") => {
   }).format(Number(amount || 0));
 };
 
-// Same conversion rate used server-side (functions/utils/currency.js), so
-// this stays consistent with whatever the backend actually charges/pays
-// out in USD.
+// Convert PKR amount to USD
 const PKR_TO_USD = 283;
 const toUsdEquivalent = (pkrAmount) => (Number(pkrAmount || 0) / PKR_TO_USD).toFixed(2);
 
@@ -41,8 +39,7 @@ const Payments = () => {
   const [wallets, setWallets] = useState([]);
   const [history, setHistory] = useState([]);
 
-  // Module: separate per-role lists so each role gets its own section
-  // with its own totals, instead of one mixed table.
+  // Keep wallets separate for each role
   const [restaurantWallets, setRestaurantWallets] = useState([]);
   const [riderWallets, setRiderWallets] = useState([]);
   const [passengerWallets, setPassengerWallets] = useState([]);
@@ -58,13 +55,10 @@ const Payments = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [payoutError, setPayoutError] = useState("");
 
-  // Module: Stripe Connect onboarding state (per-wallet loading flag so
-  // only the button that was actually clicked shows "Connecting...").
+  // Stripe connection loading state
   const [connectingId, setConnectingId] = useState(null);
 
-  // ----------------------------------------------------
-  // REAL TIME ADMIN STRIPE WALLET FETCH
-  // ----------------------------------------------------
+  // Get current Stripe balance
   const loadStripeBalance = useCallback(async (isMounted = { current: true }) => {
     try {
       const response = await fetch(
@@ -84,16 +78,9 @@ const Payments = () => {
       const availableItems = data.available || [];
       const pendingItems = data.pending || [];
 
-      // ✅ FIX: this used to blindly take availableItems[0] - whatever
-      // currency Stripe happened to list FIRST for this account. Our
-      // entire payment/transfer system only ever uses USD
-      // (pkrToUsdCents() everywhere), but this Stripe account apparently
-      // also has a EUR balance (shown as index 0), so the dashboard was
-      // displaying an unrelated €9,097 EUR figure while the ACTUAL USD
-      // balance our transfers draw from could be genuinely low/zero -
-      // which is exactly why "insufficient available funds" kept
-      // happening even though the card showed a healthy number. Now
-      // specifically finds the USD entry.
+      // Get the USD balance from Stripe.
+     // The account may also have other currencies,
+     // so we specifically use USD for payments and transfers.
       const usdAvailable = availableItems.find((item) => item.currency === "usd");
       const usdPending = pendingItems.find((item) => item.currency === "usd");
 

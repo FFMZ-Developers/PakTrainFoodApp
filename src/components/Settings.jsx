@@ -66,10 +66,6 @@ const Settings = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [isDefault, setIsDefault] = useState(false);
 
-  useEffect(() => {
-    loadConfig();
-  }, []);
-
   const loadConfig = async () => {
 
     setLoading(true);
@@ -95,6 +91,11 @@ const Settings = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadConfig();
+  }, []);
 
   const handleFieldChange = (key, type, rawValue) => {
 

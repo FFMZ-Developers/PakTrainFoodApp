@@ -36,10 +36,6 @@ const TrainRoutes = () => {
   const [editingStation, setEditingStation] = useState(null);
   const [stationForm, setStationForm] = useState({ name: '', lat: '', lng: '' });
 
-  useEffect(() => {
-    loadAll();
-  }, []);
-
   const loadAll = async () => {
     setLoading(true);
     setError('');
@@ -58,6 +54,11 @@ const TrainRoutes = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadAll();
+  }, []);
 
   // =========================================================
   // TRAINS

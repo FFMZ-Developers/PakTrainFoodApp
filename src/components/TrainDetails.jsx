@@ -34,11 +34,6 @@ const TrainDetails = () => {
   const [selectedStationToAdd, setSelectedStationToAdd] = useState('');
   const [insertPosition, setInsertPosition] = useState('end');
 
-  useEffect(() => {
-    loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
   const loadAll = async () => {
     setLoading(true);
     setError('');
@@ -77,6 +72,12 @@ const TrainDetails = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const saveRoute = async (newStations) => {
     if (!train?.routeId) return;
