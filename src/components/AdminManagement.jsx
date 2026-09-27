@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { functions } from "../firebase/config";
+import { initializeApp, deleteApp } from "firebase/app";
+import { getAuth, signInWithEmailAndPassword, sendEmailVerification, signOut } from "firebase/auth";
+import { functions, firebaseConfig } from "../firebase/config";
 import { getAllRoles } from "../utils/permissions";
 import "./AdminManagement.css";
 
@@ -11,6 +13,31 @@ import "./AdminManagement.css";
 //   createAdminAccount  -> the "Add Admin" form
 //   updateAdminRole     -> the role <select> in each row
 //   deleteAdminAccount  -> the "Remove" button in each row
+
+/**
+ * createAdminAccount (Cloud Function, Admin SDK) creates the new admin's
+ * Auth user directly - it can't trigger Firebase's own "verify your
+ * email" email, because that email is only ever sent by the CLIENT SDK's
+ * sendEmailVerification(), which needs an actual signed-in session for
+ * that user.
+ *
+ * So right after the new account is created, we sign into it for a split
+ * second on a throwaway SECOND Firebase app instance (not the `auth` the
+ * super-admin is already signed into), fire sendEmailVerification(), then
+ * sign out and tear the throwaway app down. The super-admin's own session
+ * on the main `auth` instance is never touched.
+ */
+const sendVerificationEmailFor = async (email, password) => {
+  const tempApp = initializeApp(firebaseConfig, `admin-verify-${Date.now()}`);
+  const tempAuth = getAuth(tempApp);
+  try {
+    const cred = await signInWithEmailAndPassword(tempAuth, email, password);
+    await sendEmailVerification(cred.user);
+  } finally {
+    await signOut(tempAuth).catch(() => {});
+    await deleteApp(tempApp).catch(() => {});
+  }
+};
 
 const AdminManagement = () => {
   const [admins, setAdmins] = useState([]);
@@ -64,15 +91,38 @@ const AdminManagement = () => {
 
     setCreating(true);
     try {
+      const trimmedEmail = form.email.trim();
+
       const createAdminAccount = httpsCallable(functions, "createAdminAccount");
       await createAdminAccount({
-        email: form.email.trim(),
+        email: trimmedEmail,
         password: form.password,
         name: form.name.trim(),
         role: form.role,
       });
 
-      setFormSuccess(`Admin account created for ${form.email}.`);
+      // Account exists now but isVerified is false by default (Firebase
+      // Auth's own emailVerified flag) - send the verification link
+      // before telling the super-admin it's done, so the popup only ever
+      // says "sent" once the email has actually gone out.
+      try {
+        await sendVerificationEmailFor(trimmedEmail, form.password);
+        window.alert(
+          `Admin account created. A verification link has been sent to ${trimmedEmail} - ` +
+          `they must open it from that Gmail/email inbox and click the link before they can log in.`
+        );
+      } catch (verifyErr) {
+        // The account itself was created fine - only the verification
+        // email failed to send. Don't lose that fact silently.
+        console.error("sendEmailVerification error:", verifyErr);
+        window.alert(
+          `Admin account created for ${trimmedEmail}, but the verification email could not be sent ` +
+          `(${verifyErr.message || "unknown error"}). They won't be able to log in until they're verified - ` +
+          `ask them to use "Forgot password" on the login screen to trigger a fresh verification email, or recreate the account.`
+        );
+      }
+
+      setFormSuccess(`Admin account created for ${trimmedEmail}. Verification link sent.`);
       setForm({ name: "", email: "", password: "", role: "support" });
       loadAdmins();
     } catch (err) {

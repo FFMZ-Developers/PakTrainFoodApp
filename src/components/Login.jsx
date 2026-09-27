@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut, sendEmailVerification } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 
@@ -38,6 +38,22 @@ const Login = () => {
       );
 
       const user = userCredential.user;
+
+      // Step 1.5: Email verify hui ya nahi - jab tak admin apne Gmail/inbox
+      // mein aaye verification link par click nahi karta, use andar mat
+      // jaane do. Sign out foran taake koi "half logged in" session na
+      // reh jaaye, phir ek nayi verification email bhi bhej do taake wo
+      // link dhoondte na phirein.
+      if (!user.emailVerified) {
+        try {
+          await sendEmailVerification(user);
+        } catch (resendErr) {
+          console.error("Resend verification error:", resendErr);
+        }
+        await signOut(auth);
+        setError('Please verify your email first. We\'ve sent a new verification link to your inbox (Gmail) - open it and click the link, then sign in again.');
+        return;
+      }
 
       // Step 2: Check karo ke yeh banda "admins" list mein hai ya nahi
       const adminRef = doc(db, 'admins', user.uid);

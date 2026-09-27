@@ -5,7 +5,12 @@ import { getFunctions } from "firebase/functions";
 import { getDatabase } from "firebase/database";
 import { getStorage } from "firebase/storage";
 
-const firebaseConfig = {
+// Exported (not just kept local) so AdminManagement.jsx can spin up a
+// throwaway SECOND Firebase app instance - needed to sign in as a
+// newly-created admin just long enough to trigger their verification
+// email, without disturbing the super-admin's own logged-in session on
+// the main `auth` instance below.
+export const firebaseConfig = {
   apiKey: "AIzaSyDeA29tUGfig2XLve_jbQfOr-U-yIgdAt4",
   authDomain: "paktrainfoodservice.firebaseapp.com",
   databaseURL: "https://paktrainfoodservice-default-rtdb.firebaseio.com",
