@@ -67,16 +67,13 @@ const avatarFor = (name) => AVATAR_COLOURS[(name || "").length % AVATAR_COLOURS.
 const PAGE_SIZE = 20;
 
 /**
- * Module: consolidated Orders + Reports.
- *
- * This replaces two separate admin nav entries that both claimed to show
- * "orders" - one (formerly "Orders") was wired to real Firestore data but
- * plainly styled; the other (formerly "Order Reports") had a nicer visual
- * design but was pure mock data with hardcoded fake customers and dollar
- * amounts, never actually connected to anything. This keeps the nicer
- * design and wires it to the real data, and adds the filtering/report/
- * print capability that was asked for on top.
- */
+
+* Shows orders and reports in one place.
+*
+* This page uses real order data from Firestore instead of fake data.
+* It also provides filters, reports, and print options for the orders.
+  */
+
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);

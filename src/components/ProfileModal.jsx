@@ -10,24 +10,14 @@ import {
 } from "firebase/auth";
 import "./ProfileModal.css";
 
-// Backs the "My Account" popup opened by clicking the profile area in the
-// topbar. Two independent things happen here:
-//   1. Profile picture -> resized client-side (phone camera photos can be
-//      5-10MB, which is what actually made uploads feel stuck), then
-//      uploaded to Firebase Storage with progress tracking. The
-//      resulting URL is saved on admins/{uid}.photoURL (Dashboard.jsx is
-//      subscribed to that doc, so the header avatar updates instantly).
-//   2. Change password -> Firebase requires re-entering the current
-//      password (reauthenticateWithCredential) right before
-//      updatePassword, otherwise it rejects the request as
-//      "requires-recent-login".
+   // Handles the My Account popup.
+  // It updates the profile picture and changes the password.
+   // Profile pictures are resized before uploading to Firebase Storage.
+   // Password changes require the current password for verification.
 
 /**
- * Shrinks an image to at most `maxDim` on its longest side and re-encodes
- * it as a JPEG at the given quality. A typical phone photo (4000x3000,
- * 6-8MB) comes out well under 300KB after this - the actual fix for slow
- * uploads, since almost none of that original resolution is needed for a
- * 36px header avatar / 64px modal preview.
+ * Resizes the image and converts it to JPEG
+ * before uploading to Firebase Storage.
  */
 function resizeImage(file, maxDim = 500, quality = 0.8) {
   return new Promise((resolve, reject) => {
@@ -68,9 +58,8 @@ function resizeImage(file, maxDim = 500, quality = 0.8) {
 }
 
 /**
- * 4 built-in avatars (colored circle + simple icon), generated as inline
- * SVG data URIs - no upload, no Storage dependency, so these always work
- * even if Storage isn't set up yet or is misconfigured.
+ * Provides built-in avatars using SVG images.
+ * These avatars do not need Firebase Storage.
  */
 const PRESET_AVATARS = [
   { id: "shield-blue", color: "#2563eb", path: "M16 2 L28 8 V16 C28 24 22 29 16 30 C10 29 4 24 4 16 V8 Z" },

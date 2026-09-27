@@ -40,23 +40,19 @@ const MARKER_COLOURS = {
 };
 
 /**
- * Module: live operations map.
- *
- * Shows every currently-relevant position at once:
- *   - every online rider (whether or not they're on an order right now)
- *   - every restaurant that has a registered location
- *   - every passenger with an order currently in a trackable stage
- *
- * For any order that has BOTH a rider assigned AND is still active, the
- * restaurant / rider / passenger for that one order are joined with a
- * line, so it's visually obvious which three dots belong together -
- * exactly the "who's serving who" view that's otherwise impossible to
- * get from a flat list of orders.
- *
- * Role and city filters apply to what's DRAWN, not what's fetched - all
- * the underlying listeners stay live regardless, so toggling a filter is
- * instant with no extra reads.
- */
+
+* Shows live locations of riders, restaurants, and passengers on the map.
+*
+* It shows online riders, restaurants with saved locations,
+* and passengers who have active orders.
+*
+* When a rider is assigned to an active order, the rider,
+* restaurant, and passenger are connected with a line.
+*
+* Role and city filters only change what is shown on the map.
+* The location data keeps updating in the background.
+  */
+
 const LiveMap = () => {
   const mapDivRef = useRef(null);
   const mapRef = useRef(null);

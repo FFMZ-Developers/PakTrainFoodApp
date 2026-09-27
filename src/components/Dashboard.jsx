@@ -18,7 +18,7 @@ import { collection, onSnapshot, doc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 // Role-based access (multiple roles, each with its own allowed tabs)
-import { getCurrentRole, isSuperAdmin, canAccessTab, roleLabel } from '../utils/permissions';
+import { getCurrentRole, canAccessTab, roleLabel } from '../utils/permissions';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -91,7 +91,6 @@ const Dashboard = () => {
   // Role stored by Login.jsx after sign-in (e.g. "super-admin", "manager",
   // "support", "finance" - see src/utils/permissions.js for the full list).
   const [role] = useState(getCurrentRole());
-  const superAdmin = isSuperAdmin(role);
 
   const menuItems = [
     { name: 'Dashboard', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },

@@ -88,7 +88,7 @@ const Login = () => {
           <p>Please sign in to continue</p>
         </div>
 
-        {/* Error ho to laal box mein dikhao */}
+        {/* Error ho to red box mein dikhao */}
         {error && <div className="login-error">{error}</div>}
 
         <form onSubmit={handleLogin} className="login-form">

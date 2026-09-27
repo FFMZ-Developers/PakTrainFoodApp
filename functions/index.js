@@ -64,7 +64,7 @@ async function requireAdmin(req, allowedRoles = null) {
   let decoded;
   try {
     decoded = await admin.auth().verifyIdToken(idToken);
-  } catch (e) {
+  } catch {
     return { ok: false, status: 401, error: "Invalid or expired token." };
   }
 
@@ -254,7 +254,7 @@ exports.createConnectedAccount = functions
   .runWith({
     secrets: ["STRIPE_SECRET_KEY"],
   })
-  .https.onCall(async (data, context) => {
+  .https.onCall(async (data) => {
 
     const stripe = getStripe();
   const { email, uid, type } = data;
@@ -367,7 +367,7 @@ exports.checkStripeAccountStatus = functions
   .runWith({
     secrets: ["STRIPE_SECRET_KEY"],
   })
-  .https.onCall(async (data, context) => {
+  .https.onCall(async (data) => {
 
     const stripe = getStripe();
   const { stripeAccountId, uid, type } = data;
@@ -534,11 +534,6 @@ async function sendPartnerNotification({ uid, role, title, body, data = {} }) {
   }
 }
 
-function maskAccount(accountNumber) {
-  if (!accountNumber || accountNumber.length <= 4) return accountNumber || "N/A";
-  return "••••" + accountNumber.slice(-4);
-}
-
 exports.payoutToPartner = functions
   .runWith({
     secrets: ["STRIPE_SECRET_KEY"],
@@ -573,8 +568,6 @@ exports.payoutToPartner = functions
         stripeAccountId,
         receiverType, // "Restaurant" or "Delivery"
         name,
-        bankName,
-        accountNumber,
       } = req.body;
 
       if (!walletId || !amount || !receiverType) {
@@ -702,7 +695,7 @@ exports.simulateSandboxPayout = functions.https.onRequest(async (req, res) => {
   }
 
   try {
-    const { walletId, amount, role, name } = req.body;
+    const { walletId, amount } = req.body;
 
     if (!walletId || typeof amount === "undefined") {
       return res.status(400).json({
