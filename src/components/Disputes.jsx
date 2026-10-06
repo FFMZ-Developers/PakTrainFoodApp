@@ -150,9 +150,10 @@ const Disputes = () => {
 
       {selected && (
         <div className="payout-modal-overlay">
-          <div className="payout-modal-sheet" style={{ maxWidth: "640px" }}>
-            <h3>Resolve Dispute - {orderRef(selected)}</h3>
+          <div className="payout-modal-sheet" style={{ maxWidth: "640px", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+            <h3 style={{ flexShrink: 0 }}>Resolve Dispute - {orderRef(selected)}</h3>
 
+            <div style={{ overflowY: "auto", flex: 1, paddingRight: "4px" }}>
             <div style={{ background: "#f7f7f7", padding: "12px", borderRadius: "8px", margin: "12px 0" }}>
               <p><b>Reported by:</b> {selected.failureReportedBy === "restaurant" ? "Restaurant" : "Rider"}
                 {selected.failureReportType ? ` (${selected.failureReportType.replace("_", " ")})` : ""}</p>
@@ -229,8 +230,9 @@ const Disputes = () => {
                 {totalAllocated() !== Math.round(selected.totalPrice || 0) && " ⚠️ Doesn't add up to the order total"}
               </p>
             </div>
+            </div>
 
-            <div className="payout-modal-footer">
+            <div className="payout-modal-footer" style={{ flexShrink: 0 }}>
               <button className="confirm-payout-btn" onClick={handleResolve} disabled={submitting}>
                 {submitting ? "Resolving..." : "Resolve & Send Payments"}
               </button>
