@@ -577,6 +577,48 @@ exports.payoutToPartner = functions
         });
       }
 
+      // ---- Input validation: amount sahi number ho, receiverType valid ho,
+      // aur amount wallet ke available balance se zyada na ho. ----
+      const payoutAmount = Number(amount);
+
+      if (!Number.isFinite(payoutAmount) || payoutAmount <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Bad Request: amount must be a positive number.",
+        });
+      }
+
+      if (receiverType !== "Restaurant" && receiverType !== "Delivery") {
+        return res.status(400).json({
+          success: false,
+          error: "Bad Request: receiverType must be Restaurant or Delivery.",
+        });
+      }
+
+      if (typeof walletId !== "string" || walletId.length > 128 || walletId.includes("/")) {
+        return res.status(400).json({
+          success: false,
+          error: "Bad Request: invalid walletId.",
+        });
+      }
+
+      const walletCheckSnap = await db
+        .collection("Wallets").doc(receiverType)
+        .collection("Accounts").doc(walletId).get();
+
+      if (!walletCheckSnap.exists) {
+        return res.status(404).json({ success: false, error: "Wallet not found." });
+      }
+
+      const walletAvailable = Number(walletCheckSnap.data().availableBalance) || 0;
+
+      if (payoutAmount > walletAvailable + 0.01) {
+        return res.status(400).json({
+          success: false,
+          error: `Amount (Rs ${payoutAmount}) is more than the available balance (Rs ${walletAvailable}).`,
+        });
+      }
+
       const hasValidStripeAccount =
         typeof stripeAccountId === "string" && stripeAccountId.startsWith("acct_");
 
@@ -784,6 +826,34 @@ exports.resolveDispute = functions
     const rShare = Number(restaurantShare) || 0;
     const riShare = Number(riderShare) || 0;
     const pRefund = Number(passengerRefund) || 0;
+
+    // ---- Input validation: negative / non-number / order total se zyada
+    // amount accept nahi. Ye kisi bhi wallet ya refund se pehle check hota hai. ----
+    for (const [label, v] of [["restaurantShare", rShare], ["riderShare", riShare], ["passengerRefund", pRefund]]) {
+      if (!Number.isFinite(v) || v < 0) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          `${label} must be a number that is 0 or more.`
+        );
+      }
+    }
+
+    const orderTotalCap = Number(order.totalPrice) || 0;
+    if (orderTotalCap > 0 && rShare + riShare + pRefund > orderTotalCap + 0.01) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        `Total allocated (Rs ${rShare + riShare + pRefund}) is more than the order total (Rs ${orderTotalCap}).`
+      );
+    }
+
+    for (const reason of [restaurantReason, riderReason]) {
+      if (reason !== undefined && reason !== null && (typeof reason !== "string" || reason.length > 300)) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Reason must be text of at most 300 characters."
+        );
+      }
+    }
 
     // ---------------------------------------------
     // Restaurant + Rider - straight to available balance (admin's
@@ -1233,8 +1303,24 @@ exports.createAdminAccount = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("invalid-argument", "email, password and role are required.");
   }
 
-  if (password.length < 6) {
-    throw new functions.https.HttpsError("invalid-argument", "Password must be at least 6 characters.");
+  if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || email.length > 100) {
+    throw new functions.https.HttpsError("invalid-argument", "Enter a valid email address.");
+  }
+
+  if (typeof password !== "string" || password.length < 8 || password.length > 64 ||
+      !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Password must be 8-64 characters and include at least one letter and one number."
+    );
+  }
+
+  if (!["super-admin", "manager", "support", "finance"].includes(role)) {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid role.");
+  }
+
+  if (name && (typeof name !== "string" || name.length > 50)) {
+    throw new functions.https.HttpsError("invalid-argument", "Name must be at most 50 characters.");
   }
 
   let userRecord;

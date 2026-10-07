@@ -78,8 +78,40 @@ const Disputes = () => {
     return (Number(restaurantShare) || 0) + (Number(riderShare) || 0) + (Number(passengerRefund) || 0);
   }, [restaurantShare, riderShare, passengerRefund]);
 
+  // ---- Input validation: negative / decimal-garbage / order total se zyada nahi ----
+  const getAmountError = () => {
+    const fields = [
+      ["Restaurant share", restaurantShare],
+      ["Rider share", riderShare],
+      ["Passenger refund", passengerRefund],
+    ];
+
+    for (const [label, raw] of fields) {
+      if (raw === "" || raw === null || raw === undefined) continue;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0) return `${label} must be 0 or more.`;
+    }
+
+    const cap = Math.round(Number(selected?.totalPrice) || 0);
+    if (cap > 0 && totalAllocated() > cap) {
+      return `Total allocated (${formatCurrency(totalAllocated())}) is more than the order total (${formatCurrency(cap)}).`;
+    }
+
+    if (restaurantReason.length > 300 || riderReason.length > 300) {
+      return "Reasons must be at most 300 characters.";
+    }
+
+    return "";
+  };
+
   const handleResolve = async () => {
     if (!selected) return;
+
+    const amountError = getAmountError();
+    if (amountError) {
+      alert(amountError);
+      return;
+    }
 
     setSubmitting(true);
 
@@ -211,15 +243,15 @@ const Disputes = () => {
               </h4>
 
               <label>Restaurant share (Rs)</label>
-              <input type="number" value={restaurantShare} onChange={(e) => setRestaurantShare(e.target.value)} style={{ width: "100%", marginBottom: "6px", padding: "8px" }} />
-              <input type="text" placeholder="Reason if reduced (optional)" value={restaurantReason} onChange={(e) => setRestaurantReason(e.target.value)} style={{ width: "100%", marginBottom: "12px", padding: "8px" }} />
+              <input type="number" min="0" step="1" value={restaurantShare} onChange={(e) => setRestaurantShare(e.target.value)} style={{ width: "100%", marginBottom: "6px", padding: "8px" }} />
+              <input type="text" maxLength={300} placeholder="Reason if reduced (optional)" value={restaurantReason} onChange={(e) => setRestaurantReason(e.target.value)} style={{ width: "100%", marginBottom: "12px", padding: "8px" }} />
 
               <label>Rider share (Rs)</label>
-              <input type="number" value={riderShare} onChange={(e) => setRiderShare(e.target.value)} style={{ width: "100%", marginBottom: "6px", padding: "8px" }} />
-              <input type="text" placeholder="Reason if reduced (optional)" value={riderReason} onChange={(e) => setRiderReason(e.target.value)} style={{ width: "100%", marginBottom: "12px", padding: "8px" }} />
+              <input type="number" min="0" step="1" value={riderShare} onChange={(e) => setRiderShare(e.target.value)} style={{ width: "100%", marginBottom: "6px", padding: "8px" }} />
+              <input type="text" maxLength={300} placeholder="Reason if reduced (optional)" value={riderReason} onChange={(e) => setRiderReason(e.target.value)} style={{ width: "100%", marginBottom: "12px", padding: "8px" }} />
 
               <label>Passenger refund (Rs)</label>
-              <input type="number" value={passengerRefund} onChange={(e) => setPassengerRefund(e.target.value)} style={{ width: "100%", marginBottom: "6px", padding: "8px" }} />
+              <input type="number" min="0" step="1" value={passengerRefund} onChange={(e) => setPassengerRefund(e.target.value)} style={{ width: "100%", marginBottom: "6px", padding: "8px" }} />
 
               <p style={{
                 marginTop: "10px",
@@ -229,11 +261,14 @@ const Disputes = () => {
                 Allocated total: {formatCurrency(totalAllocated())} / Order total: {formatCurrency(selected.totalPrice)}
                 {totalAllocated() !== Math.round(selected.totalPrice || 0) && " ⚠️ Doesn't add up to the order total"}
               </p>
+              {getAmountError() && (
+                <p style={{ color: "#c62828", marginTop: "4px" }}>{getAmountError()}</p>
+              )}
             </div>
             </div>
 
             <div className="payout-modal-footer" style={{ flexShrink: 0 }}>
-              <button className="confirm-payout-btn" onClick={handleResolve} disabled={submitting}>
+              <button className="confirm-payout-btn" onClick={handleResolve} disabled={submitting || !!getAmountError()}>
                 {submitting ? "Resolving..." : "Resolve & Send Payments"}
               </button>
               <button className="cancel-action-btn" onClick={closeModal} disabled={submitting}>

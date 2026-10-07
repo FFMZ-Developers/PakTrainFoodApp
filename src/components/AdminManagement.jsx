@@ -89,6 +89,22 @@ const AdminManagement = () => {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) || form.email.length > 100) {
+      setFormError("Enter a valid email address.");
+      return;
+    }
+
+    if (form.password.length < 8 || form.password.length > 64 ||
+        !/[A-Za-z]/.test(form.password) || !/\d/.test(form.password)) {
+      setFormError("Password must be 8-64 characters and include at least one letter and one number.");
+      return;
+    }
+
+    if (form.name && (form.name.trim().length > 50 || !/^[\p{L}][\p{L} .'-]*$/u.test(form.name.trim()))) {
+      setFormError("Name can contain only letters and spaces (max 50 characters).");
+      return;
+    }
+
     setCreating(true);
     try {
       const trimmedEmail = form.email.trim();
@@ -210,7 +226,7 @@ const AdminManagement = () => {
               type="password"
               value={form.password}
               onChange={(e) => handleFormChange("password", e.target.value)}
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters, with a letter and a number"
               required
             />
           </div>
