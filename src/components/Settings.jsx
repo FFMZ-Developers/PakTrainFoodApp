@@ -42,9 +42,8 @@ const FIELD_GROUPS = [
   },
   {
     title: "Failure handling",
-    description: "Compensation and detection thresholds for the order failure scenarios.",
+    description: "Detection threshold for passengers who leave the train before the meal station.",
     fields: [
-      { key: "riderAttemptedDeliveryFeePercent", label: "Rider fee % paid for an attempted (undelivered) order", type: "int" },
       { key: "journeyStallMinutesBeforeCancel", label: "Minutes of no progress before auto-cancelling an order", type: "int" },
     ],
   },

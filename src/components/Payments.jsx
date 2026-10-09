@@ -21,9 +21,10 @@ const formatCurrency = (amount, currency = "PKR") => {
   }).format(Number(amount || 0));
 };
 
-// Convert PKR amount to USD
+// Stripe test mode works in USD, but the whole panel shows PKR.
+// Same rate the backend uses (functions/index.js PKR_TO_USD_RATE).
 const PKR_TO_USD = 283;
-const toUsdEquivalent = (pkrAmount) => (Number(pkrAmount || 0) / PKR_TO_USD).toFixed(2);
+const usdToPkr = (usdAmount) => Math.round(Number(usdAmount || 0) * PKR_TO_USD);
 
 const Payments = () => {
   const [loading, setLoading] = useState(true);
@@ -84,14 +85,16 @@ const Payments = () => {
       const usdAvailable = availableItems.find((item) => item.currency === "usd");
       const usdPending = pendingItems.find((item) => item.currency === "usd");
 
-      const availableAmt = usdAvailable ? (usdAvailable.amount || 0) / 100 : 0;
-      const pendingAmt = usdPending ? (usdPending.amount || 0) / 100 : 0;
+      // Stripe sends cents; convert cents -> USD -> PKR so the admin
+      // wallet card is in the same currency as everything else here.
+      const availableAmt = usdAvailable ? usdToPkr((usdAvailable.amount || 0) / 100) : 0;
+      const pendingAmt = usdPending ? usdToPkr((usdPending.amount || 0) / 100) : 0;
 
       if (isMounted.current) {
         setAdminWallet({
           available: Number(availableAmt),
           pending: Number(pendingAmt),
-          currency: "USD"
+          currency: "PKR"
         });
       }
     } catch (err) {
@@ -469,7 +472,7 @@ const Payments = () => {
   const sortedHistory = [...history].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
   // Restaurant/Rider total available balances - computed once here so
-  // both the summary card and its USD line below use the exact same
+  // the summary card and the section below use the exact same
   // number.
   const restaurantAvailableTotal = restaurantWallets.reduce(
     (sum, w) => sum + Number(w.available || 0), 0
@@ -604,17 +607,12 @@ const Payments = () => {
         {/* Module - restaurant + rider now each show BOTH balances
             (available in green, pending in orange), instead of only a
             single "Pending" number that hid the available side entirely.
-            A USD equivalent line was added under each so the admin can
-            see roughly what that PKR balance is worth without doing the
-            conversion by hand. */}
+            All amounts on this page are shown in PKR. */}
         <div className="payment-card">
           <h3>RESTAURANT BALANCE</h3>
           <h2 style={{ color: "#2e7d32" }}>
             {formatCurrency(restaurantAvailableTotal, "PKR")}
           </h2>
-          <p style={{ marginTop: "4px", color: "#888", fontSize: "13px" }}>
-            ≈ US${toUsdEquivalent(restaurantAvailableTotal)}
-          </p>
           <p style={{ marginTop: "10px", color: "#e07b00", fontWeight: "bold" }}>
             Pending : {formatCurrency(restaurantPending, "PKR")}
           </p>
@@ -625,9 +623,6 @@ const Payments = () => {
           <h2 style={{ color: "#2e7d32" }}>
             {formatCurrency(riderAvailableTotal, "PKR")}
           </h2>
-          <p style={{ marginTop: "4px", color: "#888", fontSize: "13px" }}>
-            ≈ US${toUsdEquivalent(riderAvailableTotal)}
-          </p>
           <p style={{ marginTop: "10px", color: "#e07b00", fontWeight: "bold" }}>
             Pending : {formatCurrency(riderPending, "PKR")}
           </p>
